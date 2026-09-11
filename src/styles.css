@@ -18,6 +18,12 @@ form { display: grid; gap: .7rem; margin-top: 2rem; }
 label { color: #afc2d5; font-size: .85rem; font-weight: 700; }
 input { width: 100%; margin-bottom: .65rem; padding: .9rem 1rem; border: 1px solid #2a4057; border-radius: 12px; outline: none; background: #08131f; color: white; }
 input:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
+.password-field { position: relative; }
+.password-field input { margin-bottom: .65rem; padding-right: 3.25rem; }
+.password-toggle { position: absolute; top: 0; right: .35rem; display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border: 0; border-radius: 10px; background: transparent; color: #8fa4ba; cursor: pointer; }
+.password-toggle:hover { color: #64d6ff; }
+.password-toggle:focus-visible { outline: 2px solid #38c8ff; outline-offset: -3px; }
+.password-toggle svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .primary-button { display: inline-flex; justify-content: center; margin-top: .55rem; padding: .95rem 1.1rem; border: 0; border-radius: 12px; background: linear-gradient(135deg, #19c6ff, #5268ff); color: white; font-weight: 800; cursor: pointer; }
 .primary-button:disabled { cursor: wait; opacity: .65; }
 .link-button { text-decoration: none; }
