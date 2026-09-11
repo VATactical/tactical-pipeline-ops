@@ -7,8 +7,12 @@ import { loadOperations, updateTaskStatus } from '../services/opsService'
 const priorityRank = { Urgente: 0, Alta: 1, Media: 2 }
 const dossierFields = [
   ['Nombre legal', 'legal_name'], ['Propietario', 'owner_name'], ['Teléfono', 'phone'], ['Correo', 'email'],
-  ['Dirección', 'address'], ['Servicios', 'services'], ['Oferta', 'offer'], ['Mercado', 'markets'],
-  ['Dominio', 'domain'], ['Configuración GHL', 'ghl_status'], ['Accesos Meta', 'meta_status'], ['A2P', 'a2p_status'],
+  ['Dirección', 'address'], ['ZIP / radio', 'target_zip_codes'], ['EIN / Tax ID', 'legal_business_info'],
+  ['Servicios', 'services'], ['Oferta', 'offer'], ['Dominio', 'domain'], ['Sitio web', 'website_url'],
+  ['Google Business Profile', 'gbp_status'], ['Onboarding', 'onboarding_date'], ['Fecha de lanzamiento', 'target_launch_date'],
+  ['Estrategia de anuncios', 'ad_strategy'], ['Acceso GHL', 'ghl_subaccount_link'], ['Carpeta Drive', 'drive_folder_link'],
+  ['Facebook / Business Manager', 'facebook_business_info'], ['Ad Account / Pixel', 'meta_assets_info'],
+  ['Retell AI', 'retell_agent_id'], ['Make.com', 'make_scenario_link'], ['Canal Slack', 'slack_channel_link'],
 ]
 
 const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
@@ -19,7 +23,8 @@ function SuperadminDashboard({ data, blockers }) {
     const missing = missingFromDossier(client)
     const openTasks = data.tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada').length
     const clientBlockers = blockers.filter((blocker) => blocker.client_id === client.id).length
-    return { client, missing, openTasks, clientBlockers }
+    const pendingSteps = data.workflowSteps.filter((step) => step.client_id === client.id && !step.completed)
+    return { client, missing, openTasks, clientBlockers, pendingSteps }
   })
   const incomplete = clientSummaries.filter((item) => item.missing.length > 0).length
 
@@ -32,10 +37,11 @@ function SuperadminDashboard({ data, blockers }) {
       </section>
       <section>
         <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Qué falta según cada dossier</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
-        <div className="dossier-grid">{clientSummaries.map(({ client, missing, openTasks, clientBlockers }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+        <div className="dossier-grid">{clientSummaries.map(({ client, missing, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
           <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
           <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
           <div className="missing-section"><strong>Falta en el dossier</strong>{missing.length ? <div className="missing-chips">{missing.map((item) => <span key={item}>{item}</span>)}</div> : <p className="complete-note">Dossier esencial completo</p>}</div>
+          <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
           <div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div>
           <span className="card-link">Ver expediente completo →</span>
         </Link>)}</div>
@@ -64,7 +70,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus }) {
 
 export default function DashboardPage() {
   const { profile } = useAuth()
-  const [data, setData] = useState({ clients: [], tasks: [], blockers: [] })
+  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 

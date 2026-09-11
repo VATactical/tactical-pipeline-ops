@@ -1,33 +1,36 @@
 import { supabase } from '../lib/supabase'
 
 export async function loadOperations() {
-  const [clientsResult, tasksResult, blockersResult] = await Promise.all([
+  const [clientsResult, tasksResult, blockersResult, workflowResult] = await Promise.all([
     supabase.from('clients').select('*').order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at'),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
+    supabase.from('client_workflow_steps').select('*').order('sort_order'),
   ])
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error
   if (error) throw error
 
   return {
     clients: clientsResult.data || [],
     tasks: tasksResult.data || [],
     blockers: blockersResult.data || [],
+    workflowSteps: workflowResult.data || [],
   }
 }
 
 export async function loadClient(clientId) {
-  const [clientResult, tasksResult, blockersResult] = await Promise.all([
+  const [clientResult, tasksResult, blockersResult, workflowResult] = await Promise.all([
     supabase.from('clients').select('*').eq('id', clientId).single(),
     supabase.from('tasks').select('*').eq('client_id', clientId).order('created_at'),
     supabase.from('blockers').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+    supabase.from('client_workflow_steps').select('*').eq('client_id', clientId).order('sort_order'),
   ])
 
-  const error = clientResult.error || tasksResult.error || blockersResult.error
+  const error = clientResult.error || tasksResult.error || blockersResult.error || workflowResult.error
   if (error) throw error
 
-  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [] }
+  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [] }
 }
 
 export async function updateTaskStatus(taskId, status) {
@@ -52,4 +55,19 @@ export async function createClient(client) {
   const { data, error } = await supabase.from('clients').insert(payload).select('id').single()
   if (error) throw error
   return data
+}
+
+export async function updateClient(clientId, changes) {
+  const { data, error } = await supabase.from('clients').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', clientId).select('*').single()
+  if (error) throw error
+  return data
+}
+
+export async function updateWorkflowStep(stepId, completed) {
+  const { error } = await supabase.from('client_workflow_steps').update({
+    completed,
+    completed_at: completed ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', stepId)
+  if (error) throw error
 }
