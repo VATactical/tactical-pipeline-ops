@@ -6,6 +6,9 @@ import AccessDeniedPage from './pages/AccessDeniedPage'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import TeamPage from './pages/TeamPage'
+import ClientsPage from './pages/ClientsPage'
+import ClientDetailPage from './pages/ClientDetailPage'
+import TasksPage from './pages/TasksPage'
 
 export default function App() {
   return (
@@ -16,6 +19,9 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route index element={<DashboardPage />} />
+              <Route path="clientes" element={<ClientsPage />} />
+              <Route path="clientes/:clientId" element={<ClientDetailPage />} />
+              <Route path="tareas" element={<TasksPage />} />
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                 <Route path="equipo" element={<TeamPage />} />

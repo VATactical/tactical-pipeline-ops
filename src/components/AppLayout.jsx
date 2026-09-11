@@ -21,6 +21,8 @@ export default function AppLayout() {
 
         <nav aria-label="Navegación principal">
           <NavLink to="/" end>Panel</NavLink>
+          <NavLink to="/clientes">Clientes</NavLink>
+          <NavLink to="/tareas">Tareas</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Equipo</NavLink>}
         </nav>
 
