@@ -29,7 +29,7 @@ export default function ClientsPage() {
 
   return (
     <div className="page-stack">
-      <header className="page-header"><div><p className="eyebrow">Pipeline</p><h2>Clientes</h2></div><span className="status-pill">{clients.length} activos</span></header>
+      <header className="page-header"><div><p className="eyebrow">Pipeline</p><h2>Clientes</h2></div><div className="header-actions"><span className="status-pill">{clients.length} activos</span><Link className="primary-button compact-button" to="/clientes/nuevo">+ Crear cliente</Link></div></header>
       {error && <p className="form-error">{error}</p>}
       <section className="filter-bar">
         <input type="search" placeholder="Buscar cliente, código o propietario…" value={search} onChange={(event) => setSearch(event.target.value)} />

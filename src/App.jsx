@@ -9,6 +9,7 @@ import TeamPage from './pages/TeamPage'
 import ClientsPage from './pages/ClientsPage'
 import ClientDetailPage from './pages/ClientDetailPage'
 import TasksPage from './pages/TasksPage'
+import ClientCreatePage from './pages/ClientCreatePage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="clientes" element={<ClientsPage />} />
+              <Route path="clientes/nuevo" element={<ClientCreatePage />} />
               <Route path="clientes/:clientId" element={<ClientDetailPage />} />
               <Route path="tareas" element={<TasksPage />} />
               <Route path="sin-acceso" element={<AccessDeniedPage />} />

@@ -34,3 +34,22 @@ export async function updateTaskStatus(taskId, status) {
   const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId)
   if (error) throw error
 }
+
+export async function updateTaskAssignment(taskId, ownerRole) {
+  const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }
+  const { error } = await supabase.from('tasks').update({ owner_role: ownerRole, owner_name: ownerNames[ownerRole] }).eq('id', taskId)
+  if (error) throw error
+}
+
+export async function createClient(client) {
+  const payload = {
+    ...client,
+    id: crypto.randomUUID(),
+    code: client.code.trim().toUpperCase(),
+    business_name: client.business_name.trim(),
+    daily_budget: Number(client.daily_budget || 0),
+  }
+  const { data, error } = await supabase.from('clients').insert(payload).select('id').single()
+  if (error) throw error
+  return data
+}

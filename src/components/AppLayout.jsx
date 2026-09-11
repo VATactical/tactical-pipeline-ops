@@ -23,7 +23,7 @@ export default function AppLayout() {
           <NavLink to="/" end>Panel</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
-          {profile?.role === 'superadmin' && <NavLink to="/equipo">Equipo</NavLink>}
+          {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
         </nav>
 
         <div className="user-card">
