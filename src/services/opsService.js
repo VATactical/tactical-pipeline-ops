@@ -20,17 +20,18 @@ export async function loadOperations() {
 }
 
 export async function loadClient(clientId) {
-  const [clientResult, tasksResult, blockersResult, workflowResult] = await Promise.all([
+  const [clientResult, tasksResult, blockersResult, workflowResult, auditResult] = await Promise.all([
     supabase.from('clients').select('*').eq('id', clientId).single(),
     supabase.from('tasks').select('*').eq('client_id', clientId).order('created_at'),
     supabase.from('blockers').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('client_workflow_steps').select('*').eq('client_id', clientId).order('sort_order'),
+    supabase.from('client_audit_log').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(50),
   ])
 
-  const error = clientResult.error || tasksResult.error || blockersResult.error || workflowResult.error
+  const error = clientResult.error || tasksResult.error || blockersResult.error || workflowResult.error || auditResult.error
   if (error) throw error
 
-  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [] }
+  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [], auditLog: auditResult.data || [] }
 }
 
 export async function updateTaskStatus(taskId, status) {

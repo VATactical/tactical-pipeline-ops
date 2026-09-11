@@ -27,6 +27,8 @@ const sections = [
   ] },
 ]
 
+const fieldLabels = Object.fromEntries(sections.flatMap((section) => section.fields.map(([label, key]) => [key, label])))
+
 const displayValue = (value, type) => {
   if (type === 'boolean') return value == null ? 'Pendiente' : value ? 'Sí' : 'No'
   if (type === 'number' && value !== '' && value != null) return `$${value}`
@@ -46,12 +48,13 @@ export default function ClientDetailPage() {
   if (!data && !error) return <LoadingScreen />
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
-  const { client, tasks, blockers, workflowSteps } = data
+  const { client, tasks, blockers, workflowSteps, auditLog } = data
   const saveDossier = async () => {
     setSaving(true); setError(''); setMessage('')
     try {
-      const updated = await updateClient(clientId, draft)
-      setData((current) => ({ ...current, client: updated })); setDraft(updated); setEditing(false); setMessage('Dossier actualizado correctamente.')
+      await updateClient(clientId, draft)
+      const refreshed = await loadClient(clientId)
+      setData(refreshed); setDraft(refreshed.client); setEditing(false); setMessage('Dossier actualizado correctamente.')
     } catch (saveError) { setError(saveError.message) }
     finally { setSaving(false) }
   }
@@ -59,7 +62,8 @@ export default function ClientDetailPage() {
     const completed = !step.completed
     try {
       await updateWorkflowStep(step.id, completed)
-      setData((current) => ({ ...current, workflowSteps: current.workflowSteps.map((item) => item.id === step.id ? { ...item, completed } : item) }))
+      const refreshed = await loadClient(clientId)
+      setData(refreshed); setDraft(refreshed.client)
     } catch (updateError) { setError(updateError.message) }
   }
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
@@ -73,6 +77,7 @@ export default function ClientDetailPage() {
       <section className="content-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action}</h3></section>
       {sections.map((section) => <section className="content-card dossier-section" key={section.title}><p className="eyebrow">{section.title}</p><div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div></section>)}
       <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Operational Task Log</p><h3>Proceso asignado por rol</h3></div><span className="muted">{workflowSteps.filter((item) => item.completed).length} de {workflowSteps.length} visibles completados</span></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{step.title}</strong><small>{step.owner_name}</small></div></label>)}</div></section>
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`}>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => fieldLabels[field] || field).join(', ')}</p>}<small>{new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
       <div className="dashboard-grid"><section className="content-card"><p className="eyebrow">Tareas adicionales</p><h3>{tasks.length} visibles</h3>{tasks.slice(0, 8).map((task) => <div className="mini-row" key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><div><strong>{task.title}</strong><small>{task.status} · {task.owner_name}</small></div></div>)}</section><section className="content-card"><p className="eyebrow">Bloqueos</p><h3>{blockers.filter((item) => !item.resolved).length} abiertos</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section></div>
     </div>
   )
