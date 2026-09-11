@@ -27,14 +27,16 @@ function SuperadminDashboard({ data, blockers }) {
     return { client, missing, openTasks, clientBlockers, pendingSteps }
   })
   const incomplete = clientSummaries.filter((item) => item.missing.length > 0).length
+  const statusCounts = data.clients.reduce((counts, client) => ({ ...counts, [client.status]: (counts[client.status] || 0) + 1 }), {})
 
   return (
     <>
-      <section className="metric-grid" aria-label="Resumen de clientes">
-        <article className="metric-card blue"><span>Clientes activos</span><strong>{data.clients.length}</strong><small>Expedientes operativos</small></article>
-        <article className="metric-card amber"><span>Dossiers incompletos</span><strong>{incomplete}</strong><small>Requieren información o configuración</small></article>
-        <article className="metric-card red"><span>Clientes bloqueados</span><strong>{new Set(blockers.map((item) => item.client_id)).size}</strong><small>{blockers.length} bloqueos abiertos</small></article>
+      <section className="metric-grid" aria-label="Clientes por estado">
+        <article className="metric-card blue"><span>Onboarding</span><strong>{statusCounts.ONBOARDING || 0}</strong><small>de {data.clients.length} clientes activos</small></article>
+        <article className="metric-card amber"><span>A2P Submitted</span><strong>{statusCounts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article>
+        <article className="metric-card green"><span>Ads Live</span><strong>{statusCounts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article>
       </section>
+      <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
       <section>
         <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Qué falta según cada dossier</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
         <div className="dossier-grid">{clientSummaries.map(({ client, missing, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
