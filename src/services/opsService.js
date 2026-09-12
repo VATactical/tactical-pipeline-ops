@@ -3,15 +3,16 @@ import { supabase } from '../lib/supabase'
 const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }
 
 export async function loadOperations() {
-  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult] = await Promise.all([
+  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult] = await Promise.all([
     supabase.from('clients').select('*').order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('client_workflow_steps').select('*').order('sort_order'),
     supabase.from('notes').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
+    supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(40),
   ])
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error
   if (error) throw error
 
   return {
@@ -20,6 +21,7 @@ export async function loadOperations() {
     blockers: blockersResult.data || [],
     workflowSteps: workflowResult.data || [],
     notes: notesResult.data || [],
+    activity: activityResult.data || [],
   }
 }
 
@@ -49,16 +51,18 @@ export async function updateTaskAssignment(taskId, ownerRole) {
   if (error) throw error
 }
 
-export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, dueLabel }) {
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, dueAt }) {
   const payload = {
     id: crypto.randomUUID(),
-    client_id: clientId,
+    client_id: clientId || null,
     title: title.trim(),
     evidence: (details || body).trim(),
     priority,
     owner_role: ownerRole,
     owner_name: ownerNames[ownerRole],
-    due_label: dueLabel.trim() || 'Nueva asignación',
+    due_at: dueAt || null,
+    due_label: dueAt || 'Sin fecha',
+    comments: (details || body).trim(),
     phase: 'Asignada por Kevin',
     status: 'Pendiente',
   }
@@ -99,8 +103,9 @@ export async function createClient(client) {
     code: client.code.trim().toUpperCase(),
     business_name: client.business_name.trim(),
     daily_budget: Number(client.daily_budget || 0),
+    assigned_role: client.assigned_role || 'onboarding_media',
   }
-  const { data, error } = await supabase.from('clients').insert(payload).select('id').single()
+  const { data, error } = await supabase.from('clients').insert(payload).select('*').single()
   if (error) throw error
   return data
 }
