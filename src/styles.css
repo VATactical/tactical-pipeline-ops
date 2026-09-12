@@ -205,6 +205,14 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .field-help { display: block; margin: -.3rem 0 .55rem; color: #7890a8; font-weight: 500; line-height: 1.45; }
 
 .profile-form { gap: .9rem; margin-top: 0; }
+.password-change-form { gap: .9rem; margin-top: 0; }
+.password-change-form .section-heading { margin-bottom: 0; }
+.password-change-form .section-heading p:last-child { margin-bottom: 0; }
+.password-change-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem 1rem; }
+.password-change-grid label:first-child { grid-column: 1 / -1; }
+.password-change-grid label { display: grid; gap: .4rem; }
+.password-change-grid input { margin: 0; }
+.slack-channel-button { border-color: #4a2969; background: #251635; color: #e3c4ff; }
 .profile-form label, .company-fields label, .admin-training-grid label { display: grid; gap: .4rem; }
 .profile-form input, .company-fields input, .admin-training-grid input, .admin-training-grid select { margin: 0; }
 .profile-identity { display: flex; align-items: center; gap: .85rem; margin-bottom: .5rem; }
@@ -270,6 +278,8 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .metric-card { min-height: 118px; padding: 1rem; scroll-snap-align: start; }
   .metric-card strong { margin-top: .8rem; font-size: 2.25rem; }
   .directory-grid, .company-form, .admin-training-grid, .lesson-actions { grid-template-columns: 1fr; }
+  .password-change-grid { grid-template-columns: 1fr; }
+  .password-change-grid label:first-child { grid-column: auto; }
   .directory-grid { justify-content: stretch; }
   .admin-training-grid .wide { grid-column: auto; }
   .company-logo-editor { justify-items: start; }

@@ -13,6 +13,20 @@ export async function updateMyProfile(profileId, changes) {
   return data
 }
 
+export async function changeMyPassword(email, currentPassword, newPassword) {
+  if (newPassword.length < 10) throw new Error('La nueva contraseña debe tener al menos 10 caracteres.')
+  if (currentPassword === newPassword) throw new Error('La nueva contraseña debe ser diferente a la actual.')
+
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password: currentPassword,
+  })
+  if (signInError) throw new Error('La contraseña actual no es correcta.')
+
+  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+  if (updateError) throw updateError
+}
+
 export async function loadTeamDirectory() {
   const { data, error } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
   if (error) throw error
