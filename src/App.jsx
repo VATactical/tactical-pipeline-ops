@@ -18,6 +18,7 @@ const TrainingPage = lazy(() => import('./pages/TrainingPage'))
 const MyAccountPage = lazy(() => import('./pages/MyAccountPage'))
 const TeamDirectoryPage = lazy(() => import('./pages/TeamDirectoryPage'))
 const CompanyPage = lazy(() => import('./pages/CompanyPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="training" element={<TrainingPage />} />
               <Route path="mi-cuenta" element={<MyAccountPage />} />
               <Route path="mi-equipo" element={<TeamDirectoryPage />} />
+              <Route path="mensajes" element={<MessagesPage />} />
               <Route path="eod-reports" element={<EodReportsPage />} />
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>

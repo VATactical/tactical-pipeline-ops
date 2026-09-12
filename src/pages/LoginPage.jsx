@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import logoUrl from '../assets/tp-logo.png'
 
 export default function LoginPage() {
   const { user, loading, signIn } = useAuth()
@@ -34,7 +35,7 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-intro">
-        <img className="login-logo" src="/tp-logo.png" alt="TP | Ops" />
+        <img className="login-logo" src={logoUrl} alt="Logo de TP | Ops" />
         <p className="eyebrow">TP | Ops</p>
         <h1>Una operación clara para cada cliente.</h1>
         <p>Onboarding, A2P y campañas en un solo panel de trabajo.</p>

@@ -201,6 +201,9 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .login-logo { width: 72px; height: 72px; margin-bottom: 2rem; border-radius: 20px; object-fit: cover; box-shadow: 0 14px 34px #1769ff3d; }
 .account-link { width: max-content; color: #64d6ff; font-size: .8rem; font-weight: 800; text-decoration: none; }
 .nav-badge { display: inline-grid; min-width: 1.35rem; height: 1.35rem; margin-left: .45rem; padding: 0 .3rem; place-items: center; border-radius: 99px; background: #f3b43d; color: #101820; font-size: .64rem; font-weight: 900; }
+.message-badge { background: #64d6ff; }
+.message-global-alert { display: flex; max-width: 1200px; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 auto 1.5rem; padding: .8rem 1rem; border: 1px solid #2c6d88; border-left: 4px solid #35bffa; border-radius: 12px; background: #102b3b; color: #bfeeff; text-decoration: none; }
+.message-global-alert span { font-size: .78rem; font-weight: 800; }
 .compact-page { width: 100%; max-width: 780px; }
 .dashboard-date { margin: -.35rem 0 .35rem; color: #64d6ff; font-size: .85rem; font-weight: 750; text-transform: capitalize; }
 .field-help { display: block; margin: -.3rem 0 .55rem; color: #7890a8; font-weight: 500; line-height: 1.45; }
@@ -237,6 +240,20 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .directory-card dd { margin: 0; overflow-wrap: anywhere; color: #c1d1df; font-size: .8rem; }
 .contact-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .contact-actions a { text-decoration: none; }
+.message-user-button { border-color: #2c6d88; color: #82e1ff; }
+
+.message-composer { gap: .85rem; margin-top: 0; }
+.message-composer label { display: grid; gap: .4rem; }
+.message-composer select, .message-composer textarea { margin: 0; }
+.message-composer .section-heading small { color: #718aa2; }
+.message-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.message-list { display: grid; }
+.team-message { display: grid; gap: .55rem; padding: 1rem 0; border-bottom: 1px solid #1d3043; }
+.team-message:last-child { border-bottom: 0; }
+.team-message > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.team-message time, .team-message small { color: #718aa2; font-size: .7rem; }
+.team-message p { margin: 0; color: #b9c9d8; line-height: 1.55; white-space: pre-wrap; }
+.team-message.unread { margin: 0 -.7rem; padding: 1rem .7rem; border-left: 3px solid #35bffa; background: #10293b80; }
 
 .company-form { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 1.5rem; margin-top: 0; }
 .company-logo-editor { display: grid; align-content: start; justify-items: center; gap: .8rem; }
@@ -286,7 +303,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .metric-grid { grid-template-columns: repeat(3, minmax(150px, 1fr)); overflow-x: auto; padding-bottom: .35rem; scroll-snap-type: x proximity; }
   .metric-card { min-height: 118px; padding: 1rem; scroll-snap-align: start; }
   .metric-card strong { margin-top: .8rem; font-size: 2.25rem; }
-  .directory-grid, .company-form, .admin-training-grid, .lesson-actions { grid-template-columns: 1fr; }
+  .directory-grid, .company-form, .admin-training-grid, .lesson-actions, .message-columns { grid-template-columns: 1fr; }
   .password-change-grid { grid-template-columns: 1fr; }
   .password-change-grid label:first-child { grid-column: auto; }
   .client-detail-header { gap: 1rem; }
@@ -301,6 +318,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .training-admin-box, .training-lesson { padding: 1rem; }
   .section-actions { flex-wrap: wrap; }
   .app-footer { margin-top: 2rem; }
+  .message-global-alert { align-items: flex-start; flex-direction: column; }
 }
 
 @media (max-width: 480px) {

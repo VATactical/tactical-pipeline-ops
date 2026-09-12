@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
-import { defaultCompany, loadCompanySettings } from '../services/companyService'
+import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
+import { loadUnreadMessageCount, subscribeToTeamMessages } from '../services/messageService'
 
 const roleLabels = {
   onboarding_media: 'Onboarding & Media',
@@ -14,6 +15,7 @@ const roleLabels = {
 export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
   const [notificationCount, setNotificationCount] = useState(0)
+  const [messageCount, setMessageCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
 
   useEffect(() => {
@@ -23,6 +25,16 @@ export default function AppLayout() {
     window.addEventListener('focus', refreshCount)
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshCount) }
   }, [])
+
+  useEffect(() => {
+    if (!profile?.id) return undefined
+    const refreshMessages = () => loadUnreadMessageCount(profile.id).then(setMessageCount).catch(() => {})
+    refreshMessages()
+    const timer = window.setInterval(refreshMessages, 60000)
+    window.addEventListener('focus', refreshMessages)
+    const unsubscribe = subscribeToTeamMessages(profile.id, refreshMessages)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshMessages); unsubscribe() }
+  }, [profile?.id])
 
   useEffect(() => {
     loadCompanySettings().then(setCompany).catch(() => {})
@@ -35,14 +47,16 @@ export default function AppLayout() {
     document.title = company.system_name || 'TP | Ops'
     let favicon = document.querySelector('link[rel="icon"]')
     if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon) }
-    favicon.href = company.logo_url || '/favicon.png'
+    favicon.href = resolveCompanyLogo(company.logo_url)
   }, [company])
+
+  const logoUrl = resolveCompanyLogo(company.logo_url)
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div>
-          <img className="brand-logo" src={company.logo_url || '/tp-logo.png'} alt="" />
+          <img className="brand-logo" src={logoUrl} alt="Logo de TP | Ops" />
           <div><p className="eyebrow">{company.company_name}</p><h1>{company.system_name}</h1></div>
         </div>
 
@@ -53,6 +67,7 @@ export default function AppLayout() {
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
+          <NavLink to="/mensajes">Mensajes{messageCount > 0 && <span className="nav-badge message-badge">{messageCount}</span>}</NavLink>
           <NavLink to="/eod-reports">EOD Reports</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
           {profile?.role === 'superadmin' && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
@@ -66,7 +81,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <main className="main-content"><div className="content-area"><Outlet /></div><footer className="app-footer"><img src={company.logo_url || '/tp-logo.png'} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span><small>Hecho por Diego Romario · Nicaragua</small></div></footer></main>
+      <main className="main-content"><div className="content-area">{messageCount > 0 && <Link className="message-global-alert" to="/mensajes"><strong>{messageCount} mensaje{messageCount === 1 ? '' : 's'} nuevo{messageCount === 1 ? '' : 's'}</strong><span>Abrir bandeja →</span></Link>}<Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span><small>Hecho por Diego Romario · Nicaragua</small></div></footer></main>
     </div>
   )
 }

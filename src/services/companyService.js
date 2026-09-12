@@ -1,9 +1,14 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
+import bundledLogoUrl from '../assets/tp-logo.png'
 
 export const defaultCompany = {
   company_name: 'Tactical Pipeline', system_name: 'TP | Ops',
   company_email: 'info@tacticalpipeline.com', company_website: '', logo_url: '/tp-logo.png',
 }
+
+export const resolveCompanyLogo = (logoUrl) => !logoUrl || logoUrl === '/tp-logo.png' || logoUrl === '/favicon.png'
+  ? bundledLogoUrl
+  : logoUrl
 
 export async function loadCompanySettings() {
   const { data, error } = await runWithSessionRetry(() => supabase.from('company_settings').select('*').eq('id', 1).single())
