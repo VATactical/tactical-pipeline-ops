@@ -22,6 +22,11 @@ const dossierFields = [
 ]
 const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
 
+function ClientStatusCards({ clients }) {
+  const counts = clients.reduce((total, client) => ({ ...total, [client.status]: (total[client.status] || 0) + 1 }), {})
+  return <section className="metric-grid status-metrics" aria-label="Clientes por estado"><article className="metric-card blue"><span>Onboarding</span><strong>{counts.ONBOARDING || 0}</strong><small>de {clients.length} clientes</small></article><article className="metric-card amber"><span>A2P Submitted</span><strong>{counts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article><article className="metric-card green"><span>Ads Live</span><strong>{counts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article></section>
+}
+
 function AdminComposer({ clients, onCreated }) {
   const initial = { type: 'general_note', clientId: '', title: '', body: '' }
   const [form, setForm] = useState(initial)
@@ -78,26 +83,19 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
     return { client, missingCount, openTasks, clientBlockers, pendingSteps }
   })
   const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
-  const statusCounts = data.clients.reduce((counts, client) => ({ ...counts, [client.status]: (counts[client.status] || 0) + 1 }), {})
   const overdue = data.tasks.filter(isOverdue)
   const stale = data.clients.filter(isStale)
   const lateLaunches = data.clients.filter(launchOverdue)
-  const formsReceived = data.clients.filter((client) => client.intake_form_completed).length
   const attentionQueue = clientSummaries.filter(({ client, missingCount, clientBlockers }) => clientBlockers || launchOverdue(client) || !client.intake_form_completed || missingCount > 0)
     .sort((a, b) => Number(Boolean(b.clientBlockers)) - Number(Boolean(a.clientBlockers)) || Number(launchOverdue(b.client)) - Number(launchOverdue(a.client)))
     .slice(0, 6)
 
   return <>
-    <section className="metric-grid" aria-label="Clientes por estado">
-      <article className="metric-card blue"><span>Onboarding</span><strong>{statusCounts.ONBOARDING || 0}</strong><small>de {data.clients.length} clientes activos</small></article>
-      <article className="metric-card amber"><span>A2P Submitted</span><strong>{statusCounts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article>
-      <article className="metric-card green"><span>Ads Live</span><strong>{statusCounts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article>
-    </section>
+    <ClientStatusCards clients={data.clients} />
     <section className="metric-grid compact" aria-label="Alertas operativas">
       <article className="metric-card red"><span>Tareas atrasadas</span><strong>{overdue.length}</strong><small>requieren seguimiento</small></article>
       <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
       <article className="metric-card red"><span>Deadlines ADS vencidos</span><strong>{lateLaunches.length}</strong><small>campañas sin lanzar</small></article>
-      <article className="metric-card blue"><span>Formularios recibidos</span><strong>{formsReceived}</strong><small>de {data.clients.length} clientes</small></article>
     </section>
     <section className="dashboard-grid">
       <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Prioridad ejecutiva</p><h3>Clientes que requieren atención</h3></div><Link to="/clientes">Ver filtros</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">No hay alertas críticas.</p>}{attentionQueue.map(({ client, missingCount, clientBlockers }) => <Link to={`/clientes/${client.id}`} className="attention-row" key={client.id}><div><strong>{client.code} · {client.business_name}</strong><small>{!client.intake_form_completed ? 'Formulario pendiente' : clientBlockers ? `${clientBlockers} bloqueo(s)` : launchOverdue(client) ? 'Deadline ADS vencido' : `${missingCount} campos pendientes`}</small></div><span>→</span></Link>)}</div></div>
@@ -125,6 +123,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, mark
   const overdue = openTasks.filter(isOverdue)
   const stale = data.clients.filter(isStale)
   return <>
+    <ClientStatusCards clients={data.clients} />
     {newTasks.length > 0 && <section className="new-task-alert" role="alert"><div><strong>{newTasks.length} tarea{newTasks.length === 1 ? '' : 's'} nueva{newTasks.length === 1 ? '' : 's'}</strong><p>Kevin agregó trabajo nuevo a tu tablero.</p></div><button className="secondary-button" onClick={markSeen}>Marcar como vistas</button></section>}
     <GeneralNotes notes={data.notes} />
     <section className="metric-grid" aria-label="Resumen operativo">
@@ -157,6 +156,7 @@ export default function DashboardPage() {
   const activeBlockers = data.blockers.filter((blocker) => !blocker.resolved)
   const isAdmin = profile?.role === 'superadmin'
   const newTasks = isAdmin ? [] : data.tasks.filter((task) => (!task.owner_role || task.owner_role === profile?.role) && new Date(task.created_at) > new Date(seenAt || 0))
+  const todayLabel = new Intl.DateTimeFormat('es', { timeZone: profile?.timezone || 'America/Managua', dateStyle: 'full' }).format(new Date())
 
   const changeStatus = async (taskId, status) => {
     try { await updateTaskStatus(taskId, status); setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status } : task) })) }
@@ -169,7 +169,7 @@ export default function DashboardPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="muted">{isAdmin ? 'Revisa el estado, crea notas y asigna tareas por cliente.' : 'Tus clientes, tareas y alertas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
+    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa el estado, crea notas y asigna tareas por cliente.' : 'Tus clientes, tareas y alertas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} newTasks={newTasks} markSeen={handleMarkSeen} />}
   </div>

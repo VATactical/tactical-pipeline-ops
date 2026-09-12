@@ -1,14 +1,15 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 
 export async function loadCalendarData() {
-  const [eventsResult, clientsResult, notificationsResult] = await runWithSessionRetry(() => Promise.all([
+  const [eventsResult, clientsResult, notificationsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('calendar_events').select('*, clients(code, business_name)').order('start_at'),
     supabase.from('clients').select('id, code, business_name, timezone').order('code'),
     supabase.from('notifications').select('*').is('read_at', null).lte('notify_at', new Date().toISOString()).order('notify_at'),
+    supabase.rpc('get_team_directory'),
   ]))
-  const error = eventsResult.error || clientsResult.error || notificationsResult.error
+  const error = eventsResult.error || clientsResult.error || notificationsResult.error || directoryResult.error
   if (error) throw error
-  return { events: eventsResult.data || [], clients: clientsResult.data || [], notifications: notificationsResult.data || [] }
+  return { events: eventsResult.data || [], clients: clientsResult.data || [], notifications: notificationsResult.data || [], members: directoryResult.data || [] }
 }
 
 export async function createCalendarEvent(event, profileId) {

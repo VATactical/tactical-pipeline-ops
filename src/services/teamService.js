@@ -3,7 +3,7 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 export async function loadTeam() {
   const { data, error } = await runWithSessionRetry(() => supabase
     .from('profiles')
-    .select('id, email, full_name, role, permissions, active, timezone, created_at')
+    .select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at')
     .order('created_at'))
   if (error) throw error
   return data || []

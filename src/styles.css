@@ -189,3 +189,107 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .print-dossier .section-actions { display: none !important; }
   .print-dossier .section-updated { display: none !important; }
 }
+
+/* TP | Ops identity, directory and responsive administration */
+.main-content { display: flex; min-height: 100vh; flex-direction: column; }
+.content-area { width: 100%; flex: 1; }
+.sidebar > div:first-child { display: flex; align-items: center; gap: .8rem; }
+.brand-logo { width: 48px; height: 48px; flex: 0 0 auto; border-radius: 13px; object-fit: cover; box-shadow: 0 10px 28px #1769ff33; }
+.sidebar > div:first-child .eyebrow { margin-bottom: .25rem; }
+.sidebar > div:first-child h1 { margin: 0; }
+.login-logo { width: 72px; height: 72px; margin-bottom: 2rem; border-radius: 20px; object-fit: cover; box-shadow: 0 14px 34px #1769ff3d; }
+.account-link { width: max-content; color: #64d6ff; font-size: .8rem; font-weight: 800; text-decoration: none; }
+.nav-badge { display: inline-grid; min-width: 1.35rem; height: 1.35rem; margin-left: .45rem; padding: 0 .3rem; place-items: center; border-radius: 99px; background: #f3b43d; color: #101820; font-size: .64rem; font-weight: 900; }
+.compact-page { width: 100%; max-width: 780px; }
+.dashboard-date { margin: -.35rem 0 .35rem; color: #64d6ff; font-size: .85rem; font-weight: 750; text-transform: capitalize; }
+.field-help { display: block; margin: -.3rem 0 .55rem; color: #7890a8; font-weight: 500; line-height: 1.45; }
+
+.profile-form { gap: .9rem; margin-top: 0; }
+.profile-form label, .company-fields label, .admin-training-grid label { display: grid; gap: .4rem; }
+.profile-form input, .company-fields input, .admin-training-grid input, .admin-training-grid select { margin: 0; }
+.profile-identity { display: flex; align-items: center; gap: .85rem; margin-bottom: .5rem; }
+.profile-identity > div:last-child { display: grid; gap: .25rem; min-width: 0; }
+.profile-identity span { overflow-wrap: anywhere; color: #8299b0; font-size: .78rem; }
+
+.directory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 360px)); gap: 1rem; justify-content: start; }
+.directory-card { display: grid; gap: 1rem; min-width: 0; }
+.directory-card h3 { margin: 0; }
+.directory-card dl { display: grid; gap: .7rem; margin: 0; }
+.directory-card dl div { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: .65rem; }
+.directory-card dt { color: #718aa2; font-size: .72rem; }
+.directory-card dd { margin: 0; overflow-wrap: anywhere; color: #c1d1df; font-size: .8rem; }
+.contact-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.contact-actions a { text-decoration: none; }
+
+.company-form { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 1.5rem; margin-top: 0; }
+.company-logo-editor { display: grid; align-content: start; justify-items: center; gap: .8rem; }
+.company-logo-editor img { width: 150px; height: 150px; border: 1px solid #294158; border-radius: 24px; object-fit: cover; background: #050a11; }
+.company-logo-editor label { cursor: pointer; text-align: center; }
+.company-logo-editor small { color: #718aa2; font-size: .7rem; text-align: center; }
+.company-fields { display: grid; gap: .8rem; }
+
+.world-clocks { grid-template-columns: repeat(auto-fit, minmax(175px, 235px)); justify-content: start; }
+.clock-card.current { border-color: #35bffa; background: #102b3e; box-shadow: inset 0 0 0 1px #35bffa22; }
+.clock-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.training-create-form { margin-top: 0; }
+.training-expanded { border-top: 1px solid #1d3043; }
+.training-admin-box { display: grid; gap: 1rem; padding: 1.2rem 1.4rem; background: #091522; }
+.training-admin-box.add-lesson { border-top: 1px solid #1d3043; }
+.admin-training-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.admin-training-grid .wide { grid-column: 1 / -1; }
+.lesson-editor { display: grid; width: 100%; gap: .65rem; }
+.lesson-editor input, .lesson-editor textarea, .lesson-editor select { margin: 0; }
+.lesson-actions { display: grid; grid-template-columns: minmax(130px, 1fr) 90px auto auto; gap: .6rem; align-items: center; }
+.danger-button { padding: .65rem .85rem; border: 1px solid #783343; border-radius: 10px; background: #32141c; color: #ff9baa; font-weight: 750; cursor: pointer; }
+.danger-text { color: #ff8fa1; }
+
+.app-footer { display: flex; width: 100%; max-width: 1200px; align-items: center; gap: .7rem; margin: 3rem auto 0; padding-top: 1.25rem; border-top: 1px solid #172b3e; color: #718aa2; }
+.app-footer img { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; opacity: .78; }
+.app-footer div { display: grid; gap: .15rem; }
+.app-footer strong { color: #91a8bf; font-size: .75rem; }
+.app-footer span { font-size: .68rem; }
+.app-footer small { color: #526b82; font-size: .58rem; }
+
+@media (max-width: 1100px) {
+  .world-clocks { grid-template-columns: repeat(auto-fit, minmax(165px, 220px)); }
+}
+
+@media (max-width: 800px) {
+  .sidebar > div:first-child { align-items: center; }
+  .brand-logo { width: 42px; height: 42px; }
+  .sidebar > div:first-child .eyebrow { display: none; }
+  .sidebar nav { padding-bottom: .35rem; }
+  .user-card { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .user-card strong, .user-card span { grid-column: 1; }
+  .user-card .account-link, .user-card .text-button { grid-column: 2; }
+  .user-card .account-link { grid-row: 1; }
+  .user-card .text-button { grid-row: 2; padding: 0; }
+  .main-content { min-height: calc(100vh - 1px); }
+  .metric-grid { grid-template-columns: repeat(3, minmax(150px, 1fr)); overflow-x: auto; padding-bottom: .35rem; scroll-snap-type: x proximity; }
+  .metric-card { min-height: 118px; padding: 1rem; scroll-snap-align: start; }
+  .metric-card strong { margin-top: .8rem; font-size: 2.25rem; }
+  .directory-grid, .company-form, .admin-training-grid, .lesson-actions { grid-template-columns: 1fr; }
+  .directory-grid { justify-content: stretch; }
+  .admin-training-grid .wide { grid-column: auto; }
+  .company-logo-editor { justify-items: start; }
+  .company-logo-editor img { width: 112px; height: 112px; }
+  .world-clocks { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
+  .training-module-header { padding: 1rem; }
+  .training-admin-box, .training-lesson { padding: 1rem; }
+  .section-actions { flex-wrap: wrap; }
+  .app-footer { margin-top: 2rem; }
+}
+
+@media (max-width: 480px) {
+  .main-content { padding: 1rem; }
+  .page-stack { gap: 1rem; }
+  .content-card, .metric-card { border-radius: 14px; }
+  .page-header h2 { font-size: 1.75rem; }
+  .world-clocks { grid-template-columns: 1fr 1fr; }
+  .clock-card { padding: .8rem; }
+  .clock-card strong { font-size: 1rem; }
+  .directory-card dl div { grid-template-columns: 1fr; gap: .2rem; }
+  .app-footer { align-items: flex-start; }
+  .app-footer span { line-height: 1.4; }
+}

@@ -34,8 +34,8 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-intro">
-        <div className="brand-mark large">TP</div>
-        <p className="eyebrow">VA Tactical</p>
+        <img className="login-logo" src="/tp-logo.png" alt="TP | Ops" />
+        <p className="eyebrow">TP | Ops</p>
         <h1>Una operación clara para cada cliente.</h1>
         <p>Onboarding, A2P y campañas en un solo panel de trabajo.</p>
       </section>

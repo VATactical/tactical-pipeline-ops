@@ -16,6 +16,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 })
 
+const validTimezone = (timezone: string) => {
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }).format(); return true }
+  catch { return false }
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
@@ -71,9 +76,13 @@ Deno.serve(async (request) => {
       const password = String(body.password || '')
       const fullName = String(body.fullName || '').trim()
       const timezone = String(body.timezone || 'America/Managua')
+      const slackContact = String(body.slackContact || '').trim()
+      const whatsappContact = String(body.whatsappContact || '').trim()
       if (!email || !email.includes('@')) return json({ error: 'Correo inválido.' }, 400)
       if (password.length < 10) return json({ error: 'La contraseña debe tener al menos 10 caracteres.' }, 400)
       if (!fullName) return json({ error: 'Escribe el nombre del usuario.' }, 400)
+      if (!validTimezone(timezone)) return json({ error: 'Zona horaria inválida.' }, 400)
+      if (slackContact.length > 300 || whatsappContact.length > 300) return json({ error: 'El contacto es demasiado largo.' }, 400)
 
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
@@ -91,7 +100,9 @@ Deno.serve(async (request) => {
         permissions,
         active: true,
         timezone,
-      }).eq('id', created.user.id).select('id, email, full_name, role, permissions, active, timezone, created_at').single()
+        slack_contact: slackContact,
+        whatsapp_contact: whatsappContact,
+      }).eq('id', created.user.id).select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at').single()
 
       if (profileError) {
         await admin.auth.admin.deleteUser(created.user.id)
@@ -110,9 +121,14 @@ Deno.serve(async (request) => {
       permissions,
       active: body.active !== false,
       timezone: String(body.timezone || 'America/Managua'),
+      slack_contact: String(body.slackContact || '').trim(),
+      whatsapp_contact: String(body.whatsappContact || '').trim(),
     }
+    if (!changes.full_name) return json({ error: 'Escribe el nombre del usuario.' }, 400)
+    if (!validTimezone(changes.timezone)) return json({ error: 'Zona horaria inválida.' }, 400)
+    if (changes.slack_contact.length > 300 || changes.whatsapp_contact.length > 300) return json({ error: 'El contacto es demasiado largo.' }, 400)
     const { data: profile, error: updateError } = await admin.from('profiles').update(changes)
-      .eq('id', userId).select('id, email, full_name, role, permissions, active, timezone, created_at').single()
+      .eq('id', userId).select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at').single()
     if (updateError) return json({ error: updateError.message }, 400)
 
     const { error: authError } = await admin.auth.admin.updateUserById(userId, {

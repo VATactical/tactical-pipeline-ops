@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active, timezone')
+      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active, timezone, slack_contact, whatsapp_contact')
       .eq('id', userId)
       .single()
 
@@ -128,8 +128,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ session, user: session?.user ?? null, profile, loading, signIn, signOut }),
-    [session, profile, loading, signIn, signOut],
+    () => ({ session, user: session?.user ?? null, profile, loading, signIn, signOut, refreshProfile: () => loadProfile(session?.user?.id) }),
+    [session, profile, loading, signIn, signOut, loadProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
