@@ -51,6 +51,19 @@ export async function updateTaskAssignment(taskId, ownerRole) {
   if (error) throw error
 }
 
+export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt }) {
+  const changes = {
+    owner_role: ownerRole,
+    owner_name: ownerNames[ownerRole],
+    priority,
+    due_at: dueAt || null,
+    due_label: dueAt || 'Sin fecha',
+    updated_at: new Date().toISOString(),
+  }
+  const { error } = await supabase.from('tasks').update(changes).eq('id', taskId)
+  if (error) throw error
+}
+
 export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, dueAt }) {
   const payload = {
     id: crypto.randomUUID(),
