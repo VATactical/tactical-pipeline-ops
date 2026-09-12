@@ -338,3 +338,155 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .app-footer { align-items: flex-start; }
   .app-footer span { line-height: 1.4; }
 }
+
+/* Mobile readability and touch layout */
+@media (max-width: 640px) {
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; }
+  button, a, input, select, textarea { touch-action: manipulation; }
+  input, select, textarea { min-height: 46px; font-size: 1rem; }
+  textarea { min-height: 110px; }
+  label, .field-label { font-size: .9rem; line-height: 1.4; }
+  .muted { font-size: .94rem; line-height: 1.55; }
+  .eyebrow { font-size: .68rem; line-height: 1.45; letter-spacing: .12em; }
+
+  .login-page { display: block; min-height: 100dvh; padding-bottom: 1.5rem; }
+  .login-language { position: absolute; top: .75rem; right: .75rem; }
+  .login-intro { min-height: auto; padding: 4.75rem 1.25rem 3.5rem; }
+  .login-logo { width: 58px; height: 58px; margin-bottom: 1.25rem; border-radius: 16px; }
+  .login-intro h1 { max-width: 360px; margin-bottom: .75rem; font-size: clamp(2.25rem, 12vw, 3.25rem); line-height: 1.02; }
+  .login-intro > p:last-child { margin-bottom: 0; font-size: .95rem; }
+  .login-card { width: calc(100% - 1.5rem); margin: -1.5rem auto 0; padding: 1.35rem; border-radius: 18px; }
+  .login-card h2 { font-size: 1.7rem; }
+  .login-card form { margin-top: 1.4rem; }
+  .login-card .primary-button { width: 100%; min-height: 48px; }
+
+  .sidebar { position: relative; z-index: 20; padding: .85rem 1rem; box-shadow: 0 8px 24px #0004; }
+  .sidebar > div:first-child { min-width: 0; }
+  .sidebar > div:first-child h1 { overflow: hidden; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-logo { width: 38px; height: 38px; border-radius: 11px; }
+  .sidebar nav { display: flex; gap: .35rem; margin: .75rem -.15rem 0; padding: 0 .15rem .45rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; scroll-snap-type: x proximity; }
+  .sidebar nav a { min-height: 42px; padding: .68rem .8rem; flex: 0 0 auto; scroll-snap-align: start; font-size: .82rem; white-space: nowrap; }
+  .user-card { display: grid; margin-top: .55rem; padding-top: .7rem; gap: .45rem .7rem; }
+  .user-card-identity { min-width: 0; }
+  .user-card-identity strong { font-size: .82rem; }
+  .user-card .language-toggle { margin: 0; }
+  .account-link, .user-card > .text-button { min-height: 34px; display: inline-flex; align-items: center; font-size: .76rem; }
+
+  .main-content { width: 100%; padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom)); }
+  .page-stack { width: 100%; gap: 1rem; }
+  .page-header { gap: .65rem; }
+  .page-header > div { width: 100%; min-width: 0; }
+  .page-header h2 { margin-bottom: .5rem; overflow-wrap: anywhere; font-size: clamp(1.65rem, 8vw, 2.15rem); line-height: 1.08; }
+  .page-header .status-pill { align-self: flex-start; }
+  .dashboard-date { font-size: .8rem; line-height: 1.45; }
+  .content-card, .metric-card, .client-card, .dossier-card { min-width: 0; padding: 1rem; border-radius: 14px; }
+  .content-card h3 { overflow-wrap: anywhere; font-size: 1.15rem; line-height: 1.3; }
+  .section-heading { align-items: flex-start; gap: .65rem; }
+  .section-heading > div { min-width: 0; }
+  .section-heading a { flex: 0 0 auto; }
+
+  .metric-grid, .metric-grid.compact, .status-metrics { display: grid; grid-template-columns: 1fr; gap: .7rem; padding: 0; overflow: visible; scroll-snap-type: none; }
+  .metric-card, .metric-grid.compact .metric-card { min-height: 106px; }
+  .metric-card strong { margin-top: .55rem; font-size: 2.2rem; }
+  .metric-card span { font-size: .72rem; line-height: 1.35; }
+
+  .header-actions, .dossier-actions, .section-actions, .contact-actions { width: 100%; }
+  .header-actions > button, .header-actions > a, .dossier-actions > button, .dossier-actions > a { width: 100%; min-height: 44px; justify-content: center; text-align: center; }
+  .primary-button, .secondary-button, .danger-button { min-height: 44px; line-height: 1.25; }
+  .section-actions > button, .contact-actions > a { flex: 1 1 auto; text-align: center; }
+
+  .client-filters, .filter-controls { gap: .75rem; }
+  .status-tabs { margin: 0 -.15rem; padding: 0 .15rem .45rem; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+  .status-tabs button { min-height: 43px; }
+  .filter-controls input, .filter-controls select { height: 46px; }
+  .filter-summary { align-items: flex-start; gap: .5rem; flex-direction: column; }
+  .filter-summary .text-button { min-height: 38px; }
+  .empty-state { padding: 2rem 1rem; }
+  .client-card h3 { margin-top: .9rem; overflow-wrap: anywhere; font-size: 1.08rem; }
+  .client-card dl div { grid-template-columns: 78px minmax(0, 1fr); }
+  .client-card dd, .directory-card dd, .detail-item strong, .detail-item a { overflow-wrap: anywhere; word-break: break-word; }
+
+  .dashboard-grid, .admin-grid, .role-progress-grid, .client-grid, .dossier-grid, .directory-grid, .team-grid { grid-template-columns: minmax(0, 1fr); }
+  .attention-row, .activity-row, .report-card > div { align-items: flex-start; flex-direction: column; gap: .35rem; }
+  .activity-row small { white-space: normal; }
+  .pipeline-row { position: relative; display: grid; grid-template-columns: 1fr; gap: .55rem; padding: 1rem 1.6rem 1rem 0; }
+  .pipeline-row > .lifecycle, .pipeline-row p { grid-column: 1; }
+  .pipeline-row .row-arrow { position: absolute; top: 50%; right: .15rem; transform: translateY(-50%); }
+  .process-pending p, .next-step p, .note-card p, .task-detail { font-size: .9rem; }
+
+  .task-row { grid-template-columns: auto minmax(0, 1fr); gap: .65rem; align-items: flex-start; }
+  .task-row > div { min-width: 0; }
+  .task-row strong, .task-row p, .task-row small { overflow-wrap: anywhere; }
+  .task-row > select { grid-column: 1 / -1; min-height: 44px; }
+  .task-admin-controls { display: grid; grid-template-columns: 1fr; }
+  .task-admin-controls select, .task-admin-controls input { width: 100%; min-width: 0; min-height: 44px; }
+  .new-task-alert .secondary-button { width: 100%; }
+
+  .client-detail-header { padding-bottom: 0; }
+  .dossier-search { padding: .8rem; }
+  .dossier-search input { min-width: 0; }
+  .docs-sync-status { gap: .75rem; }
+  .detail-item:nth-child(odd), .detail-item:nth-child(even) { padding: .9rem 0; }
+  .dossier-section-heading { align-items: flex-start; flex-direction: column; }
+  .dossier-section-heading .section-actions { justify-content: stretch; }
+  .workflow-step { grid-template-columns: auto auto minmax(0, 1fr); gap: .6rem; align-items: flex-start; }
+  .workflow-step strong, .workflow-step small { overflow-wrap: anywhere; }
+  .missing-chips span { font-size: .76rem; line-height: 1.35; }
+  .audit-badge { max-width: 100%; }
+
+  .manual-task-row { grid-template-columns: 1fr; gap: .35rem; }
+  .manual-task-row .text-button { min-height: 38px; }
+  .date-header-input { width: 100%; min-width: 0; }
+  .report-card ul { padding-left: 1.2rem; }
+  .calendar-event .secondary-button { width: 100%; text-align: center; }
+  .month-toolbar { gap: .45rem; }
+  .month-toolbar h3 { font-size: 1rem; text-align: center; }
+  .month-toolbar button { min-width: 44px; min-height: 44px; }
+  .month-grid { gap: .2rem; }
+  .weekday-row { overflow: hidden; font-size: .6rem; text-overflow: clip; }
+  .calendar-day { min-width: 0; min-height: 44px; padding: .3rem; font-size: .75rem; }
+  .calendar-day b { right: .2rem; bottom: .2rem; width: 1rem; height: 1rem; font-size: .55rem; }
+  .world-clocks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+
+  .permission-grid, .reminder-options { display: grid; grid-template-columns: 1fr; }
+  .permission-grid label, .reminder-options label, .active-toggle { min-height: 44px; }
+  .user-management-card .section-heading { flex-direction: column; }
+  .user-management-card > .secondary-button { width: 100%; }
+  .password-reset-panel .section-actions { justify-content: stretch; }
+  .inline-password button { min-height: 38px; }
+  .search-results { top: 76px; max-height: 240px; overflow-y: auto; }
+
+  .training-summary > div:first-child, .training-module-header, .training-lesson { align-items: flex-start; flex-direction: column; }
+  .training-module-header > span { white-space: normal; }
+  .training-module-header h3, .training-lesson strong, .training-lesson small { overflow-wrap: anywhere; }
+  .module-drive-link { display: block; padding: 1rem; line-height: 1.4; }
+  .lesson-actions { grid-template-columns: 1fr; }
+  .lesson-actions button { width: 100%; }
+
+  .profile-identity { align-items: flex-start; }
+  .profile-identity strong, .profile-identity span { overflow-wrap: anywhere; }
+  .avatar-fieldset, .language-fieldset { padding: .8rem; }
+  .avatar-picker { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: .55rem; }
+  .avatar-picker button, .team-avatar-picker { width: 50px; height: 50px; }
+  .language-choice { display: grid; grid-template-columns: 1fr 1fr; }
+  .language-choice label { min-width: 0; min-height: 46px; }
+  .company-logo-editor { justify-items: center; }
+  .company-logo-editor .secondary-button { width: 100%; }
+
+  .app-footer { gap: .6rem; margin-top: 1.75rem; padding-bottom: .5rem; }
+  .app-footer div { min-width: 0; }
+  .app-footer span, .app-footer small { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 380px) {
+  .main-content { padding: .75rem; }
+  .content-card, .metric-card, .client-card, .dossier-card { padding: .85rem; }
+  .login-intro { padding-inline: 1rem; }
+  .login-card { width: calc(100% - 1rem); padding: 1.1rem; }
+  .world-clocks { grid-template-columns: 1fr; }
+  .language-choice { grid-template-columns: 1fr; }
+  .client-card dl div { grid-template-columns: 1fr; gap: .2rem; }
+  .section-heading { flex-direction: column; }
+  .section-heading a { min-height: 36px; display: inline-flex; align-items: center; }
+}
