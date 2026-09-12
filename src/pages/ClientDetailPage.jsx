@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
-import { loadClient, updateClient, updateWorkflowStep } from '../services/opsService'
+import { useAuth } from '../auth/AuthContext'
+import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
+import { loadClient, markGoogleDocsUpdated, recordDossierEvent, updateClient, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
   { title: 'Who · Perfil comercial', fields: [
     ['Business Name', 'business_name'], ['Owner Name', 'owner_name'], ['Phone Number', 'phone'], ['Email Address', 'email', 'email'],
-    ['Physical Address', 'address'], ['Legal Business Info · EIN / Tax ID', 'legal_business_info'],
+    ['Physical Address', 'address'], ['Legal Business Info · EIN / Tax ID', 'legal_business_info'], ['Persona / KYC Status', 'kyc_status'],
   ] },
   { title: 'What · Oferta y objetivos', fields: [
     ['Core Service', 'services'], ['Core Consumer Offer', 'offer'], ['Target Monthly KPI', 'kpi'],
     ['Target Daily Ad Spend', 'daily_budget', 'number'], ['Minimum Target Project Size', 'minimum_project', 'number'],
+    ['Project Type', 'project_type'], ['Target Customer Profile', 'ideal_customer_profile'],
   ] },
   { title: 'Where · Mercado', fields: [
     ['Target ZIP Codes / Radius', 'target_zip_codes'], ['Markets / Cities', 'markets'], ['Excluded Locations', 'exclusions'], ['Timezone', 'timezone'],
@@ -18,6 +21,7 @@ const sections = [
   { title: 'Infraestructura', fields: [
     ['Does Client Need Website/Funnel Built?', 'needs_website_funnel', 'boolean'], ['Existing Domain Name', 'domain'],
     ['Existing Website URL', 'website_url', 'url'], ['Google Business Profile Status', 'gbp_status'], ['Existing GBP Link', 'gbp_link', 'url'],
+    ['Available Assets', 'available_assets'],
   ] },
   { title: 'When · Cronología', fields: [
     ['Onboarding Date', 'onboarding_date', 'date'], ['Target Ad Launch Date', 'target_launch_date', 'date'],
@@ -25,7 +29,9 @@ const sections = [
   ] },
   { title: 'Enlaces y accesos', fields: [
     ['GoHighLevel Sub-Account / Access', 'ghl_subaccount_link'], ['Client Google Drive Assets Folder', 'drive_folder_link', 'url'],
-    ['Facebook Page & Business Manager ID', 'facebook_business_info'], ['Meta Ad Account ID & Pixel ID', 'meta_assets_info'],
+    ['Google Docs Dossier', 'google_docs_url', 'url'], ['Facebook Page', 'facebook_page_url', 'url'], ['Instagram Account', 'instagram_url', 'url'],
+    ['Meta Business Portfolio ID', 'meta_business_portfolio_id'], ['Meta Ad Account ID', 'meta_ad_account_id'], ['Meta Pixel / Dataset ID', 'meta_pixel_id'],
+    ['Landing Page', 'landing_page_url', 'url'], ['Facebook Page & Business Manager Notes', 'facebook_business_info'], ['Meta Assets Notes', 'meta_assets_info'],
     ['Retell AI Agent ID', 'retell_agent_id'], ['Make.com Scenario Folder', 'make_scenario_link', 'url'], ['Slack Channel', 'slack_channel_link', 'url'],
   ] },
   { title: 'Estrategia publicitaria', fields: [
@@ -33,6 +39,13 @@ const sections = [
   ] },
   { title: 'Registro operativo', fields: [
     ['Operational Phase', 'phase'], ['Next Action', 'next_action'], ['GHL Status', 'ghl_status'], ['A2P Status', 'a2p_status'],
+  ] },
+  { title: 'Estado de finalización', fields: [
+    ['Onboarding Completed', 'onboarding_completed', 'boolean'], ['GHL Access Confirmed', 'ghl_access_confirmed', 'boolean'],
+    ['Facebook Access Confirmed', 'facebook_access_confirmed', 'boolean'], ['Ad Account Access Confirmed', 'ad_account_access_confirmed', 'boolean'],
+    ['Pixel Access Confirmed', 'pixel_access_confirmed', 'boolean'], ['Domain Access Confirmed', 'domain_access_confirmed', 'boolean'],
+    ['Payment Method Confirmed', 'payment_method_confirmed', 'boolean'], ['Persona / KYC Completed', 'kyc_completed', 'boolean'],
+    ['A2P Submitted', 'a2p_submitted', 'boolean'], ['Funnel Live', 'funnel_live', 'boolean'], ['Meta Campaign Live', 'meta_campaign_live', 'boolean'],
   ] },
 ]
 const fieldLabels = Object.fromEntries(sections.flatMap((section) => section.fields.map(([label, key]) => [key, label])))
@@ -46,12 +59,14 @@ const displayValue = (value, type) => {
 
 export default function ClientDetailPage() {
   const { clientId } = useParams()
+  const { profile } = useAuth()
   const [data, setData] = useState(null)
   const [draft, setDraft] = useState(null)
   const [editingSection, setEditingSection] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
 
   const refresh = async () => {
     const result = await loadClient(clientId)
@@ -81,13 +96,44 @@ export default function ClientDetailPage() {
     catch (updateError) { setError(updateError.message) }
   }
 
+  const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
+  const canEdit = Boolean(profile?.permissions?.clients_edit)
+  const dossierText = buildDossierText(client, updatedBy)
+  const copyForGoogleDocs = async () => {
+    try {
+      await copyDossier(dossierText)
+      await recordDossierEvent(clientId, 'copied_google_docs', profile.id)
+      setMessage('Dossier copied successfully')
+      await refresh()
+    } catch (copyError) { setError(copyError.message) }
+  }
+  const downloadPdf = async () => {
+    try {
+      await downloadDossierPdf(client, dossierText)
+      await recordDossierEvent(clientId, 'downloaded_pdf', profile.id)
+      setMessage('PDF descargado correctamente.')
+    } catch (downloadError) { setError(downloadError.message) }
+  }
+  const markDocsUpdated = async () => {
+    try {
+      await markGoogleDocsUpdated(clientId, profile.id)
+      await refresh()
+      setMessage('Google Docs marcado como actualizado.')
+    } catch (updateError) { setError(updateError.message) }
+  }
+  const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
+  const launchOverdue = launchDate && client.status !== 'ADS LIVE' && launchDate < new Date()
+
   return <div className="page-stack">
     <Link className="back-link" to="/clientes">← Todos los clientes</Link>
-    <header className="page-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><button className="secondary-button" type="button" onClick={() => window.print()} disabled={editingSection != null} title="Guarda únicamente el dossier WWWW, sin tareas">Descargar WWWW</button></div></header>
+    <header className="page-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><button className="secondary-button" type="button" onClick={() => setShowPreview((value) => !value)}>Vista previa WWWW</button><button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     <section className="metric-grid compact"><article className="metric-card blue"><span>Gasto</span><strong>${client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
     <section className="content-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action}</h3></section>
+    <section className={`content-card launch-deadline ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'ADS LIVE' ? 'Campaña activa' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
+    <section className="content-card docs-sync-status"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
     <section className="content-card missing-dossier-card"><p className="eyebrow">Falta en el dossier</p>{missingFields.length ? <div className="missing-chips">{missingFields.map((label) => <span key={label}>{label}</span>)}</div> : <p className="complete-note">Dossier WWWW completo</p>}</section>
+    {showPreview && <section className="content-card dossier-preview"><div className="section-heading"><div><p className="eyebrow">Vista previa WWWW</p><h3>Contenido limpio para Google Docs y PDF</h3></div><button className="text-button" onClick={() => setShowPreview(false)}>Cerrar</button></div><pre>{dossierText}</pre></section>}
 
     <div className="print-dossier">
       <header className="print-only print-title"><p>{client.code} · TACTICAL PIPELINE</p><h1>{client.business_name}</h1><span>{client.status} · {client.phase}</span></header>
@@ -96,7 +142,7 @@ export default function ClientDetailPage() {
         const sectionKeys = section.fields.map(([, key]) => key)
         const lastUpdate = auditLog.find((entry) => entry.changed_fields?.some((field) => sectionKeys.includes(field)))
         return <section className="content-card dossier-section" key={section.title}>
-          <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
+          <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
           <small className="section-updated">{lastUpdate ? `Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}` : 'Sin actualizaciones registradas'}</small>
         </section>

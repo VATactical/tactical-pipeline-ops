@@ -6,7 +6,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   const { user, profile, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return <LoadingScreen />
+  if (loading) return <LoadingScreen label="Verificando acceso…" />
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
 
   if (allowedRoles && (!profile || !allowedRoles.includes(profile.role))) {

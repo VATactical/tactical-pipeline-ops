@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
 import {
-  createAssignedTask,
   createTeamNote,
   loadOperations,
   markTasksSeen,
@@ -15,6 +14,7 @@ const priorityRank = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
 const ownerLabels = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }
 const isOverdue = (task) => task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
 const isStale = (client) => Date.now() - new Date(client.updated_at).getTime() > 3 * 86400000
+const launchOverdue = (client) => client.target_launch_date && client.status !== 'ADS LIVE' && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
 const dossierFields = [
   'legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info',
   'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date',
@@ -24,46 +24,41 @@ const dossierFields = [
 const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
 
 function AdminComposer({ clients, onCreated }) {
-  const initial = { type: 'general_note', clientId: '', title: '', body: '', ownerRole: 'onboarding_media', priority: 'Media', dueAt: '' }
+  const initial = { type: 'general_note', clientId: '', title: '', body: '' }
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }))
-  const needsClient = form.type === 'client_note' || form.type === 'client_task'
-  const isTask = form.type === 'client_task' || form.type === 'general_task'
+  const needsClient = form.type === 'client_note'
 
   const submit = async (event) => {
     event.preventDefault()
     if (!form.title.trim() || (needsClient && !form.clientId)) return
     setSaving(true); setError('')
     try {
-      if (isTask) await createAssignedTask(form)
-      else await createTeamNote({ clientId: needsClient ? form.clientId : null, title: form.title, body: form.body })
+      await createTeamNote({ clientId: needsClient ? form.clientId : null, title: form.title, body: form.body })
       setForm(initial)
-      onCreated(isTask ? 'Tarea asignada y alerta enviada.' : 'Nota guardada.')
+      onCreated('Nota guardada.')
     } catch (submitError) { setError(submitError.message) }
     finally { setSaving(false) }
   }
 
   return (
     <section className="content-card admin-composer">
-      <div className="section-heading"><div><p className="eyebrow">Crear actualización</p><h3>Notas y tareas del equipo</h3></div><span className="muted">Kevin</span></div>
+      <div className="section-heading"><div><p className="eyebrow">Nueva nota</p><h3>Notas del equipo</h3></div><span className="muted">Las tareas se crean en Tareas</span></div>
       <form onSubmit={submit}>
         <div className="entry-type" role="group" aria-label="Tipo de actualización">
-          {[['general_note', 'Nota general'], ['client_note', 'Nota de cliente'], ['general_task', 'Tarea general'], ['client_task', 'Tarea de cliente']].map(([value, label]) => (
+          {[['general_note', 'Nota general'], ['client_note', 'Nota de cliente']].map(([value, label]) => (
             <button className={form.type === value ? 'active' : ''} type="button" onClick={() => setField('type', value)} key={value}>{label}</button>
           ))}
         </div>
         <div className="composer-grid">
           {needsClient && <label>Cliente<select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)} required><option value="">Seleccionar cliente…</option>{clients.map((client) => <option value={client.id} key={client.id}>{client.code} · {client.business_name}</option>)}</select></label>}
-          {isTask && <label>Asignar a<select value={form.ownerRole} onChange={(event) => setField('ownerRole', event.target.value)}><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option></select></label>}
-          {isTask && <label>Prioridad<select value={form.priority} onChange={(event) => setField('priority', event.target.value)}><option>Baja</option><option>Media</option><option>Alta</option><option>Urgente</option></select></label>}
-          {isTask && <label>Fecha límite<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>}
-          <label className="wide">Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder={isTask ? 'Qué debe hacerse' : 'Título de la nota'} /></label>
+          <label className="wide">Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder="Título de la nota" /></label>
           <label className="wide">Detalle<textarea value={form.body} onChange={(event) => setField('body', event.target.value)} rows="3" maxLength="5000" placeholder="Contexto, instrucciones o información adicional…" /></label>
         </div>
         {error && <p className="form-error">{error}</p>}
-        <button className="primary-button compact-button" disabled={saving}>{saving ? 'Guardando…' : isTask ? 'Asignar tarea' : 'Guardar nota'}</button>
+        <button className="primary-button compact-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar nota'}</button>
       </form>
     </section>
   )
@@ -87,6 +82,7 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
   const statusCounts = data.clients.reduce((counts, client) => ({ ...counts, [client.status]: (counts[client.status] || 0) + 1 }), {})
   const overdue = data.tasks.filter(isOverdue)
   const stale = data.clients.filter(isStale)
+  const lateLaunches = data.clients.filter(launchOverdue)
   const ownerCounts = Object.entries(ownerLabels).map(([role, name]) => ({ name, count: data.tasks.filter((task) => task.owner_role === role && task.status !== 'Completada').length }))
 
   return <>
@@ -98,11 +94,12 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
     <section className="metric-grid compact" aria-label="Alertas operativas">
       <article className="metric-card red"><span>Tareas atrasadas</span><strong>{overdue.length}</strong><small>requieren seguimiento</small></article>
       <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
+      <article className="metric-card red"><span>Deadlines ADS vencidos</span><strong>{lateLaunches.length}</strong><small>campañas sin lanzar</small></article>
       <article className="metric-card blue"><span>Tareas por responsable</span><div className="owner-counts">{ownerCounts.map((item) => <b key={item.name}>{item.name}: {item.count}</b>)}</div><small>tareas abiertas</small></article>
     </section>
     <AdminComposer clients={data.clients} onCreated={onCreated} />
     <GeneralNotes notes={data.notes} />
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Últimos movimientos</h3></div></div><div className="activity-list">{data.activity.slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong>{item.actor_name}</strong><p>{item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó'} {item.entity_type === 'tasks' ? 'una tarea' : item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : 'un registro operativo'}</p></div><small>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong>{item.actor_name}</strong><p>{item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó'} {item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : item.entity_type === 'calendar_events' ? 'un evento' : 'un registro operativo'}</p></div><small>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
     <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
     <section>
       <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
@@ -110,7 +107,7 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
         <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
         <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
-        <div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div><span className="card-link">Ver expediente completo →</span>
+        <div className={`client-deadline ${launchOverdue(client) ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div><div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div><span className="card-link">Ver expediente completo →</span>
       </Link>)}</div>
     </section>
   </>
@@ -132,7 +129,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, mark
       <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Orden recomendado</p><h3>Qué debes hacer ahora</h3></div><Link to="/tareas">Ver todas</Link></div><div className="task-list">{priorityTasks.map((task, index) => <article className={`task-row ${isOverdue(task) ? 'overdue' : ''}`} key={task.id}><span className="task-number">{String(index + 1).padStart(2, '0')}</span><div><strong>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : 'Tarea general'}</strong><p>{task.title}</p>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{task.phase} · {task.owner_name}{task.due_at ? ` · Vence ${task.due_at}` : ''}</small></div><select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)} aria-label={`Estado de ${task.title}`}><option>Pendiente</option><option>En progreso</option><option>Bloqueada</option><option>Completada</option></select></article>)}</div></section>
       <section className="content-card alert-card"><p className="eyebrow">Dependencias</p><h3>Bloqueos abiertos</h3><div className="blocker-list">{blockers.map((blocker) => <article className="blocker-row" key={blocker.id}><span className="alert-dot red-dot" /><div><strong>{blocker.clients?.code} · {blocker.clients?.business_name}</strong><p>{blocker.title}</p><small>Responsable: {blocker.owner_name}</small></div></article>)}</div></section>
     </div>
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Pipeline</p><h3>Estado de clientes</h3></div><Link to="/clientes">Ver clientes</Link></div><div className="pipeline-list">{data.clients.map((client) => <Link className="pipeline-row" to={`/clientes/${client.id}`} key={client.id}><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><div><strong>{client.code} · {client.business_name}</strong><small>{client.phase}</small></div><p><b>Siguiente:</b> {client.next_action}</p><span className="row-arrow">→</span></Link>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Pipeline</p><h3>Estado de clientes</h3></div><Link to="/clientes">Ver clientes</Link></div><div className="pipeline-list">{data.clients.map((client) => <Link className="pipeline-row" to={`/clientes/${client.id}`} key={client.id}><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><div><strong>{client.code} · {client.business_name}</strong><small>{client.phase} · ADS {client.target_launch_date || 'sin deadline'}</small></div><p><b>Siguiente:</b> {client.next_action}</p><span className="row-arrow">→</span></Link>)}</div></section>
   </>
 }
 
@@ -152,7 +149,7 @@ export default function DashboardPage() {
   const openTasks = data.tasks.filter((task) => task.status !== 'Completada')
   const activeBlockers = data.blockers.filter((blocker) => !blocker.resolved)
   const isAdmin = profile?.role === 'superadmin'
-  const newTasks = isAdmin ? [] : data.tasks.filter((task) => task.owner_role === profile?.role && new Date(task.created_at) > new Date(seenAt || 0))
+  const newTasks = isAdmin ? [] : data.tasks.filter((task) => (!task.owner_role || task.owner_role === profile?.role) && new Date(task.created_at) > new Date(seenAt || 0))
 
   const changeStatus = async (taskId, status) => {
     try { await updateTaskStatus(taskId, status); setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status } : task) })) }

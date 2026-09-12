@@ -62,7 +62,7 @@ export default function ClientsPage() {
   }), [clients, blockedIds, filters, tasks])
   const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.service || filters.priority !== 'Todas' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
   const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
-  const canCreate = ['superadmin', 'onboarding_media'].includes(profile?.role)
+  const canCreate = Boolean(profile?.permissions?.clients_create)
   const submitClient = async (event) => {
     event.preventDefault(); setSaving(true); setError('')
     try {
@@ -99,6 +99,7 @@ export default function ClientsPage() {
       return <Link className={`client-card ${blocked ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Responsable: {responsible}</p>
+        <div className={`client-deadline ${client.target_launch_date && client.status !== 'ADS LIVE' && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{blocked && <span className="blocked">Bloqueo abierto</span>}</div>
         <span className="card-link">Ver expediente →</span>

@@ -53,8 +53,8 @@ export async function updateTaskAssignment(taskId, ownerRole) {
 
 export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt }) {
   const changes = {
-    owner_role: ownerRole,
-    owner_name: ownerNames[ownerRole],
+    owner_role: ownerRole || null,
+    owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
     priority,
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
@@ -71,8 +71,8 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     title: title.trim(),
     evidence: (details || body).trim(),
     priority,
-    owner_role: ownerRole,
-    owner_name: ownerNames[ownerRole],
+    owner_role: ownerRole || null,
+    owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     comments: (details || body).trim(),
@@ -126,6 +126,30 @@ export async function createClient(client) {
 export async function updateClient(clientId, changes) {
   const { data, error } = await supabase.from('clients').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', clientId).select('*').single()
   if (error) throw error
+  return data
+}
+
+export async function recordDossierEvent(clientId, action, profileId) {
+  const { error } = await supabase.from('client_dossier_events').insert({ client_id: clientId, action })
+  if (error) throw error
+  if (action === 'copied_google_docs') {
+    const { error: updateError } = await supabase.from('clients').update({
+      dossier_copied_at: new Date().toISOString(),
+      dossier_copied_by: profileId,
+    }).eq('id', clientId)
+    if (updateError) throw updateError
+  }
+}
+
+export async function markGoogleDocsUpdated(clientId, profileId) {
+  const timestamp = new Date().toISOString()
+  const { data, error } = await supabase.from('clients').update({
+    google_docs_updated_at: timestamp,
+    google_docs_updated_by: profileId,
+    updated_at: timestamp,
+  }).eq('id', clientId).select('*').single()
+  if (error) throw error
+  await recordDossierEvent(clientId, 'marked_google_docs_updated', profileId)
   return data
 }
 

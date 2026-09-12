@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { loadDueNotificationCount } from '../services/calendarService'
 
 const roleLabels = {
   onboarding_media: 'Onboarding & Media',
@@ -9,6 +11,15 @@ const roleLabels = {
 
 export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  useEffect(() => {
+    const refreshCount = () => loadDueNotificationCount().then(setNotificationCount).catch(() => {})
+    refreshCount()
+    const timer = window.setInterval(refreshCount, 60000)
+    window.addEventListener('focus', refreshCount)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshCount) }
+  }, [])
 
   return (
     <div className="app-shell">
@@ -23,6 +34,8 @@ export default function AppLayout() {
           <NavLink to="/" end>Panel</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
+          <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
+          <NavLink to="/eod-reports">EOD Reports</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
         </nav>
 

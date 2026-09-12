@@ -16,11 +16,15 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, role, avatar_url, last_task_seen_at')
+      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active')
       .eq('id', userId)
       .single()
 
     if (error) throw error
+    if (!data.active) {
+      await supabase.auth.signOut({ scope: 'local' })
+      throw new Error('Este usuario está desactivado.')
+    }
     setProfile(data)
   }, [])
 
@@ -68,7 +72,7 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!nextSession) {
         clearAuthState()
         setLoading(false)
@@ -76,6 +80,7 @@ export function AuthProvider({ children }) {
       }
 
       setSession(nextSession)
+      if (event === 'TOKEN_REFRESHED') return
       setLoading(true)
 
       window.setTimeout(async () => {
