@@ -38,6 +38,9 @@ input:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .sidebar nav { display: grid; gap: .4rem; margin-top: 2rem; }
 .sidebar nav a { padding: .75rem .85rem; border-radius: 10px; color: #91a8bf; text-decoration: none; font-weight: 700; }
 .sidebar nav a.active { background: #15293e; color: white; }
+.mobile-menu-toggle { display: none; }
+.menu-lines { display: grid; width: 18px; gap: 3px; }
+.menu-lines i { display: block; height: 2px; border-radius: 99px; background: currentColor; }
 .user-card { display: grid; gap: .35rem; margin-top: auto; padding-top: 1.25rem; border-top: 1px solid #1d3043; }
 .user-card span { color: #8299b0; font-size: .78rem; }
 .user-card-identity { display: flex; align-items: center; gap: .65rem; min-width: 0; }
@@ -342,7 +345,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 /* Mobile readability and touch layout */
 @media (max-width: 640px) {
   html { font-size: 16px; -webkit-text-size-adjust: 100%; }
-  body { overflow-x: hidden; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   button, a, input, select, textarea { touch-action: manipulation; }
   input, select, textarea { min-height: 46px; font-size: 1rem; }
   textarea { min-height: 110px; }
@@ -361,20 +364,28 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .login-card form { margin-top: 1.4rem; }
   .login-card .primary-button { width: 100%; min-height: 48px; }
 
-  .sidebar { position: relative; z-index: 20; padding: .85rem 1rem; box-shadow: 0 8px 24px #0004; }
-  .sidebar > div:first-child { min-width: 0; }
-  .sidebar > div:first-child h1 { overflow: hidden; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
+  .app-shell { width: 100%; min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); overflow-x: clip; }
+  .sidebar { position: relative; z-index: 20; width: 100%; min-width: 0; max-width: 100%; padding: .75rem 1rem; box-shadow: 0 8px 24px #0004; }
+  .sidebar-brand { width: 100%; min-width: 0; }
+  .sidebar-brand > div { min-width: 0; }
+  .sidebar-brand .eyebrow { display: none; }
+  .sidebar-brand h1 { overflow: hidden; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
   .brand-logo { width: 38px; height: 38px; border-radius: 11px; }
-  .sidebar nav { display: flex; gap: .35rem; margin: .75rem -.15rem 0; padding: 0 .15rem .45rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; scroll-snap-type: x proximity; }
-  .sidebar nav a { min-height: 42px; padding: .68rem .8rem; flex: 0 0 auto; scroll-snap-align: start; font-size: .82rem; white-space: nowrap; }
-  .user-card { display: grid; margin-top: .55rem; padding-top: .7rem; gap: .45rem .7rem; }
+  .mobile-menu-toggle { display: inline-flex; min-width: 82px; min-height: 42px; margin-left: auto; padding: .55rem .7rem; align-items: center; justify-content: center; gap: .5rem; border: 1px solid #294158; border-radius: 10px; background: #102337; color: #b9d1e8; font-size: .78rem; font-weight: 800; cursor: pointer; }
+  .mobile-menu-toggle:focus-visible { outline: 2px solid #38c8ff; outline-offset: 2px; }
+  .sidebar nav { display: none; width: 100%; min-width: 0; grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; margin: .75rem 0 0; padding: .75rem 0 0; overflow: visible; border-top: 1px solid #1d3043; }
+  .sidebar nav.mobile-open { display: grid; }
+  .sidebar nav a { display: flex; width: 100%; min-width: 0; min-height: 44px; padding: .7rem .75rem; align-items: center; justify-content: space-between; overflow-wrap: anywhere; font-size: .82rem; white-space: normal; }
+  .user-card { display: none; width: 100%; min-width: 0; margin-top: .7rem; padding-top: .7rem; gap: .55rem .7rem; }
+  .user-card.mobile-open { display: grid; }
   .user-card-identity { min-width: 0; }
   .user-card-identity strong { font-size: .82rem; }
   .user-card .language-toggle { margin: 0; }
   .account-link, .user-card > .text-button { min-height: 34px; display: inline-flex; align-items: center; font-size: .76rem; }
 
-  .main-content { width: 100%; padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom)); }
-  .page-stack { width: 100%; gap: 1rem; }
+  .main-content { width: 100%; min-width: 0; max-width: 100%; padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom)); overflow-x: clip; }
+  .content-area, .page-stack { width: 100%; min-width: 0; max-width: 100%; }
+  .page-stack { gap: 1rem; }
   .page-header { gap: .65rem; }
   .page-header > div { width: 100%; min-width: 0; }
   .page-header h2 { margin-bottom: .5rem; overflow-wrap: anywhere; font-size: clamp(1.65rem, 8vw, 2.15rem); line-height: 1.08; }
@@ -480,6 +491,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 }
 
 @media (max-width: 380px) {
+  .sidebar nav { grid-template-columns: minmax(0, 1fr); }
   .main-content { padding: .75rem; }
   .content-card, .metric-card, .client-card, .dossier-card { padding: .85rem; }
   .login-intro { padding-inline: 1rem; }

@@ -9,7 +9,7 @@ const translations = {
   'Acceso del equipo': 'Team access', 'Iniciar sesión': 'Sign in', 'Usa las credenciales asignadas por el administrador.': 'Use the credentials assigned by the administrator.',
   'Correo': 'Email', 'Contraseña': 'Password', 'Ingresar': 'Sign in', 'Ingresando…': 'Signing in…', 'Mostrar contraseña': 'Show password', 'Ocultar contraseña': 'Hide password',
   'Una operación clara para cada cliente.': 'Clear operations for every client.', 'Onboarding, A2P y campañas en un solo panel de trabajo.': 'Onboarding, A2P, and campaigns in one workspace.',
-  'Panel': 'Dashboard', 'Clientes': 'Clients', 'Tareas': 'Tasks', 'Calendario': 'Calendar', 'Mi equipo': 'My team', 'Mi cuenta': 'My account', 'Mi empresa': 'My company',
+  'Panel': 'Dashboard', 'Clientes': 'Clients', 'Tareas': 'Tasks', 'Calendario': 'Calendar', 'Mi equipo': 'My team', 'Mi cuenta': 'My account', 'Mi empresa': 'My company', 'Menú': 'Menu',
   'Usuarios': 'Users', 'Cerrar sesión': 'Sign out', 'Navegación principal': 'Main navigation', 'Sin rol asignado': 'No role assigned',
   'Datos en vivo': 'Live data', 'Hola,': 'Hello,', 'Resumen operativo': 'Operations summary', 'Actividad del equipo': 'Team activity', 'Actualización reciente': 'Recent update',
   'Clientes por estado': 'Clients by status', 'Clientes que requieren atención': 'Clients requiring attention', 'Ver clientes': 'View clients', 'Abrir pipeline': 'Open pipeline',

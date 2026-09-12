@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
@@ -15,8 +15,14 @@ const roleLabels = {
 
 export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
+  const location = useLocation()
   const [notificationCount, setNotificationCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     const refreshCount = () => loadDueNotificationCount().then(setNotificationCount).catch(() => {})
@@ -45,12 +51,22 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div>
+        <div className="sidebar-brand">
           <img className="brand-logo" src={logoUrl} alt="Logo de TP | Ops" />
           <div><p className="eyebrow">{company.company_name}</p><h1>{company.system_name}</h1></div>
+          <button
+            className="mobile-menu-toggle"
+            type="button"
+            aria-controls="main-navigation"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <span className="menu-lines" aria-hidden="true"><i /><i /><i /></span>
+            <span>{mobileMenuOpen ? 'Cerrar' : 'Menú'}</span>
+          </button>
         </div>
 
-        <nav aria-label="Navegación principal">
+        <nav id="main-navigation" className={mobileMenuOpen ? 'mobile-open' : ''} aria-label="Navegación principal">
           <NavLink to="/" end>Panel</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
@@ -62,7 +78,7 @@ export default function AppLayout() {
           {profile?.role === 'superadmin' && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
         </nav>
 
-        <div className="user-card">
+        <div className={`user-card${mobileMenuOpen ? ' mobile-open' : ''}`}>
           <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span></div></div>
           <LanguageToggle compact />
           <NavLink className="account-link" to="/mi-cuenta">Mi cuenta</NavLink>
