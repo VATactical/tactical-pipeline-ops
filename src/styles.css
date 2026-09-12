@@ -124,6 +124,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .activity-list { display: grid; }.activity-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid #1d3043; }.activity-row:last-child { border-bottom: 0; }.activity-row p { margin: .2rem 0 0; color: #8fa4ba; font-size: .82rem; }.activity-row small { color: #718aa2; white-space: nowrap; }
 .client-progress { margin: 1rem 0; }.client-progress > div:first-child { display: flex; justify-content: space-between; color: #8fa4ba; font-size: .75rem; }.client-progress .progress-track { margin: .5rem 0 0; }
 .section-updated { display: block; margin-top: .8rem; color: #718aa2; font-size: .7rem; }
+.task-admin-controls { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }.task-admin-controls select, .task-admin-controls input { width: auto; min-width: 125px; margin: 0; padding: .45rem .55rem; font-size: .72rem; }
 .filter-controls { grid-template-columns: minmax(240px, 2fr) repeat(5, minmax(125px, 1fr)); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 1050px) { .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.dashboard-grid { grid-template-columns: 1fr; }.pipeline-row { grid-template-columns: 105px 1fr auto; }.pipeline-row p { grid-column: 2 / -1; } }
