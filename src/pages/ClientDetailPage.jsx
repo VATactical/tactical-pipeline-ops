@@ -6,46 +6,46 @@ import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossie
 import { loadClient, markGoogleDocsUpdated, recordDossierEvent, updateClient, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
-  { title: 'Who · Perfil comercial', fields: [
-    ['Business Name', 'business_name'], ['Owner Name', 'owner_name'], ['Phone Number', 'phone'], ['Email Address', 'email', 'email'],
-    ['Physical Address', 'address'], ['Legal Business Info · EIN / Tax ID', 'legal_business_info'], ['Persona / KYC Status', 'kyc_status'],
+  { title: 'Quién · Perfil comercial', fields: [
+    ['Nombre del negocio', 'business_name'], ['Nombre del propietario', 'owner_name'], ['Número de teléfono', 'phone'], ['Correo electrónico', 'email', 'email'],
+    ['Dirección física', 'address'], ['Información legal · EIN / Tax ID', 'legal_business_info'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
-  { title: 'What · Oferta y objetivos', fields: [
-    ['Core Service', 'services'], ['Core Consumer Offer', 'offer'], ['Target Monthly KPI', 'kpi'],
-    ['Target Daily Ad Spend', 'daily_budget', 'number'], ['Minimum Target Project Size', 'minimum_project', 'number'],
-    ['Project Type', 'project_type'], ['Target Customer Profile', 'ideal_customer_profile'],
+  { title: 'Qué · Oferta y objetivos', fields: [
+    ['Servicio principal', 'services'], ['Oferta principal', 'offer'], ['KPI mensual objetivo', 'kpi'],
+    ['Gasto diario objetivo', 'daily_budget', 'number'], ['Proyecto mínimo objetivo', 'minimum_project', 'number'],
+    ['Tipo de proyecto', 'project_type'], ['Perfil del cliente objetivo', 'ideal_customer_profile'],
   ] },
-  { title: 'Where · Mercado', fields: [
-    ['Target ZIP Codes / Radius', 'target_zip_codes'], ['Markets / Cities', 'markets'], ['Excluded Locations', 'exclusions'], ['Timezone', 'timezone'],
+  { title: 'Dónde · Mercado', fields: [
+    ['ZIP objetivo / Radio', 'target_zip_codes'], ['Mercados / Ciudades', 'markets'], ['Ubicaciones excluidas', 'exclusions'], ['Zona horaria', 'timezone'],
   ] },
   { title: 'Infraestructura', fields: [
-    ['Does Client Need Website/Funnel Built?', 'needs_website_funnel', 'boolean'], ['Existing Domain Name', 'domain'],
-    ['Existing Website URL', 'website_url', 'url'], ['Google Business Profile Status', 'gbp_status'], ['Existing GBP Link', 'gbp_link', 'url'],
-    ['Available Assets', 'available_assets'],
+    ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
+    ['URL del sitio existente', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Enlace GBP existente', 'gbp_link', 'url'],
+    ['Recursos disponibles', 'available_assets'],
   ] },
-  { title: 'When · Cronología', fields: [
-    ['Onboarding Date', 'onboarding_date', 'date'], ['Target Ad Launch Date', 'target_launch_date', 'date'],
-    ['Current Lifecycle Status', 'status', 'status'],
+  { title: 'Cuándo · Cronología', fields: [
+    ['Fecha de onboarding', 'onboarding_date', 'date'], ['Fecha objetivo de lanzamiento', 'target_launch_date', 'date'],
+    ['Estado actual del ciclo', 'status', 'status'],
   ] },
   { title: 'Enlaces y accesos', fields: [
-    ['GoHighLevel Sub-Account / Access', 'ghl_subaccount_link'], ['Client Google Drive Assets Folder', 'drive_folder_link', 'url'],
-    ['Google Docs Dossier', 'google_docs_url', 'url'], ['Facebook Page', 'facebook_page_url', 'url'], ['Instagram Account', 'instagram_url', 'url'],
-    ['Meta Business Portfolio ID', 'meta_business_portfolio_id'], ['Meta Ad Account ID', 'meta_ad_account_id'], ['Meta Pixel / Dataset ID', 'meta_pixel_id'],
-    ['Landing Page', 'landing_page_url', 'url'], ['Facebook Page & Business Manager Notes', 'facebook_business_info'], ['Meta Assets Notes', 'meta_assets_info'],
-    ['Retell AI Agent ID', 'retell_agent_id'], ['Make.com Scenario Folder', 'make_scenario_link', 'url'], ['Slack Channel', 'slack_channel_link', 'url'],
+    ['Subcuenta / Acceso GoHighLevel', 'ghl_subaccount_link'], ['Carpeta de recursos en Google Drive', 'drive_folder_link', 'url'],
+    ['Dossier en Google Docs', 'google_docs_url', 'url'], ['Página de Facebook', 'facebook_page_url', 'url'], ['Cuenta de Instagram', 'instagram_url', 'url'],
+    ['ID de Meta Business Portfolio', 'meta_business_portfolio_id'], ['ID de cuenta publicitaria Meta', 'meta_ad_account_id'], ['ID de Pixel / Dataset Meta', 'meta_pixel_id'],
+    ['Página de aterrizaje', 'landing_page_url', 'url'], ['Notas de Facebook y Business Manager', 'facebook_business_info'], ['Notas de recursos Meta', 'meta_assets_info'],
+    ['ID del agente Retell AI', 'retell_agent_id'], ['Carpeta de escenarios Make.com', 'make_scenario_link', 'url'], ['Canal de Slack', 'slack_channel_link', 'url'],
   ] },
   { title: 'Estrategia publicitaria', fields: [
-    ['Active Ad Strategy', 'ad_strategy'], ['Meta Status', 'meta_status'], ['Daily Budget', 'daily_budget', 'number'],
+    ['Estrategia publicitaria activa', 'ad_strategy'], ['Estado Meta', 'meta_status'], ['Presupuesto diario', 'daily_budget', 'number'],
   ] },
   { title: 'Registro operativo', fields: [
-    ['Operational Phase', 'phase'], ['Next Action', 'next_action'], ['GHL Status', 'ghl_status'], ['A2P Status', 'a2p_status'],
+    ['Fase operativa', 'phase'], ['Siguiente acción', 'next_action'], ['Estado GHL', 'ghl_status'], ['Estado A2P', 'a2p_status'],
   ] },
   { title: 'Estado de finalización', fields: [
-    ['Onboarding Completed', 'onboarding_completed', 'boolean'], ['GHL Access Confirmed', 'ghl_access_confirmed', 'boolean'],
-    ['Facebook Access Confirmed', 'facebook_access_confirmed', 'boolean'], ['Ad Account Access Confirmed', 'ad_account_access_confirmed', 'boolean'],
-    ['Pixel Access Confirmed', 'pixel_access_confirmed', 'boolean'], ['Domain Access Confirmed', 'domain_access_confirmed', 'boolean'],
-    ['Payment Method Confirmed', 'payment_method_confirmed', 'boolean'], ['Persona / KYC Completed', 'kyc_completed', 'boolean'],
-    ['A2P Submitted', 'a2p_submitted', 'boolean'], ['Funnel Live', 'funnel_live', 'boolean'], ['Meta Campaign Live', 'meta_campaign_live', 'boolean'],
+    ['Onboarding completado', 'onboarding_completed', 'boolean'], ['Acceso GHL confirmado', 'ghl_access_confirmed', 'boolean'],
+    ['Acceso Facebook confirmado', 'facebook_access_confirmed', 'boolean'], ['Acceso a cuenta publicitaria confirmado', 'ad_account_access_confirmed', 'boolean'],
+    ['Acceso al pixel confirmado', 'pixel_access_confirmed', 'boolean'], ['Acceso al dominio confirmado', 'domain_access_confirmed', 'boolean'],
+    ['Método de pago confirmado', 'payment_method_confirmed', 'boolean'], ['Persona / KYC completado', 'kyc_completed', 'boolean'],
+    ['A2P enviado', 'a2p_submitted', 'boolean'], ['Funnel activo', 'funnel_live', 'boolean'], ['Campaña Meta activa', 'meta_campaign_live', 'boolean'],
   ] },
 ]
 const fieldLabels = Object.fromEntries(sections.flatMap((section) => section.fields.map(([label, key]) => [key, label])))

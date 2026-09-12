@@ -3,12 +3,17 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 export async function updateMyProfile(profileId, changes) {
   try { new Intl.DateTimeFormat('en', { timeZone: changes.timezone }).format() }
   catch { throw new Error('Selecciona una zona horaria válida.') }
+  const allowedAvatars = ['crimson', 'emerald', 'gold', 'ice', 'rose', 'midnight', 'steel', 'bronze', 'ruby', 'matrix', 'magma', 'prism']
+  if (!allowedAvatars.includes(changes.avatarId)) throw new Error('Selecciona un avatar válido.')
+  if (!['es', 'en'].includes(changes.preferredLanguage)) throw new Error('Selecciona un idioma válido.')
   const { data, error } = await supabase.from('profiles').update({
     timezone: changes.timezone.trim(),
     slack_contact: changes.slackContact.trim(),
     whatsapp_contact: changes.whatsappContact.trim(),
+    avatar_url: changes.avatarId,
+    preferred_language: changes.preferredLanguage,
     updated_at: new Date().toISOString(),
-  }).eq('id', profileId).select('id, timezone, slack_contact, whatsapp_contact').single()
+  }).eq('id', profileId).select('id, timezone, slack_contact, whatsapp_contact, avatar_url, preferred_language').single()
   if (error) throw error
   return data
 }

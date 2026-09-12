@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await runWithSessionRetry(() => supabase
       .from('profiles')
-      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active, timezone, slack_contact, whatsapp_contact')
+      .select('id, full_name, role, avatar_url, preferred_language, last_task_seen_at, permissions, active, timezone, slack_contact, whatsapp_contact')
       .eq('id', userId)
       .single())
 

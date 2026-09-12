@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
-import { loadUnreadMessageCount, subscribeToTeamMessages } from '../services/messageService'
+import { LanguageToggle } from '../i18n/LanguageContext'
+import TeamAvatar from './TeamAvatar'
 
 const roleLabels = {
   onboarding_media: 'Onboarding & Media',
@@ -15,7 +16,6 @@ const roleLabels = {
 export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
   const [notificationCount, setNotificationCount] = useState(0)
-  const [messageCount, setMessageCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
 
   useEffect(() => {
@@ -25,16 +25,6 @@ export default function AppLayout() {
     window.addEventListener('focus', refreshCount)
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshCount) }
   }, [])
-
-  useEffect(() => {
-    if (!profile?.id) return undefined
-    const refreshMessages = () => loadUnreadMessageCount(profile.id).then(setMessageCount).catch(() => {})
-    refreshMessages()
-    const timer = window.setInterval(refreshMessages, 60000)
-    window.addEventListener('focus', refreshMessages)
-    const unsubscribe = subscribeToTeamMessages(profile.id, refreshMessages)
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshMessages); unsubscribe() }
-  }, [profile?.id])
 
   useEffect(() => {
     loadCompanySettings().then(setCompany).catch(() => {})
@@ -67,21 +57,20 @@ export default function AppLayout() {
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
-          <NavLink to="/mensajes">Mensajes{messageCount > 0 && <span className="nav-badge message-badge">{messageCount}</span>}</NavLink>
           <NavLink to="/eod-reports">EOD Reports</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
           {profile?.role === 'superadmin' && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
         </nav>
 
         <div className="user-card">
-          <strong>{profile?.full_name || user?.email}</strong>
-          <span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span>
+          <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span></div></div>
+          <LanguageToggle compact />
           <NavLink className="account-link" to="/mi-cuenta">Mi cuenta</NavLink>
           <button className="text-button" type="button" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
 
-      <main className="main-content"><div className="content-area">{messageCount > 0 && <Link className="message-global-alert" to="/mensajes"><strong>{messageCount} mensaje{messageCount === 1 ? '' : 's'} nuevo{messageCount === 1 ? '' : 's'}</strong><span>Abrir bandeja →</span></Link>}<Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span><small>Hecho por Diego Romario · Nicaragua</small></div></footer></main>
+      <main className="main-content"><div className="content-area"><Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span><small>Hecho por Diego Romario · Nicaragua</small></div></footer></main>
     </div>
   )
 }
