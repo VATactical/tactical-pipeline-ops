@@ -165,6 +165,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 @media (max-width: 800px) { .intake-status { align-items: stretch; flex-direction: column; }.training-lesson { align-items: stretch; flex-direction: column; }.training-lesson .secondary-button { text-align: center; }.world-clocks { grid-template-columns: repeat(2, minmax(0, 1fr)); }.calendar-workspace { grid-template-columns: 1fr; }.day-agenda { padding: 1rem 0 0; border-top: 1px solid #1d3043; border-left: 0; }.calendar-day { min-height: 48px; padding: .35rem; } }
 
 
+.print-dossier { display: grid; gap: 1.5rem; }
 .print-only { display: none; }
 
 @media print {
@@ -213,6 +214,14 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .password-change-grid label { display: grid; gap: .4rem; }
 .password-change-grid input { margin: 0; }
 .slack-channel-button { border-color: #4a2969; background: #251635; color: #e3c4ff; }
+.drive-folder-button { border-color: #24613e; background: #112d20; color: #83e8ac; }
+.client-detail-header { gap: 2rem; padding-bottom: .5rem; }
+.dossier-search { display: grid; gap: .5rem; margin: 0; padding: .9rem 1rem; border: 1px solid #1c3043; border-radius: 14px; background: #0a1724cc; }
+.dossier-search > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; }
+.dossier-search input { margin: 0; }
+.dossier-search label { color: #7890a8; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.dossier-section { scroll-margin-top: 1.5rem; transition: border-color .2s ease, box-shadow .2s ease; }
+.dossier-section.search-highlight { border-color: #35bffa; box-shadow: 0 0 0 3px #35bffa20, 0 18px 45px #0003; }
 .profile-form label, .company-fields label, .admin-training-grid label { display: grid; gap: .4rem; }
 .profile-form input, .company-fields input, .admin-training-grid input, .admin-training-grid select { margin: 0; }
 .profile-identity { display: flex; align-items: center; gap: .85rem; margin-bottom: .5rem; }
@@ -280,6 +289,9 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .directory-grid, .company-form, .admin-training-grid, .lesson-actions { grid-template-columns: 1fr; }
   .password-change-grid { grid-template-columns: 1fr; }
   .password-change-grid label:first-child { grid-column: auto; }
+  .client-detail-header { gap: 1rem; }
+  .dossier-search > div { grid-template-columns: 1fr; }
+  .dossier-search button { width: 100%; }
   .directory-grid { justify-content: stretch; }
   .admin-training-grid .wide { grid-column: auto; }
   .company-logo-editor { justify-items: start; }

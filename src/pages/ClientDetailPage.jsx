@@ -56,6 +56,7 @@ const displayValue = (value, type) => {
   if (type === 'number' && value !== '' && value != null) return `$${value}`
   return value || 'Pendiente'
 }
+const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 export default function ClientDetailPage() {
   const { clientId } = useParams()
@@ -67,6 +68,8 @@ export default function ClientDetailPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [showPreview, setShowPreview] = useState(false)
+  const [dossierSearch, setDossierSearch] = useState('')
+  const [highlightedSection, setHighlightedSection] = useState(null)
 
   const refresh = async () => {
     const result = await loadClient(clientId)
@@ -139,10 +142,29 @@ export default function ClientDetailPage() {
   const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
   const launchOverdue = launchDate && client.status !== 'ADS LIVE' && launchDate < new Date()
   const slackChannelUrl = /^https?:\/\//i.test(client.slack_channel_link || '') ? client.slack_channel_link : ''
+  const driveFolderUrl = /^https?:\/\//i.test(client.drive_folder_link || '') ? client.drive_folder_link : ''
+  const searchDossier = (event) => {
+    event.preventDefault()
+    const query = normalizeSearch(dossierSearch.trim())
+    if (!query) return
+    const matchIndex = sections.findIndex((section) => normalizeSearch([
+      section.title,
+      ...section.fields.flatMap(([label, key]) => [label, key, client[key]]),
+    ].join(' ')).includes(query))
+    if (matchIndex < 0) {
+      setError(`No encontramos “${dossierSearch.trim()}” en este dossier.`)
+      setHighlightedSection(null)
+      return
+    }
+    setError(''); setMessage(`Resultado encontrado en ${sections[matchIndex].title}.`); setHighlightedSection(matchIndex)
+    document.getElementById(`dossier-section-${matchIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.setTimeout(() => setHighlightedSection((current) => current === matchIndex ? null : current), 2200)
+  }
 
   return <div className="page-stack">
     <Link className="back-link" to="/clientes">← Todos los clientes</Link>
-    <header className="page-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">Abrir Slack ↗</a>}<button className="secondary-button" type="button" onClick={() => setShowPreview((value) => !value)}>Vista previa WWWW</button><button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
+    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">Abrir Slack ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">Abrir Drive ↗</a>}<button className="secondary-button" type="button" onClick={() => setShowPreview((value) => !value)}>Vista previa WWWW</button><button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
+    <form className="dossier-search" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     <section className={`content-card intake-status ${client.intake_form_completed ? 'complete' : 'pending'}`}><div><p className="eyebrow">Antes del dossier</p><h3>{client.intake_form_completed ? 'Formulario del cliente recibido' : 'Formulario del cliente pendiente'}</h3><p className="muted">{client.intake_form_completed_at ? `Marcado el ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.intake_form_completed_at))}` : 'Confirma este paso antes de completar accesos y datos del WWWW.'}</p></div>{canEdit && <button className={client.intake_form_completed ? 'secondary-button' : 'primary-button compact-button'} type="button" disabled={saving} onClick={toggleIntakeForm}>{client.intake_form_completed ? 'Marcar pendiente' : 'Marcar formulario recibido'}</button>}</section>
     <section className="metric-grid compact"><article className="metric-card blue"><span>Gasto</span><strong>${client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
@@ -158,7 +180,7 @@ export default function ClientDetailPage() {
         const editing = editingSection === index
         const sectionKeys = section.fields.map(([, key]) => key)
         const lastUpdate = auditLog.find((entry) => entry.changed_fields?.some((field) => sectionKeys.includes(field)))
-        return <section className="content-card dossier-section" key={section.title}>
+        return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
           <small className="section-updated">{lastUpdate ? `Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}` : 'Sin actualizaciones registradas'}</small>
