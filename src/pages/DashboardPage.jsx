@@ -20,13 +20,13 @@ const missingFromDossier = (client) => dossierFields.filter(([, key]) => isMissi
 
 function SuperadminDashboard({ data, blockers }) {
   const clientSummaries = data.clients.map((client) => {
-    const missing = missingFromDossier(client)
+    const missingCount = missingFromDossier(client).length
     const openTasks = data.tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada').length
     const clientBlockers = blockers.filter((blocker) => blocker.client_id === client.id).length
     const pendingSteps = data.workflowSteps.filter((step) => step.client_id === client.id && !step.completed)
-    return { client, missing, openTasks, clientBlockers, pendingSteps }
+    return { client, missingCount, openTasks, clientBlockers, pendingSteps }
   })
-  const incomplete = clientSummaries.filter((item) => item.missing.length > 0).length
+  const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
   const statusCounts = data.clients.reduce((counts, client) => ({ ...counts, [client.status]: (counts[client.status] || 0) + 1 }), {})
 
   return (
@@ -38,11 +38,10 @@ function SuperadminDashboard({ data, blockers }) {
       </section>
       <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
       <section>
-        <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Qué falta según cada dossier</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
-        <div className="dossier-grid">{clientSummaries.map(({ client, missing, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+        <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
+        <div className="dossier-grid">{clientSummaries.map(({ client, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
           <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
           <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
-          <div className="missing-section"><strong>Falta en el dossier</strong>{missing.length ? <div className="missing-chips">{missing.map((item) => <span key={item}>{item}</span>)}</div> : <p className="complete-note">Dossier esencial completo</p>}</div>
           <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
           <div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div>
           <span className="card-link">Ver expediente completo →</span>
@@ -91,7 +90,7 @@ export default function DashboardPage() {
   if (loading) return <LoadingScreen />
   return (
     <div className="page-stack">
-      <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="muted">{isAdmin ? 'Revisa por cliente qué información, acceso o configuración sigue pendiente.' : 'Tus clientes y tareas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
+      <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="muted">{isAdmin ? 'Revisa el estado, el siguiente paso y las alertas de cada cliente.' : 'Tus clientes y tareas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
       {error && <p className="form-error" role="alert">{error}</p>}
       {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} />}
     </div>

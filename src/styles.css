@@ -90,3 +90,27 @@ select { padding: .65rem .8rem; border: 1px solid #294158; border-radius: 10px; 
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 1050px) { .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.dashboard-grid { grid-template-columns: 1fr; }.pipeline-row { grid-template-columns: 105px 1fr auto; }.pipeline-row p { grid-column: 2 / -1; } }
 @media (max-width: 800px) { .login-page { grid-template-columns: 1fr; }.login-intro { min-height: 40vh; padding: 3rem 1.5rem; }.login-intro h1 { font-size: 2.8rem; }.login-card { margin: -1.5rem auto 3rem; }.app-shell { grid-template-columns: 1fr; }.sidebar { position: static; height: auto; padding: 1rem 1.25rem; border-right: 0; border-bottom: 1px solid #182a3c; }.sidebar > div:first-child { display: flex; align-items: center; gap: .75rem; }.sidebar .brand-mark, .sidebar .eyebrow { margin: 0; }.sidebar h1 { margin: 0; }.sidebar nav { grid-template-columns: repeat(4, max-content); overflow-x: auto; margin: .8rem 0 0; }.user-card { margin-top: .8rem; }.metric-grid, .client-grid, .dossier-grid, .admin-grid, .role-progress-grid, .client-form { grid-template-columns: 1fr; }.client-form .wide { grid-column: auto; }.metric-card { min-height: 125px; }.page-header { flex-direction: column; }.header-actions { width: 100%; justify-content: space-between; }.filter-bar { flex-direction: column; }.filter-bar select { width: 100%; }.task-row { grid-template-columns: auto minmax(0, 1fr); }.task-row > select { grid-column: 2; width: 100%; }.assignment-select { width: 100%; }.pipeline-row { grid-template-columns: 1fr auto; }.pipeline-row > .lifecycle { grid-column: 1 / -1; }.pipeline-row p { grid-column: 1 / -1; }.detail-grid { grid-template-columns: 1fr; }.detail-item:nth-child(odd), .detail-item:nth-child(even) { padding: 1rem 0; border-left: 0; }.member-editor, .audit-row { grid-template-columns: 1fr; }.main-content { padding: 1.25rem; } }
+
+
+.print-only { display: none; }
+
+@media print {
+  @page { size: Letter; margin: 0.55in; }
+  :root, body { background: #fff; color: #111827; }
+  body * { visibility: hidden !important; }
+  .print-dossier, .print-dossier * { visibility: visible !important; }
+  .print-dossier { position: absolute; inset: 0; display: block; width: 100%; color: #111827; }
+  .print-only { display: block; }
+  .print-title { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid #0ea5e9; }
+  .print-title p, .print-title span { margin: 0; color: #475569; font-size: 10pt; }
+  .print-title h1 { margin: 6px 0; color: #0f172a; font-size: 21pt; }
+  .print-dossier .content-card { break-inside: avoid; margin: 0 0 12px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; box-shadow: none; }
+  .print-dossier .eyebrow { color: #0369a1; }
+  .print-dossier .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .print-dossier .detail-item { border-color: #e2e8f0; }
+  .print-dossier .detail-item:nth-child(even) { border-left-color: #e2e8f0; }
+  .print-dossier .detail-item span, .print-dossier .workflow-step small, .print-dossier .muted { color: #64748b; }
+  .print-dossier .detail-item strong, .print-dossier .workflow-step strong { color: #111827; }
+  .print-dossier .workflow-step { border-color: #e2e8f0; }
+  .print-dossier .workflow-step input { pointer-events: none; }
+}
