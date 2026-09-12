@@ -14,6 +14,7 @@ const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'))
 const TasksPage = lazy(() => import('./pages/TasksPage'))
 const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 const EodReportsPage = lazy(() => import('./pages/EodReportsPage'))
+const TrainingPage = lazy(() => import('./pages/TrainingPage'))
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="clientes/:clientId" element={<ClientDetailPage />} />
               <Route path="tareas" element={<TasksPage />} />
               <Route path="calendario" element={<CalendarPage />} />
+              <Route path="training" element={<TrainingPage />} />
               <Route path="eod-reports" element={<EodReportsPage />} />
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>

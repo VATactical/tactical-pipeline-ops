@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active')
+      .select('id, full_name, role, avatar_url, last_task_seen_at, permissions, active, timezone')
       .eq('id', userId)
       .single()
 
@@ -40,18 +40,18 @@ export function AuthProvider({ children }) {
       let nextSession = await ensureFreshSession()
       if (!nextSession) return null
 
-      let { data, error } = await supabase.auth.getUser()
-      if (error || !data?.user) {
+      let { data, error } = await supabase.auth.getClaims()
+      if (error || !data?.claims?.sub) {
         nextSession = await refreshSessionOrSignOut()
-        ;({ data, error } = await supabase.auth.getUser())
+        ;({ data, error } = await supabase.auth.getClaims())
       }
 
-      if (error || !data?.user) {
+      if (error || !data?.claims?.sub) {
         await supabase.auth.signOut({ scope: 'local' })
         throw new Error('No se pudo validar la sesión.')
       }
 
-      return { ...nextSession, user: data.user }
+      return nextSession
     }
 
     const initialize = async () => {

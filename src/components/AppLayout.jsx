@@ -7,6 +7,7 @@ const roleLabels = {
   onboarding_media: 'Onboarding & Media',
   automation_funnels: 'Automations & Funnels',
   superadmin: 'Superadmin',
+  user_admin: 'User Admin',
 }
 
 export default function AppLayout() {
@@ -35,6 +36,7 @@ export default function AppLayout() {
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
+          <NavLink to="/training">Training</NavLink>
           <NavLink to="/eod-reports">EOD Reports</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
         </nav>

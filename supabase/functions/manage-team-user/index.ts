@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const allowedRoles = new Set(['superadmin', 'onboarding_media', 'automation_funnels'])
+const allowedRoles = new Set(['superadmin', 'user_admin', 'onboarding_media', 'automation_funnels'])
 const allowedPermissions = new Set([
   'clients_create', 'clients_edit', 'tasks_create', 'calendar_manage', 'eod_reports', 'users_manage',
 ])
@@ -42,7 +42,18 @@ Deno.serve(async (request) => {
     if (!caller?.active || caller.role !== 'superadmin') return json({ error: 'Solo el superadmin puede administrar usuarios.' }, 403)
 
     const body = await request.json()
-    const action = body.action === 'update' ? 'update' : 'create'
+    const action = body.action === 'reset_password' ? 'reset_password' : body.action === 'update' ? 'update' : 'create'
+    const userId = String(body.userId || '')
+
+    if (action === 'reset_password') {
+      const password = String(body.password || '')
+      if (!userId) return json({ error: 'Usuario requerido.' }, 400)
+      if (password.length < 10) return json({ error: 'La contraseña debe tener al menos 10 caracteres.' }, 400)
+      const { error: resetError } = await admin.auth.admin.updateUserById(userId, { password })
+      if (resetError) return json({ error: resetError.message }, 400)
+      return json({ success: true })
+    }
+
     const role = String(body.role || '')
     if (!allowedRoles.has(role)) return json({ error: 'Rol inválido.' }, 400)
 
@@ -59,6 +70,7 @@ Deno.serve(async (request) => {
       const email = String(body.email || '').trim().toLowerCase()
       const password = String(body.password || '')
       const fullName = String(body.fullName || '').trim()
+      const timezone = String(body.timezone || 'America/Managua')
       if (!email || !email.includes('@')) return json({ error: 'Correo inválido.' }, 400)
       if (password.length < 10) return json({ error: 'La contraseña debe tener al menos 10 caracteres.' }, 400)
       if (!fullName) return json({ error: 'Escribe el nombre del usuario.' }, 400)
@@ -78,7 +90,8 @@ Deno.serve(async (request) => {
         role,
         permissions,
         active: true,
-      }).eq('id', created.user.id).select('id, email, full_name, role, permissions, active, created_at').single()
+        timezone,
+      }).eq('id', created.user.id).select('id, email, full_name, role, permissions, active, timezone, created_at').single()
 
       if (profileError) {
         await admin.auth.admin.deleteUser(created.user.id)
@@ -87,7 +100,6 @@ Deno.serve(async (request) => {
       return json({ profile }, 201)
     }
 
-    const userId = String(body.userId || '')
     if (!userId) return json({ error: 'Usuario requerido.' }, 400)
     if (userId === userData.user.id && (role !== 'superadmin' || body.active === false)) {
       return json({ error: 'No puedes quitar tu propio acceso de superadmin.' }, 400)
@@ -97,16 +109,18 @@ Deno.serve(async (request) => {
       role,
       permissions,
       active: body.active !== false,
+      timezone: String(body.timezone || 'America/Managua'),
     }
     const { data: profile, error: updateError } = await admin.from('profiles').update(changes)
-      .eq('id', userId).select('id, email, full_name, role, permissions, active, created_at').single()
+      .eq('id', userId).select('id, email, full_name, role, permissions, active, timezone, created_at').single()
     if (updateError) return json({ error: updateError.message }, 400)
 
-    await admin.auth.admin.updateUserById(userId, {
+    const { error: authError } = await admin.auth.admin.updateUserById(userId, {
       user_metadata: { full_name: changes.full_name },
       app_metadata: { app_role: role },
       ban_duration: changes.active ? 'none' : '876000h',
     })
+    if (authError) return json({ error: authError.message }, 400)
     return json({ profile })
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Error inesperado.' }, 500)

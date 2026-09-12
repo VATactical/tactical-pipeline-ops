@@ -5,7 +5,7 @@ import { createAssignedTask, updateTaskManagement, updateTaskStatus } from '../s
 import { useAuth } from '../auth/AuthContext'
 
 const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', ownerRole: '', priority: 'Media', dueAt: '' }
-const ownerName = (role) => role === 'onboarding_media' ? 'Diego' : role === 'automation_funnels' ? 'Daniel' : 'Todos'
+const ownerName = (role) => role === 'onboarding_media' ? 'Diego' : role === 'automation_funnels' ? 'Daniel' : role === 'user_admin' ? 'User Admin' : 'Todos'
 
 function TaskComposer({ clients, onCreated, profile }) {
   const isAdmin = profile.role === 'superadmin'
@@ -30,7 +30,7 @@ function TaskComposer({ clients, onCreated, profile }) {
     <div className="entry-type"><button type="button" className={form.scope === 'general' ? 'active' : ''} onClick={() => setField('scope', 'general')}>Tarea general</button><button type="button" className={form.scope === 'client' ? 'active' : ''} onClick={() => setField('scope', 'client')}>Cliente específico</button></div>
     <div className="composer-grid">
       {form.scope === 'client' && <label className="wide client-search-picker">Buscar cliente<input type="search" value={form.clientSearch} placeholder="Escribe código o nombre…" onChange={(event) => { setField('clientSearch', event.target.value); setField('clientId', '') }} required />{selected ? <span className="selected-client">Seleccionado: {selected.code} · {selected.business_name}</span> : form.clientSearch && <div className="search-results">{matches.map((client) => <button type="button" key={client.id} onClick={() => setForm((current) => ({ ...current, clientId: client.id, clientSearch: `${client.code} · ${client.business_name}` }))}>{client.code} · {client.business_name}</button>)}{matches.length === 0 && <span>No encontramos ese cliente.</span>}</div>}</label>}
-      <label>Asignar a<select value={form.ownerRole} onChange={(event) => setField('ownerRole', event.target.value)} disabled={!isAdmin}>{isAdmin && <option value="">Todos</option>}<option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option></select></label>
+      <label>Asignar a<select value={form.ownerRole} onChange={(event) => setField('ownerRole', event.target.value)} disabled={!isAdmin}>{isAdmin && <option value="">Todos</option>}<option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option>{isAdmin && <option value="user_admin">User Admin</option>}</select></label>
       <label>Prioridad<select value={form.priority} onChange={(event) => setField('priority', event.target.value)}><option>Baja</option><option>Media</option><option>Alta</option><option>Urgente</option></select></label>
       <label>Fecha límite<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
       <label className="wide">Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder="Qué debe realizarse" /></label>

@@ -11,7 +11,6 @@ import {
 } from '../services/opsService'
 
 const priorityRank = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
-const ownerLabels = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }
 const isOverdue = (task) => task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
 const isStale = (client) => Date.now() - new Date(client.updated_at).getTime() > 3 * 86400000
 const launchOverdue = (client) => client.target_launch_date && client.status !== 'ADS LIVE' && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
@@ -83,7 +82,10 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
   const overdue = data.tasks.filter(isOverdue)
   const stale = data.clients.filter(isStale)
   const lateLaunches = data.clients.filter(launchOverdue)
-  const ownerCounts = Object.entries(ownerLabels).map(([role, name]) => ({ name, count: data.tasks.filter((task) => task.owner_role === role && task.status !== 'Completada').length }))
+  const formsReceived = data.clients.filter((client) => client.intake_form_completed).length
+  const attentionQueue = clientSummaries.filter(({ client, missingCount, clientBlockers }) => clientBlockers || launchOverdue(client) || !client.intake_form_completed || missingCount > 0)
+    .sort((a, b) => Number(Boolean(b.clientBlockers)) - Number(Boolean(a.clientBlockers)) || Number(launchOverdue(b.client)) - Number(launchOverdue(a.client)))
+    .slice(0, 6)
 
   return <>
     <section className="metric-grid" aria-label="Clientes por estado">
@@ -95,10 +97,15 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
       <article className="metric-card red"><span>Tareas atrasadas</span><strong>{overdue.length}</strong><small>requieren seguimiento</small></article>
       <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
       <article className="metric-card red"><span>Deadlines ADS vencidos</span><strong>{lateLaunches.length}</strong><small>campañas sin lanzar</small></article>
-      <article className="metric-card blue"><span>Tareas por responsable</span><div className="owner-counts">{ownerCounts.map((item) => <b key={item.name}>{item.name}: {item.count}</b>)}</div><small>tareas abiertas</small></article>
+      <article className="metric-card blue"><span>Formularios recibidos</span><strong>{formsReceived}</strong><small>de {data.clients.length} clientes</small></article>
+    </section>
+    <section className="dashboard-grid">
+      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Prioridad ejecutiva</p><h3>Clientes que requieren atención</h3></div><Link to="/clientes">Ver filtros</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">No hay alertas críticas.</p>}{attentionQueue.map(({ client, missingCount, clientBlockers }) => <Link to={`/clientes/${client.id}`} className="attention-row" key={client.id}><div><strong>{client.code} · {client.business_name}</strong><small>{!client.intake_form_completed ? 'Formulario pendiente' : clientBlockers ? `${clientBlockers} bloqueo(s)` : launchOverdue(client) ? 'Deadline ADS vencido' : `${missingCount} campos pendientes`}</small></div><span>→</span></Link>)}</div></div>
+      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Próxima agenda</p><h3>Eventos</h3></div><Link to="/calendario">Calendario</Link></div><div className="attention-list">{data.upcomingEvents.length === 0 && <p className="muted">Sin eventos próximos.</p>}{data.upcomingEvents.map((event) => <div className="attention-row" key={event.id}><div><strong>{event.title}</strong><small>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(event.start_at))}</small></div></div>)}</div></div>
     </section>
     <AdminComposer clients={data.clients} onCreated={onCreated} />
     <GeneralNotes notes={data.notes} />
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades reportadas</p></article>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong>{item.actor_name}</strong><p>{item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó'} {item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : item.entity_type === 'calendar_events' ? 'un evento' : 'un registro operativo'}</p></div><small>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
     <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
     <section>
@@ -135,7 +142,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, mark
 
 export default function DashboardPage() {
   const { profile } = useAuth()
-  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [], notes: [], activity: [] })
+  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [], notes: [], activity: [], eodReports: [], upcomingEvents: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')

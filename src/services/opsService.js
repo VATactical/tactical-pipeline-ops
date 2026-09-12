@@ -1,18 +1,20 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 
-const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }
+const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', user_admin: 'User Admin', superadmin: 'Kevin' }
 
 export async function loadOperations() {
-  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('client_workflow_steps').select('*').order('sort_order'),
     supabase.from('notes').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(40),
+    supabase.from('eod_reports').select('*, profiles(full_name, role)').order('report_date', { ascending: false }).limit(8),
+    supabase.from('calendar_events').select('*, clients(code, business_name)').gte('start_at', new Date().toISOString()).order('start_at').limit(6),
   ]))
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error
   if (error) throw error
 
   return {
@@ -22,6 +24,8 @@ export async function loadOperations() {
     workflowSteps: workflowResult.data || [],
     notes: notesResult.data || [],
     activity: activityResult.data || [],
+    eodReports: eodResult.data || [],
+    upcomingEvents: eventsResult.data || [],
   }
 }
 

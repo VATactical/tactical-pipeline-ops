@@ -121,6 +121,21 @@ export default function ClientDetailPage() {
       setMessage('Google Docs marcado como actualizado.')
     } catch (updateError) { setError(updateError.message) }
   }
+  const toggleIntakeForm = async () => {
+    if (!canEdit) return
+    const completed = !client.intake_form_completed
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, {
+        intake_form_completed: completed,
+        intake_form_completed_at: completed ? new Date().toISOString() : null,
+        intake_form_completed_by: completed ? profile.id : null,
+      })
+      await refresh()
+      setMessage(completed ? 'Formulario del cliente marcado como recibido.' : 'Formulario marcado como pendiente.')
+    } catch (updateError) { setError(updateError.message) }
+    finally { setSaving(false) }
+  }
   const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
   const launchOverdue = launchDate && client.status !== 'ADS LIVE' && launchDate < new Date()
 
@@ -128,6 +143,7 @@ export default function ClientDetailPage() {
     <Link className="back-link" to="/clientes">← Todos los clientes</Link>
     <header className="page-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><button className="secondary-button" type="button" onClick={() => setShowPreview((value) => !value)}>Vista previa WWWW</button><button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
+    <section className={`content-card intake-status ${client.intake_form_completed ? 'complete' : 'pending'}`}><div><p className="eyebrow">Antes del dossier</p><h3>{client.intake_form_completed ? 'Formulario del cliente recibido' : 'Formulario del cliente pendiente'}</h3><p className="muted">{client.intake_form_completed_at ? `Marcado el ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.intake_form_completed_at))}` : 'Confirma este paso antes de completar accesos y datos del WWWW.'}</p></div>{canEdit && <button className={client.intake_form_completed ? 'secondary-button' : 'primary-button compact-button'} type="button" disabled={saving} onClick={toggleIntakeForm}>{client.intake_form_completed ? 'Marcar pendiente' : 'Marcar formulario recibido'}</button>}</section>
     <section className="metric-grid compact"><article className="metric-card blue"><span>Gasto</span><strong>${client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
     <section className="content-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action}</h3></section>
     <section className={`content-card launch-deadline ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'ADS LIVE' ? 'Campaña activa' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
