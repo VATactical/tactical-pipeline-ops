@@ -4,26 +4,35 @@ import LoadingScreen from '../components/LoadingScreen'
 import { loadClient, updateClient, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
-  { title: 'Basic Business Profile', fields: [
+  { title: 'Who · Perfil comercial', fields: [
     ['Business Name', 'business_name'], ['Owner Name', 'owner_name'], ['Phone Number', 'phone'], ['Email Address', 'email', 'email'],
-    ['Physical Address / Primary Market', 'address'], ['Target ZIP Codes / Radius', 'target_zip_codes'], ['Legal Business Info · EIN / Tax ID', 'legal_business_info'],
+    ['Physical Address', 'address'], ['Legal Business Info · EIN / Tax ID', 'legal_business_info'],
   ] },
-  { title: 'What · Offer, Guarantee & Retainer Terms', fields: [
+  { title: 'What · Oferta y objetivos', fields: [
     ['Core Service', 'services'], ['Core Consumer Offer', 'offer'], ['Target Monthly KPI', 'kpi'],
     ['Target Daily Ad Spend', 'daily_budget', 'number'], ['Minimum Target Project Size', 'minimum_project', 'number'],
   ] },
-  { title: 'Asset Diagnostics & Existing Infrastructure', fields: [
+  { title: 'Where · Mercado', fields: [
+    ['Target ZIP Codes / Radius', 'target_zip_codes'], ['Markets / Cities', 'markets'], ['Excluded Locations', 'exclusions'], ['Timezone', 'timezone'],
+  ] },
+  { title: 'Infraestructura', fields: [
     ['Does Client Need Website/Funnel Built?', 'needs_website_funnel', 'boolean'], ['Existing Domain Name', 'domain'],
     ['Existing Website URL', 'website_url', 'url'], ['Google Business Profile Status', 'gbp_status'], ['Existing GBP Link', 'gbp_link', 'url'],
   ] },
-  { title: 'When · Timeline, Status & Onboarding', fields: [
+  { title: 'When · Cronología', fields: [
     ['Onboarding Date', 'onboarding_date', 'date'], ['Target Ad Launch Date', 'target_launch_date', 'date'],
-    ['Current Lifecycle Status', 'status', 'status'], ['Active Ad Strategy', 'ad_strategy'],
+    ['Current Lifecycle Status', 'status', 'status'],
   ] },
-  { title: 'Where · System Links & Access Keys', fields: [
+  { title: 'Enlaces y accesos', fields: [
     ['GoHighLevel Sub-Account / Access', 'ghl_subaccount_link'], ['Client Google Drive Assets Folder', 'drive_folder_link', 'url'],
     ['Facebook Page & Business Manager ID', 'facebook_business_info'], ['Meta Ad Account ID & Pixel ID', 'meta_assets_info'],
     ['Retell AI Agent ID', 'retell_agent_id'], ['Make.com Scenario Folder', 'make_scenario_link', 'url'], ['Slack Channel', 'slack_channel_link', 'url'],
+  ] },
+  { title: 'Estrategia publicitaria', fields: [
+    ['Active Ad Strategy', 'ad_strategy'], ['Meta Status', 'meta_status'], ['Daily Budget', 'daily_budget', 'number'],
+  ] },
+  { title: 'Registro operativo', fields: [
+    ['Operational Phase', 'phase'], ['Next Action', 'next_action'], ['GHL Status', 'ghl_status'], ['A2P Status', 'a2p_status'],
   ] },
 ]
 const fieldLabels = Object.fromEntries(sections.flatMap((section) => section.fields.map(([label, key]) => [key, label])))
@@ -84,9 +93,12 @@ export default function ClientDetailPage() {
       <header className="print-only print-title"><p>{client.code} · TACTICAL PIPELINE</p><h1>{client.business_name}</h1><span>{client.status} · {client.phase}</span></header>
       {sections.map((section, index) => {
         const editing = editingSection === index
+        const sectionKeys = section.fields.map(([, key]) => key)
+        const lastUpdate = auditLog.find((entry) => entry.changed_fields?.some((field) => sectionKeys.includes(field)))
         return <section className="content-card dossier-section" key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
+          <small className="section-updated">{lastUpdate ? `Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}` : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
     </div>
