@@ -12,7 +12,6 @@ export async function updateMyProfile(profileId, changes) {
     whatsapp_contact: changes.whatsappContact.trim(),
     avatar_url: changes.avatarId,
     preferred_language: changes.preferredLanguage,
-    updated_at: new Date().toISOString(),
   }).eq('id', profileId).select('id, timezone, slack_contact, whatsapp_contact, avatar_url, preferred_language').single()
   if (error) throw error
   return data
