@@ -72,7 +72,7 @@ export default function ClientsPage() {
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>{client.owner_name}</p>
         <div className="client-signals"><span className={complete ? 'complete' : ''}>{complete ? 'Dossier completo' : 'Dossier incompleto'}</span>{blocked && <span className="blocked">Bloqueo abierto</span>}</div>
-        <dl><div><dt>Fase</dt><dd>{client.phase}</dd></div><div><dt>Presupuesto</dt><dd>$${client.daily_budget}/día</dd></div><div><dt>Mercado</dt><dd>{client.timezone}</dd></div></dl>
+        <dl><div><dt>Fase</dt><dd>{client.phase}</dd></div><div><dt>Presupuesto</dt><dd>${client.daily_budget}/día</dd></div><div><dt>Mercado</dt><dd>{client.timezone}</dd></div></dl>
         <span className="card-link">Ver expediente →</span>
       </Link>
     })}</section> : <section className="content-card empty-state"><h3>No encontramos clientes</h3><p className="muted">Cambia o limpia los filtros para ver más resultados.</p><button className="secondary-button" onClick={clearFilters}>Limpiar filtros</button></section>}
