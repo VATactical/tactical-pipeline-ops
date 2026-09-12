@@ -49,12 +49,12 @@ export async function updateTaskAssignment(taskId, ownerRole) {
   if (error) throw error
 }
 
-export async function createAssignedTask({ clientId, title, details, priority, ownerRole, dueLabel }) {
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, dueLabel }) {
   const payload = {
     id: crypto.randomUUID(),
     client_id: clientId,
     title: title.trim(),
-    evidence: details.trim(),
+    evidence: (details || body).trim(),
     priority,
     owner_role: ownerRole,
     owner_name: ownerNames[ownerRole],
