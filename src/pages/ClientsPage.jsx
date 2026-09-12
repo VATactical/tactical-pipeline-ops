@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { runWithSessionRetry, supabase } from '../lib/supabase'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { createClient } from '../services/opsService'
@@ -25,12 +25,12 @@ export default function ClientsPage() {
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
 
   useEffect(() => {
-    Promise.all([
+    runWithSessionRetry(() => Promise.all([
       supabase.from('clients').select('*'),
       supabase.from('blockers').select('client_id').eq('resolved', false),
       supabase.from('tasks').select('client_id, status, priority'),
       supabase.from('client_workflow_steps').select('client_id, completed'),
-    ]).then(([clientsResult, blockersResult, tasksResult, stepsResult]) => {
+    ])).then(([clientsResult, blockersResult, tasksResult, stepsResult]) => {
       const queryError = clientsResult.error || blockersResult.error || tasksResult.error || stepsResult.error
       if (queryError) setError(queryError.message)
       else {
@@ -39,7 +39,7 @@ export default function ClientsPage() {
         setTasks(tasksResult.data || [])
         setSteps(stepsResult.data || [])
       }
-    }).finally(() => setLoading(false))
+    }).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false))
   }, [])
 
   const counts = useMemo(() => Object.fromEntries(statuses.map((status) => [status, status === 'Todos' ? clients.length : clients.filter((client) => client.status === status).length])), [clients])

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import LoadingScreen from '../components/LoadingScreen'
-import { supabase } from '../lib/supabase'
+import { runWithSessionRetry, supabase } from '../lib/supabase'
 import { updateTaskManagement, updateTaskStatus } from '../services/opsService'
 import { useAuth } from '../auth/AuthContext'
 
@@ -14,11 +14,11 @@ export default function TasksPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }).then(({ data, error: queryError }) => {
+    runWithSessionRetry(() => supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false })).then(({ data, error: queryError }) => {
       if (queryError) setError(queryError.message)
       else setTasks(data || [])
       setLoading(false)
-    })
+    }).catch((loadError) => { setError(loadError.message); setLoading(false) })
   }, [])
 
   const visible = useMemo(() => tasks.filter((task) => {

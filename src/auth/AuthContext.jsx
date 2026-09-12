@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { ensureFreshSession, refreshSessionOrSignOut, supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -27,20 +27,38 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
 
+    const clearAuthState = () => {
+      setSession(null)
+      setProfile(null)
+    }
+
+    const validateSession = async () => {
+      let nextSession = await ensureFreshSession()
+      if (!nextSession) return null
+
+      let { data, error } = await supabase.auth.getUser()
+      if (error || !data?.user) {
+        nextSession = await refreshSessionOrSignOut()
+        ;({ data, error } = await supabase.auth.getUser())
+      }
+
+      if (error || !data?.user) {
+        await supabase.auth.signOut({ scope: 'local' })
+        throw new Error('No se pudo validar la sesión.')
+      }
+
+      return { ...nextSession, user: data.user }
+    }
+
     const initialize = async () => {
-      const { data, error } = await supabase.auth.getSession()
-
-      if (!active) return
-      if (error) console.error('No se pudo restaurar la sesión:', error.message)
-
-      const nextSession = data?.session ?? null
-      setSession(nextSession)
-
       try {
+        const nextSession = await validateSession()
+        if (!active) return
+        setSession(nextSession)
         await loadProfile(nextSession?.user?.id)
-      } catch (profileError) {
-        console.error('No se pudo cargar el perfil:', profileError.message)
-        setProfile(null)
+      } catch (sessionError) {
+        console.error('No se pudo restaurar la sesión:', sessionError.message)
+        if (active) clearAuthState()
       } finally {
         if (active) setLoading(false)
       }
@@ -51,6 +69,12 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!nextSession) {
+        clearAuthState()
+        setLoading(false)
+        return
+      }
+
       setSession(nextSession)
       setLoading(true)
 
@@ -66,9 +90,25 @@ export function AuthProvider({ children }) {
       }, 0)
     })
 
+    const restoreActiveSession = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const nextSession = await ensureFreshSession()
+        if (active && nextSession) setSession(nextSession)
+      } catch (sessionError) {
+        console.error('La sesión ya no se pudo renovar:', sessionError.message)
+        if (active) clearAuthState()
+      }
+    }
+
+    window.addEventListener('focus', restoreActiveSession)
+    document.addEventListener('visibilitychange', restoreActiveSession)
+
     return () => {
       active = false
       subscription.unsubscribe()
+      window.removeEventListener('focus', restoreActiveSession)
+      document.removeEventListener('visibilitychange', restoreActiveSession)
     }
   }, [loadProfile])
 
