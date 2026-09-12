@@ -1,26 +1,80 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
-import { loadOperations, updateTaskStatus } from '../services/opsService'
+import {
+  createAssignedTask,
+  createTeamNote,
+  loadOperations,
+  markTasksSeen,
+  subscribeToOperations,
+  updateTaskStatus,
+} from '../services/opsService'
 
 const priorityRank = { Urgente: 0, Alta: 1, Media: 2 }
 const dossierFields = [
-  ['Nombre legal', 'legal_name'], ['Propietario', 'owner_name'], ['Teléfono', 'phone'], ['Correo', 'email'],
-  ['Dirección', 'address'], ['ZIP / radio', 'target_zip_codes'], ['EIN / Tax ID', 'legal_business_info'],
-  ['Servicios', 'services'], ['Oferta', 'offer'], ['Dominio', 'domain'], ['Sitio web', 'website_url'],
-  ['Google Business Profile', 'gbp_status'], ['Onboarding', 'onboarding_date'], ['Fecha de lanzamiento', 'target_launch_date'],
-  ['Estrategia de anuncios', 'ad_strategy'], ['Acceso GHL', 'ghl_subaccount_link'], ['Carpeta Drive', 'drive_folder_link'],
-  ['Facebook / Business Manager', 'facebook_business_info'], ['Ad Account / Pixel', 'meta_assets_info'],
-  ['Retell AI', 'retell_agent_id'], ['Make.com', 'make_scenario_link'], ['Canal Slack', 'slack_channel_link'],
+  'legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info',
+  'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date',
+  'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info',
+  'retell_agent_id', 'make_scenario_link', 'slack_channel_link',
 ]
-
 const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
-const missingFromDossier = (client) => dossierFields.filter(([, key]) => isMissing(client[key])).map(([label]) => label)
 
-function SuperadminDashboard({ data, blockers }) {
+function AdminComposer({ clients, onCreated }) {
+  const initial = { type: 'general_note', clientId: '', title: '', body: '', ownerRole: 'onboarding_media', priority: 'Media', dueLabel: '' }
+  const [form, setForm] = useState(initial)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }))
+  const needsClient = form.type !== 'general_note'
+  const isTask = form.type === 'client_task'
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!form.title.trim() || (needsClient && !form.clientId)) return
+    setSaving(true); setError('')
+    try {
+      if (isTask) await createAssignedTask(form)
+      else await createTeamNote({ clientId: needsClient ? form.clientId : null, title: form.title, body: form.body })
+      setForm(initial)
+      onCreated(isTask ? 'Tarea asignada y alerta enviada.' : 'Nota guardada.')
+    } catch (submitError) { setError(submitError.message) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <section className="content-card admin-composer">
+      <div className="section-heading"><div><p className="eyebrow">Crear actualización</p><h3>Notas y tareas del equipo</h3></div><span className="muted">Kevin</span></div>
+      <form onSubmit={submit}>
+        <div className="entry-type" role="group" aria-label="Tipo de actualización">
+          {[['general_note', 'Nota general'], ['client_note', 'Nota de cliente'], ['client_task', 'Tarea de cliente']].map(([value, label]) => (
+            <button className={form.type === value ? 'active' : ''} type="button" onClick={() => setField('type', value)} key={value}>{label}</button>
+          ))}
+        </div>
+        <div className="composer-grid">
+          {needsClient && <label>Cliente<select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)} required><option value="">Seleccionar cliente…</option>{clients.map((client) => <option value={client.id} key={client.id}>{client.code} · {client.business_name}</option>)}</select></label>}
+          {isTask && <label>Asignar a<select value={form.ownerRole} onChange={(event) => setField('ownerRole', event.target.value)}><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option></select></label>}
+          {isTask && <label>Prioridad<select value={form.priority} onChange={(event) => setField('priority', event.target.value)}><option>Media</option><option>Alta</option><option>Urgente</option></select></label>}
+          {isTask && <label>Fecha / plazo<input value={form.dueLabel} onChange={(event) => setField('dueLabel', event.target.value)} placeholder="Ej. Hoy, viernes, 15 Sep" /></label>}
+          <label className="wide">Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder={isTask ? 'Qué debe hacerse' : 'Título de la nota'} /></label>
+          <label className="wide">Detalle<textarea value={form.body} onChange={(event) => setField('body', event.target.value)} rows="3" maxLength="5000" placeholder="Contexto, instrucciones o información adicional…" /></label>
+        </div>
+        {error && <p className="form-error">{error}</p>}
+        <button className="primary-button compact-button" disabled={saving}>{saving ? 'Guardando…' : isTask ? 'Asignar tarea' : 'Guardar nota'}</button>
+      </form>
+    </section>
+  )
+}
+
+function GeneralNotes({ notes }) {
+  const general = notes.filter((note) => !note.client_id).slice(0, 5)
+  if (!general.length) return null
+  return <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Comunicaciones</p><h3>Notas generales</h3></div></div><div className="note-list">{general.map((note) => <article className="note-card" key={note.id}><strong>{note.title}</strong>{note.body && <p>{note.body}</p>}<small>{new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
+}
+
+function SuperadminDashboard({ data, blockers, onCreated }) {
   const clientSummaries = data.clients.map((client) => {
-    const missingCount = missingFromDossier(client).length
+    const missingCount = dossierFields.filter((key) => isMissing(client[key])).length
     const openTasks = data.tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada').length
     const clientBlockers = blockers.filter((blocker) => blocker.client_id === client.id).length
     const pendingSteps = data.workflowSteps.filter((step) => step.client_id === client.id && !step.completed)
@@ -29,70 +83,76 @@ function SuperadminDashboard({ data, blockers }) {
   const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
   const statusCounts = data.clients.reduce((counts, client) => ({ ...counts, [client.status]: (counts[client.status] || 0) + 1 }), {})
 
-  return (
-    <>
-      <section className="metric-grid" aria-label="Clientes por estado">
-        <article className="metric-card blue"><span>Onboarding</span><strong>{statusCounts.ONBOARDING || 0}</strong><small>de {data.clients.length} clientes activos</small></article>
-        <article className="metric-card amber"><span>A2P Submitted</span><strong>{statusCounts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article>
-        <article className="metric-card green"><span>Ads Live</span><strong>{statusCounts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article>
-      </section>
-      <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
-      <section>
-        <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
-        <div className="dossier-grid">{clientSummaries.map(({ client, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
-          <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
-          <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
-          <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
-          <div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div>
-          <span className="card-link">Ver expediente completo →</span>
-        </Link>)}</div>
-      </section>
-    </>
-  )
+  return <>
+    <section className="metric-grid" aria-label="Clientes por estado">
+      <article className="metric-card blue"><span>Onboarding</span><strong>{statusCounts.ONBOARDING || 0}</strong><small>de {data.clients.length} clientes activos</small></article>
+      <article className="metric-card amber"><span>A2P Submitted</span><strong>{statusCounts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article>
+      <article className="metric-card green"><span>Ads Live</span><strong>{statusCounts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article>
+    </section>
+    <AdminComposer clients={data.clients} onCreated={onCreated} />
+    <GeneralNotes notes={data.notes} />
+    <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
+    <section>
+      <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
+      <div className="dossier-grid">{clientSummaries.map(({ client, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+        <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
+        <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
+        <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
+        <div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div><span className="card-link">Ver expediente completo →</span>
+      </Link>)}</div>
+    </section>
+  </>
 }
 
-function RoleDashboard({ data, openTasks, blockers, changeStatus }) {
+function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, markSeen }) {
   const priorityTasks = useMemo(() => [...openTasks].sort((a, b) => (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9)).slice(0, 5), [openTasks])
-  return (
-    <>
-      <section className="metric-grid" aria-label="Resumen operativo">
-        <article className="metric-card blue"><span>Clientes activos</span><strong>{data.clients.length}</strong><small>Pipeline compartido</small></article>
-        <article className="metric-card amber"><span>Mis tareas abiertas</span><strong>{openTasks.length}</strong><small>{priorityTasks.length} prioritarias visibles</small></article>
-        <article className="metric-card red"><span>Bloqueos</span><strong>{blockers.length}</strong><small>Requieren seguimiento</small></article>
-      </section>
-      <div className="dashboard-grid">
-        <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Orden recomendado</p><h3>Qué debes hacer ahora</h3></div><Link to="/tareas">Ver todas</Link></div><div className="task-list">{priorityTasks.map((task, index) => <article className="task-row" key={task.id}><span className="task-number">{String(index + 1).padStart(2, '0')}</span><div><strong>{task.clients?.code} · {task.clients?.business_name}</strong><p>{task.title}</p><small>{task.phase} · {task.owner_name}</small></div><select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)} aria-label={`Estado de ${task.title}`}><option>Pendiente</option><option>En progreso</option><option>Bloqueada</option><option>Completada</option></select></article>)}</div></section>
-        <section className="content-card alert-card"><p className="eyebrow">Dependencias</p><h3>Bloqueos abiertos</h3><div className="blocker-list">{blockers.map((blocker) => <article className="blocker-row" key={blocker.id}><span className="alert-dot red-dot" /><div><strong>{blocker.clients?.code} · {blocker.clients?.business_name}</strong><p>{blocker.title}</p><small>Responsable: {blocker.owner_name}</small></div></article>)}</div></section>
-      </div>
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Pipeline</p><h3>Estado de clientes</h3></div><Link to="/clientes">Ver clientes</Link></div><div className="pipeline-list">{data.clients.map((client) => <Link className="pipeline-row" to={`/clientes/${client.id}`} key={client.id}><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><div><strong>{client.code} · {client.business_name}</strong><small>{client.phase}</small></div><p><b>Siguiente:</b> {client.next_action}</p><span className="row-arrow">→</span></Link>)}</div></section>
-    </>
-  )
+  return <>
+    {newTasks.length > 0 && <section className="new-task-alert" role="alert"><div><strong>{newTasks.length} tarea{newTasks.length === 1 ? '' : 's'} nueva{newTasks.length === 1 ? '' : 's'}</strong><p>Kevin agregó trabajo nuevo a tu tablero.</p></div><button className="secondary-button" onClick={markSeen}>Marcar como vistas</button></section>}
+    <GeneralNotes notes={data.notes} />
+    <section className="metric-grid" aria-label="Resumen operativo">
+      <article className="metric-card blue"><span>Clientes activos</span><strong>{data.clients.length}</strong><small>Pipeline compartido</small></article>
+      <article className="metric-card amber"><span>Mis tareas abiertas</span><strong>{openTasks.length}</strong><small>{priorityTasks.length} prioritarias visibles</small></article>
+      <article className="metric-card red"><span>Bloqueos</span><strong>{blockers.length}</strong><small>Requieren seguimiento</small></article>
+    </section>
+    <div className="dashboard-grid">
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Orden recomendado</p><h3>Qué debes hacer ahora</h3></div><Link to="/tareas">Ver todas</Link></div><div className="task-list">{priorityTasks.map((task, index) => <article className="task-row" key={task.id}><span className="task-number">{String(index + 1).padStart(2, '0')}</span><div><strong>{task.clients?.code} · {task.clients?.business_name}</strong><p>{task.title}</p>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{task.phase} · {task.owner_name}</small></div><select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)} aria-label={`Estado de ${task.title}`}><option>Pendiente</option><option>En progreso</option><option>Bloqueada</option><option>Completada</option></select></article>)}</div></section>
+      <section className="content-card alert-card"><p className="eyebrow">Dependencias</p><h3>Bloqueos abiertos</h3><div className="blocker-list">{blockers.map((blocker) => <article className="blocker-row" key={blocker.id}><span className="alert-dot red-dot" /><div><strong>{blocker.clients?.code} · {blocker.clients?.business_name}</strong><p>{blocker.title}</p><small>Responsable: {blocker.owner_name}</small></div></article>)}</div></section>
+    </div>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Pipeline</p><h3>Estado de clientes</h3></div><Link to="/clientes">Ver clientes</Link></div><div className="pipeline-list">{data.clients.map((client) => <Link className="pipeline-row" to={`/clientes/${client.id}`} key={client.id}><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span><div><strong>{client.code} · {client.business_name}</strong><small>{client.phase}</small></div><p><b>Siguiente:</b> {client.next_action}</p><span className="row-arrow">→</span></Link>)}</div></section>
+  </>
 }
 
 export default function DashboardPage() {
   const { profile } = useAuth()
-  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [] })
+  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [], notes: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [seenAt, setSeenAt] = useState(profile?.last_task_seen_at)
+  const refresh = useCallback(async () => {
+    try { setData(await loadOperations()) } catch (loadError) { setError(loadError.message) }
+  }, [])
 
-  useEffect(() => { loadOperations().then(setData).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false)) }, [])
+  useEffect(() => { refresh().finally(() => setLoading(false)); return subscribeToOperations(refresh) }, [refresh])
+  useEffect(() => setSeenAt(profile?.last_task_seen_at), [profile?.last_task_seen_at])
   const openTasks = data.tasks.filter((task) => task.status !== 'Completada')
   const activeBlockers = data.blockers.filter((blocker) => !blocker.resolved)
   const isAdmin = profile?.role === 'superadmin'
+  const newTasks = isAdmin ? [] : data.tasks.filter((task) => task.owner_role === profile?.role && new Date(task.created_at) > new Date(seenAt || 0))
 
   const changeStatus = async (taskId, status) => {
-    try {
-      await updateTaskStatus(taskId, status)
-      setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status } : task) }))
-    } catch (updateError) { setError(updateError.message) }
+    try { await updateTaskStatus(taskId, status); setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status } : task) })) }
+    catch (updateError) { setError(updateError.message) }
+  }
+  const handleCreated = async (text) => { setMessage(text); await refresh() }
+  const handleMarkSeen = async () => {
+    try { setSeenAt(await markTasksSeen(profile.id)) } catch (markError) { setError(markError.message) }
   }
 
   if (loading) return <LoadingScreen />
-  return (
-    <div className="page-stack">
-      <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="muted">{isAdmin ? 'Revisa el estado, el siguiente paso y las alertas de cada cliente.' : 'Tus clientes y tareas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
-      {error && <p className="form-error" role="alert">{error}</p>}
-      {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} />}
-    </div>
-  )
+  return <div className="page-stack">
+    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="muted">{isAdmin ? 'Revisa el estado, crea notas y asigna tareas por cliente.' : 'Tus clientes, tareas y alertas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
+    {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
+    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} newTasks={newTasks} markSeen={handleMarkSeen} />}
+  </div>
 }
