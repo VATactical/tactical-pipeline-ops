@@ -2,6 +2,40 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 
 const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', user_admin: 'User Admin', superadmin: 'Kevin' }
 
+const priorityAliases = {
+  Baja: 'Baja',
+  Low: 'Baja',
+  Media: 'Media',
+  Medium: 'Media',
+  Alta: 'Alta',
+  High: 'Alta',
+  Urgente: 'Urgente',
+  Urgent: 'Urgente',
+}
+
+const statusAliases = {
+  Pendiente: 'Pendiente',
+  Pending: 'Pendiente',
+  'En progreso': 'En progreso',
+  'In progress': 'En progreso',
+  Bloqueada: 'Bloqueada',
+  Blocked: 'Bloqueada',
+  Completada: 'Completada',
+  Completed: 'Completada',
+}
+
+function normalizePriority(priority) {
+  const normalized = priorityAliases[priority]
+  if (!normalized) throw new Error('La prioridad seleccionada no es válida.')
+  return normalized
+}
+
+function normalizeStatus(status) {
+  const normalized = statusAliases[status]
+  if (!normalized) throw new Error('El estado seleccionado no es válido.')
+  return normalized
+}
+
 export async function loadOperations() {
   const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').order('code'),
@@ -46,7 +80,7 @@ export async function loadClient(clientId) {
 }
 
 export async function updateTaskStatus(taskId, status) {
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId)
+  const { error } = await supabase.from('tasks').update({ status: normalizeStatus(status) }).eq('id', taskId)
   if (error) throw error
 }
 
@@ -59,7 +93,7 @@ export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt 
   const changes = {
     owner_role: ownerRole || null,
     owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
-    priority,
+    priority: normalizePriority(priority),
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     updated_at: new Date().toISOString(),
@@ -74,7 +108,7 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     client_id: clientId || null,
     title: title.trim(),
     evidence: (details || body).trim(),
-    priority,
+    priority: normalizePriority(priority),
     owner_role: ownerRole || null,
     owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
     due_at: dueAt || null,
