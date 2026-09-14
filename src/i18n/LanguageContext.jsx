@@ -36,8 +36,12 @@ const translations = {
   'Zona del evento': 'Event timezone', 'Enlace de reunión': 'Meeting link', 'Notificar antes': 'Notify before', 'Evento creado con sus recordatorios.': 'Event created with reminders.',
   'Agenda del día': 'Today’s agenda', 'Próximos': 'Upcoming', 'Sin eventos.': 'No events.', 'Activar notificaciones': 'Enable notifications', 'Las alertas internas seguirán activas.': 'Internal alerts will remain active.',
   'Informe de fin de día': 'End-of-day report', 'Las tareas completadas se agregan automáticamente y puedes sumar trabajo manual.': 'Completed tasks are added automatically, and you can add manual work.',
-  'Tareas registradas': 'Recorded tasks', 'Trabajo adicional': 'Additional work', 'Agregar tareas manualmente': 'Add tasks manually', '+ Agregar': '+ Add', 'Quitar': 'Remove', 'Notas del día': 'Daily notes',
-  'Generar informe EOD': 'Generate EOD report', 'Generando…': 'Generating…', 'Historial': 'History', 'Informes enviados': 'Submitted reports', 'Aún no hay informes.': 'No reports yet.',
+  'Trabajo diario del equipo': 'Team daily work', 'Reportes enviados, ordenados por día y usuario.': 'Submitted reports, organized by day and user.', 'Selecciona el trabajo realizado durante las últimas 24 horas y envíalo a Kevin.': 'Select the work completed during the last 24 hours and send it to Kevin.',
+  'Preparar reporte': 'Prepare report', 'Cerrar reporte': 'Close report', 'Ciclo diario': 'Daily cycle', 'Últimas 24 horas': 'Last 24 hours', 'Desde': 'From', 'Hasta': 'To',
+  'Checklist de actividades': 'Activity checklist', 'Desmarca cualquier tarea que no quieras incluir en este reporte.': 'Uncheck any task you do not want to include in this report.', 'Desmarcar todas': 'Uncheck all', 'Seleccionar todas': 'Select all',
+  'No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.': 'You did not complete any recorded tasks during this cycle. You can add activities manually.',
+  'Tareas registradas': 'Recorded tasks', 'Trabajo adicional': 'Additional work', 'Agregar tareas manualmente': 'Add tasks manually', 'Agregar actividad manual': 'Add manual activity', '+ Agregar': '+ Add', 'Quitar': 'Remove', 'Notas del día': 'Daily notes',
+  'Generar informe EOD': 'Generate EOD report', 'Generando…': 'Generating…', 'Enviando…': 'Sending…', 'Enviar reporte a Kevin': 'Send report to Kevin', 'Reporte EOD enviado a Kevin correctamente.': 'EOD report sent to Kevin successfully.', 'Historial': 'History', 'Informes enviados': 'Submitted reports', 'Reportes recibidos': 'Received reports', 'Mis reportes enviados': 'My submitted reports', 'Buscar usuario…': 'Search user…', 'Enviado': 'Submitted', 'Aún no hay informes.': 'No reports yet.',
   'Formación del equipo': 'Team training', 'Training Hub': 'Training Hub', 'Tu progreso': 'Your progress', 'Abrir recursos del módulo en Drive ↗': 'Open module resources in Drive ↗',
   'Abrir en Drive ↗': 'Open in Drive ↗', 'Abrir enlace ↗': 'Open link ↗', 'Marcar vista': 'Mark complete', 'Nueva lección': 'New lesson', 'Agregar lección': 'Add lesson',
   'Crear módulo': 'Create module', 'Guardar módulo': 'Save module', 'Eliminar módulo': 'Delete module', 'Eliminar': 'Delete', 'Descripción': 'Description', 'Enlace de Drive': 'Drive link', 'Visible para': 'Visible to',
@@ -102,6 +106,8 @@ const reverseTranslations = Object.fromEntries(Object.entries(translations).map(
 const patterns = [
   [/^(\d+) integrantes$/, '$1 team members'], [/^(\d+) clientes$/, '$1 clients'], [/^(\d+) tareas abiertas$/, '$1 open tasks'], [/^(\d+) sin leer$/, '$1 unread'],
   [/^(\d+) actividades$/, '$1 activities'], [/^(\d+) lecciones$/, '$1 lessons'], [/^(\d+) campañas activas$/, '$1 active campaigns'], [/^(\d+) verificación enviada$/, '$1 verification submitted'],
+  [/^(\d+) de (\d+) tareas seleccionadas$/, '$1 of $2 tasks selected'], [/^(\d+) actividades serán enviadas\.$/, '$1 activities will be submitted.'], [/^(\d+) reporte$/, '$1 report'], [/^(\d+) reportes$/, '$1 reports'],
+  [/^Enviado (.+) · (\d+) actividades$/, 'Submitted $1 · $2 activities'], [/^Ciclo: (.+) — (.+)$/, 'Cycle: $1 — $2'],
   [/^(\d+) clientes totales$/, '$1 total clients'], [/^(\d+) dossiers incompletos$/, '$1 incomplete dossiers'], [/^(\d+) clientes bloqueados$/, '$1 blocked clients'],
   [/^Actualizado por (.+) · (.+)$/, 'Updated by $1 · $2'], [/^Responsable:\s*(.+)$/, 'Owner: $1'], [/^Hora actual:\s*(.+)$/, 'Current time: $1'],
 ]
