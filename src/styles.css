@@ -555,3 +555,19 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 @media (max-width: 420px) {
   .sidebar nav.mobile-open { grid-template-columns: minmax(0, 1fr); }
 }
+
+.credential-vault { border-left: 4px solid #3b87ad; }
+.credential-state { padding: .35rem .65rem; border: 1px solid #246e50; border-radius: 999px; background: #103826; color: #68e5a7; font-size: .7rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.credential-controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.credential-restricted { margin: 0; padding: .85rem; border: 1px solid #31465a; border-radius: 10px; background: #0a1724; color: #9eb1c4; }
+.credential-value { display: grid; width: 100%; min-width: 0; gap: .45rem; padding: .85rem; border: 1px solid #294359; border-radius: 10px; background: #06101a; }
+.credential-value span { color: #7f9bb5; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.credential-value code { display: block; max-width: 100%; color: #d8e9f8; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .78rem; line-height: 1.6; overflow-wrap: anywhere; word-break: break-all; white-space: pre-wrap; }
+.credential-editor { display: grid; width: 100%; gap: .75rem; padding-top: .75rem; border-top: 1px solid #20384d; }
+.credential-editor textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .78rem; word-break: break-all; }
+@media (max-width: 800px) {
+  .credential-controls, .credential-controls > button, .credential-controls > .section-actions, .credential-editor .section-actions { width: 100%; }
+  .credential-controls > button, .credential-controls > .section-actions button, .credential-editor .section-actions button { min-height: 44px; flex: 1 1 auto; }
+  .credential-editor .section-actions { flex-direction: column-reverse; }
+  .credential-editor .section-actions button { width: 100%; }
+}

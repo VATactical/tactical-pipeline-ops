@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
-import { loadClient, markGoogleDocsUpdated, recordDossierEvent, updateClient, updateWorkflowStep } from '../services/opsService'
+import { loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
@@ -84,6 +84,11 @@ export default function ClientDetailPage() {
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [archiveReason, setArchiveReason] = useState('')
   const [archiveNote, setArchiveNote] = useState('')
+  const [secretVisible, setSecretVisible] = useState(false)
+  const [secretValue, setSecretValue] = useState('')
+  const [secretLoading, setSecretLoading] = useState(false)
+  const [secretEditing, setSecretEditing] = useState(false)
+  const [secretDraft, setSecretDraft] = useState('')
 
   const refresh = async () => {
     const result = await loadClient(clientId)
@@ -115,6 +120,8 @@ export default function ClientDetailPage() {
 
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role)
+  const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
+  const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
   const dossierText = buildDossierText(client, updatedBy)
   const copyForGoogleDocs = async () => {
@@ -176,6 +183,34 @@ export default function ClientDetailPage() {
     } catch (resumeError) { setError(resumeError.message) }
     finally { setSaving(false) }
   }
+  const revealMetaToken = async () => {
+    setSecretLoading(true); setError(''); setMessage('')
+    try {
+      const token = await revealClientMetaToken(clientId)
+      setSecretValue(token); setSecretVisible(true)
+    } catch (secretError) { setError(secretError.message) }
+    finally { setSecretLoading(false) }
+  }
+  const hideMetaToken = () => {
+    setSecretVisible(false); setSecretValue('')
+  }
+  const copyMetaToken = async () => {
+    try {
+      await navigator.clipboard.writeText(secretValue)
+      setMessage('Access Token copiado de forma segura.')
+    } catch { setError('No se pudo copiar el token. Selecciónalo manualmente.') }
+  }
+  const saveMetaToken = async (event) => {
+    event.preventDefault()
+    if (!secretDraft.trim()) { setError('El Access Token no puede estar vacío.'); return }
+    setSecretLoading(true); setError(''); setMessage('')
+    try {
+      await saveClientMetaToken(clientId, secretDraft)
+      setSecretValue(''); setSecretVisible(false); setSecretDraft(''); setSecretEditing(false)
+      setMessage('Access Token actualizado y protegido.')
+    } catch (secretError) { setError(secretError.message) }
+    finally { setSecretLoading(false) }
+  }
   const archiveClient = async (event) => {
     event.preventDefault()
     if (!archiveReason.trim()) { setError('Selecciona el motivo de salida.'); return }
@@ -235,6 +270,7 @@ export default function ClientDetailPage() {
     {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? `Pausada el ${new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}` : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
     {adStatusEvents.length > 0 && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p>{event.note}</p><small>{event.actor_name} · {new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
     <section className="content-card docs-sync-status"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
+    <section className="content-card credential-vault"><div className="section-heading"><div><p className="eyebrow">Bóveda de credenciales</p><h3>Meta Access Token</h3><p className="muted">No se incluye en el dossier, PDF, Google Docs ni búsquedas.</p></div><span className="credential-state">Protegido</span></div>{!canViewSensitive ? <p className="credential-restricted">Acceso restringido. Kevin puede habilitar el permiso individual desde Usuarios.</p> : <div className="credential-controls">{!secretVisible ? <button className="secondary-button" type="button" disabled={secretLoading} onClick={revealMetaToken}>{secretLoading ? 'Verificando permiso…' : 'Mostrar token'}</button> : <><div className="credential-value"><span>Access Token</span><code>{secretValue || 'No hay token configurado'}</code></div><div className="section-actions"><button className="secondary-button" type="button" onClick={copyMetaToken} disabled={!secretValue}>Copiar</button><button className="text-button" type="button" onClick={hideMetaToken}>Ocultar</button></div></>}{canManageSensitive && !secretEditing && <button className="text-button" type="button" onClick={() => { hideMetaToken(); setSecretEditing(true); setSecretDraft('') }}>Actualizar token</button>}{canManageSensitive && secretEditing && <form className="credential-editor" onSubmit={saveMetaToken}><label>Nuevo Access Token<textarea rows="4" value={secretDraft} autoComplete="off" spellCheck="false" onChange={(event) => setSecretDraft(event.target.value)} placeholder="Pega aquí el token nuevo" required /></label><div className="section-actions"><button className="text-button" type="button" onClick={() => { setSecretEditing(false); setSecretDraft('') }}>Cancelar</button><button className="primary-button compact-button" disabled={secretLoading}>{secretLoading ? 'Guardando…' : 'Guardar protegido'}</button></div></form>}</div>}</section>
     <section className="content-card missing-dossier-card"><p className="eyebrow">Falta en el dossier</p>{missingFields.length ? <div className="missing-chips">{missingFields.map((label) => <span key={label}>{label}</span>)}</div> : <p className="complete-note">Dossier WWWW completo</p>}</section>
     <div className="print-dossier">
       <header className="print-only print-title"><p>{client.code} · TACTICAL PIPELINE</p><h1>{client.business_name}</h1><span>{client.status} · {client.phase}</span></header>

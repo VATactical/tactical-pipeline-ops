@@ -172,6 +172,17 @@ export async function updateClient(clientId, changes) {
   return data
 }
 
+export async function revealClientMetaToken(clientId) {
+  const { data, error } = await supabase.rpc('reveal_client_meta_token', { p_client_id: clientId })
+  if (error) throw error
+  return data || ''
+}
+
+export async function saveClientMetaToken(clientId, token) {
+  const { error } = await supabase.rpc('save_client_meta_token', { p_client_id: clientId, p_token: token.trim() })
+  if (error) throw error
+}
+
 export async function recordDossierEvent(clientId, action, profileId) {
   const { error } = await supabase.from('client_dossier_events').insert({ client_id: clientId, action })
   if (error) throw error

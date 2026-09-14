@@ -11,11 +11,11 @@ const roles = [
 const timezones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/Managua', 'Africa/Lagos', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles']
 const permissionLabels = {
   clients_create: 'Crear clientes', clients_edit: 'Editar dossiers', tasks_create: 'Crear tareas',
-  calendar_manage: 'Crear eventos', eod_reports: 'Generar EOD',
+  calendar_manage: 'Crear eventos', eod_reports: 'Generar EOD', sensitive_credentials_view: 'Ver credenciales sensibles',
 }
 const defaultPermissions = {
   clients_create: false, clients_edit: true, tasks_create: false,
-  calendar_manage: true, eod_reports: true, users_manage: false,
+  calendar_manage: true, eod_reports: true, users_manage: false, sensitive_credentials_view: false,
 }
 const allPermissions = Object.fromEntries(Object.keys(permissionLabels).map((key) => [key, true]))
 
