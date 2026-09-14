@@ -104,7 +104,7 @@ export default function ClientsPage() {
       const responsible = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }[client.assigned_role] || 'Sin asignar'
       return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
-        <h3>{client.business_name}</h3><p>Responsable: {responsible}</p>
+        <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p><p>Responsable interno: {responsible}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && !client.archived && <span className="blocked">Bloqueo abierto</span>}</div>

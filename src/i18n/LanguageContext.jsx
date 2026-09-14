@@ -17,11 +17,11 @@ const translations = {
   'Mis tareas abiertas': 'My open tasks', 'Mis tareas atrasadas': 'My overdue tasks', 'Qué debes hacer ahora': 'What you need to do now', 'EOD del equipo': 'Team EOD',
   'Últimos informes': 'Latest reports', 'Prioridad ejecutiva': 'Executive priority', 'Próxima acción': 'Next action', 'Ver todas': 'View all', 'Ver expediente →': 'View dossier →',
   'Encuentra rápidamente el expediente que necesita atención.': 'Quickly find the dossier that needs attention.', 'Buscar': 'Search', 'Buscar cliente': 'Search client',
-  'Cliente, código, propietario o ciudad…': 'Client, code, owner, or city…', 'Filtrar por estado': 'Filter by status', 'Responsable': 'Owner', 'Servicio': 'Service',
+  'Cliente, código, propietario o ciudad…': 'Client, code, owner, or city…', 'Filtrar por estado': 'Filter by status', 'Responsable': 'Assignee', 'Servicio': 'Service',
   'Prioridad': 'Priority', 'Bloqueos': 'Blockers', 'Ordenar': 'Sort', 'Orden recomendado': 'Recommended order', 'Todos': 'All', 'Todas': 'All',
   'Con bloqueos': 'With blockers', 'Sin bloqueos': 'Without blockers', 'No encontramos clientes': 'No clients found', 'Cambia o limpia los filtros para ver más resultados.': 'Change or clear the filters to see more results.',
   'Limpiar filtros': 'Clear filters', 'Ver filtros': 'Show filters', '+ Registrar cliente': '+ Add client', 'Nuevo cliente': 'New client', 'Registrar y generar SOP automáticamente': 'Add and generate SOP automatically',
-  'Código': 'Code', 'Nombre comercial': 'Business name', 'Propietario': 'Owner', 'Responsable interno': 'Internal owner', 'Estado': 'Status', 'Registrar cliente': 'Add client', 'Registrando…': 'Adding…',
+  'Código': 'Code', 'Nombre comercial': 'Business name', 'Propietario': 'Client owner', 'Responsable interno': 'Internal assignee', 'Estado': 'Status', 'Registrar cliente': 'Add client', 'Registrando…': 'Adding…',
   'Cerrar': 'Close', 'Seguimiento por cliente': 'Client tracking', 'Falta en el dossier': 'Missing from dossier', 'Siguiente paso del proceso': 'Next process step', 'Tareas abiertas': 'Open tasks',
   '← Todos los clientes': '← All clients', 'Buscar en este dossier': 'Search this dossier', 'Escribe código o nombre…': 'Type code or name…', 'Abrir Slack ↗': 'Open Slack ↗',
   'Abrir Drive ↗': 'Open Drive ↗', 'Copiar para Google Docs': 'Copy for Google Docs', 'Descargar WWWW PDF': 'Download WWWW PDF', 'Abrir Google Docs ↗': 'Open Google Docs ↗',
@@ -97,7 +97,7 @@ const translations = {
   'Contexto, instrucciones o información adicional…': 'Context, instructions, or additional information…', 'Ej. EIN, presupuesto, pixel, dominio…': 'E.g. EIN, budget, pixel, domain…',
   'Ej. Reunión con cliente o revisión manual': 'E.g. Client meeting or manual review', 'Escribe una ciudad o zona…': 'Type a city or time zone…', 'Resultados, bloqueos o contexto para Kevin…': 'Results, blockers, or context for Kevin…',
   'Título de la nota': 'Note title', 'PNG, JPG o WebP · máximo 5 MB': 'PNG, JPG, or WebP · 5 MB maximum', 'Tu agenda se muestra en': 'Your calendar is shown in',
-  'Responsable:': 'Owner:', 'Seleccionado:': 'Selected:', 'Zona del evento:': 'Event timezone:', 'Hecho por Diego Romario · Nicaragua': 'Built by Diego Romario · Nicaragua',
+  'Responsable:': 'Internal assignee:', 'Propietario del cliente:': 'Client owner:', 'Responsable interno:': 'Internal assignee:', 'Seleccionado:': 'Selected:', 'Zona del evento:': 'Event timezone:', 'Hecho por Diego Romario · Nicaragua': 'Built by Diego Romario · Nicaragua',
   'abiertos': 'open', 'actividades': 'activities', 'actividades reportadas': 'reported activities', 'activos': 'active', 'agendadas': 'scheduled', 'bloqueo': 'blocker',
   'campañas activas': 'active campaigns', 'campañas sin lanzar': 'campaigns not launched', 'clientes': 'clients', 'clientes bloqueados': 'blocked clients', 'clientes sin actualización': 'clients without updates',
   'clientes totales': 'total clients', 'completadas el': 'completed on', 'de': 'of', 'dossiers incompletos': 'incomplete dossiers', 'integrantes': 'team members', 'lecciones': 'lessons',
@@ -114,7 +114,7 @@ const patterns = [
   [/^(\d+) de (\d+) tareas seleccionadas$/, '$1 of $2 tasks selected'], [/^(\d+) actividades serán enviadas\.$/, '$1 activities will be submitted.'], [/^(\d+) reporte$/, '$1 report'], [/^(\d+) reportes$/, '$1 reports'],
   [/^Enviado (.+) · (\d+) actividades$/, 'Submitted $1 · $2 activities'], [/^Ciclo: (.+) — (.+)$/, 'Cycle: $1 — $2'],
   [/^(\d+) clientes totales$/, '$1 total clients'], [/^(\d+) dossiers incompletos$/, '$1 incomplete dossiers'], [/^(\d+) clientes bloqueados$/, '$1 blocked clients'],
-  [/^Actualizado por (.+) · (.+)$/, 'Updated by $1 · $2'], [/^Responsable:\s*(.+)$/, 'Owner: $1'], [/^Hora actual:\s*(.+)$/, 'Current time: $1'],
+  [/^Actualizado por (.+) · (.+)$/, 'Updated by $1 · $2'], [/^Responsable:\s*(.+)$/, 'Internal assignee: $1'], [/^Propietario del cliente:\s*(.+)$/, 'Client owner: $1'], [/^Responsable interno:\s*(.+)$/, 'Internal assignee: $1'], [/^Hora actual:\s*(.+)$/, 'Current time: $1'],
 ]
 
 function translateValue(value, language) {
