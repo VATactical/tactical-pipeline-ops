@@ -4,7 +4,7 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
   const [reportsResult, tasksResult] = await runWithSessionRetry(() => Promise.all([
     supabase
       .from('eod_reports')
-      .select('*, profiles(full_name, role)')
+      .select('*, profiles(full_name, role, timezone)')
       .order('report_date', { ascending: false })
       .order('updated_at', { ascending: false })
       .limit(120),
@@ -35,7 +35,7 @@ export async function saveEodReport({ profileId, reportDate, periodStart, period
     manual_tasks: manualTasks.filter((item) => item.trim()).map((title) => ({ title: title.trim() })),
     notes: notes.trim(),
     updated_at: submittedAt,
-  }, { onConflict: 'user_id,report_date' }).select('*, profiles(full_name, role)').single()
+  }, { onConflict: 'user_id,report_date' }).select('*, profiles(full_name, role, timezone)').single()
   if (error) throw error
   return data
 }

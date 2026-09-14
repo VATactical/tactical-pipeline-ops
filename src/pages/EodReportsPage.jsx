@@ -2,14 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
 import { loadEodData, saveEodReport } from '../services/eodService'
-
-const DAY_MS = 24 * 60 * 60 * 1000
-
-function dateKeyInTimeZone(date, timeZone) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
-}
+import { getCalendarDayWindow } from '../utils/timeZone'
 
 function formatMoment(value, timeZone) {
   if (!value) return ''
@@ -20,9 +13,9 @@ export default function EodReportsPage() {
   const { profile } = useAuth()
   const timeZone = profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Managua'
   const isAdmin = profile?.role === 'superadmin'
-  const [windowEnd, setWindowEnd] = useState(() => new Date())
-  const windowStart = useMemo(() => new Date(windowEnd.getTime() - DAY_MS), [windowEnd])
-  const reportDate = dateKeyInTimeZone(windowEnd, timeZone)
+  const [cycleReference, setCycleReference] = useState(() => new Date())
+  const cycle = useMemo(() => getCalendarDayWindow(cycleReference, timeZone), [cycleReference, timeZone])
+  const reportDate = cycle.reportDate
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
   const [reports, setReports] = useState([])
@@ -36,7 +29,7 @@ export default function EodReportsPage() {
   const [message, setMessage] = useState('')
 
   const refresh = useCallback(async () => {
-    const data = await loadEodData(profile, { windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString() })
+    const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
     setCompletedTasks(data.completedTasks)
     setReports(data.reports)
     if (!isAdmin) {
@@ -52,7 +45,7 @@ export default function EodReportsPage() {
         setNotes('')
       }
     }
-  }, [isAdmin, profile, reportDate, windowEnd, windowStart])
+  }, [cycle, isAdmin, profile, reportDate])
 
   useEffect(() => {
     setLoading(true)
@@ -74,7 +67,7 @@ export default function EodReportsPage() {
   const changeManual = (index, value) => setManualTasks((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))
 
   const openComposer = () => {
-    setWindowEnd(new Date())
+    setCycleReference(new Date())
     setComposerOpen(true)
     setMessage('')
   }
@@ -91,8 +84,8 @@ export default function EodReportsPage() {
       await saveEodReport({
         profileId: profile.id,
         reportDate,
-        periodStart: windowStart.toISOString(),
-        periodEnd: windowEnd.toISOString(),
+        periodStart: cycle.start.toISOString(),
+        periodEnd: cycle.end.toISOString(),
         completedTasks: selectedTasks,
         manualTasks,
         notes,
@@ -106,10 +99,10 @@ export default function EodReportsPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{isAdmin ? 'Trabajo diario del equipo' : 'Informe de fin de día'}</h2><p className="muted">{isAdmin ? 'Reportes enviados, ordenados por día y usuario.' : 'Selecciona el trabajo realizado durante las últimas 24 horas y envíalo a Kevin.'}</p></div>{!isAdmin && profile?.permissions?.eod_reports && <button className="primary-button compact-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? 'Cerrar reporte' : 'Preparar reporte'}</button>}</header>
+    <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{isAdmin ? 'Trabajo diario del equipo' : 'Informe de fin de día'}</h2><p className="muted">{isAdmin ? 'Reportes enviados, ordenados por día y usuario.' : 'Selecciona el trabajo completado hoy, de 00:00 a 23:59, y envíalo a Kevin.'}</p></div>{!isAdmin && profile?.permissions?.eod_reports && <button className="primary-button compact-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? 'Cerrar reporte' : 'Preparar reporte'}</button>}</header>
     {error && <p className="form-error">{error}</p>}{message && <p className="form-success">{message}</p>}
 
-    {!isAdmin && profile?.permissions?.eod_reports && <section className="content-card eod-cycle-summary"><div><p className="eyebrow">Ciclo diario</p><h3>Últimas 24 horas</h3></div><div className="eod-period"><span>Desde <strong>{formatMoment(windowStart, timeZone)}</strong></span><span>Hasta <strong>{formatMoment(windowEnd, timeZone)}</strong></span><small>{timeZone}</small></div></section>}
+    {!isAdmin && profile?.permissions?.eod_reports && <section className="content-card eod-cycle-summary"><div><p className="eyebrow">Ciclo diario</p><h3>Día calendario · 00:00–23:59</h3></div><div className="eod-period"><span>Desde <strong>{formatMoment(cycle.start, timeZone)}</strong></span><span>Hasta <strong>{formatMoment(cycle.end, timeZone)}</strong></span><small>{timeZone}</small></div></section>}
 
     {!isAdmin && profile?.permissions?.eod_reports && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
       <div className="section-heading"><div><p className="eyebrow">Checklist de actividades</p><h3>{selectedTaskIds.length} de {completedTasks.length} tareas seleccionadas</h3><p className="muted">Desmarca cualquier tarea que no quieras incluir en este reporte.</p></div>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? 'Desmarcar todas' : 'Seleccionar todas'}</button>}</div>
@@ -121,6 +114,6 @@ export default function EodReportsPage() {
     </form>}
 
     {!isAdmin && !profile?.permissions?.eod_reports && <section className="content-card"><p className="muted">Tu usuario no tiene permiso para generar informes EOD.</p></section>}
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{isAdmin ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3></div>{isAdmin && <input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…" />}</div><div className="report-day-list">{groupedReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className="report-user-grid">{group.items.map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><span className="status-pill">Enviado</span></div><small>Enviado {formatMoment(report.submitted_at || report.updated_at, timeZone)} · {(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</small><small className="report-period">Ciclo: {formatMoment(report.period_start, timeZone)} — {formatMoment(report.period_end, timeZone)}</small><ul>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => <li key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>{report.notes && <p><strong>Notas:</strong> {report.notes}</p>}</article>)}</div></section>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{isAdmin ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3></div>{isAdmin && <input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…" />}</div><div className="report-day-list">{groupedReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className="report-user-grid">{group.items.map((report) => { const reportTimeZone = report.profiles?.timezone || timeZone; return <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><span className="status-pill">Enviado</span></div><small>Enviado {formatMoment(report.submitted_at || report.updated_at, timeZone)} · {(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</small><small className="report-period">Ciclo: {formatMoment(report.period_start, reportTimeZone)} — {formatMoment(report.period_end, reportTimeZone)} · {reportTimeZone}</small><ul>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => <li key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>{report.notes && <p><strong>Notas:</strong> {report.notes}</p>}</article> })}</div></section>)}</div></section>
   </div>
 }
