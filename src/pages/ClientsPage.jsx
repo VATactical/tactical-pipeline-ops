@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { createClient } from '../services/opsService'
 
 const requiredFields = ['legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info', 'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date', 'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info', 'retell_agent_id', 'make_scenario_link', 'slack_channel_link']
-const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE']
+const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE', 'ADS PAUSED']
 const naturalCode = (value) => Number(String(value).match(/\d+/)?.[0] || 0)
 const dossierComplete = (client) => requiredFields.every((key) => client[key] && !/pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(client[key])))
 
@@ -96,12 +96,12 @@ export default function ClientsPage() {
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
       const responsible = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }[client.assigned_role] || 'Sin asignar'
-      return <Link className={`client-card ${blocked ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+      return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Responsable: {responsible}</p>
-        <div className={`client-deadline ${client.target_launch_date && client.status !== 'ADS LIVE' && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
-        <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{blocked && <span className="blocked">Bloqueo abierto</span>}</div>
+        <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.status === 'ADS PAUSED' && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && <span className="blocked">Bloqueo abierto</span>}</div>
         <span className="card-link">Ver expediente →</span>
       </Link>
     })}</section> : <section className="content-card empty-state"><h3>No encontramos clientes</h3><p className="muted">Cambia o limpia los filtros para ver más resultados.</p><button className="secondary-button" onClick={clearFilters}>Limpiar filtros</button></section>}

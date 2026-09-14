@@ -13,7 +13,7 @@ import {
 const priorityRank = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
 const isOverdue = (task) => task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
 const isStale = (client) => Date.now() - new Date(client.updated_at).getTime() > 3 * 86400000
-const launchOverdue = (client) => client.target_launch_date && client.status !== 'ADS LIVE' && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
+const launchOverdue = (client) => client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
 const dossierFields = [
   'legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info',
   'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date',
@@ -24,7 +24,7 @@ const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|r
 
 function ClientStatusCards({ clients }) {
   const counts = clients.reduce((total, client) => ({ ...total, [client.status]: (total[client.status] || 0) + 1 }), {})
-  return <section className="metric-grid status-metrics" aria-label="Clientes por estado"><article className="metric-card blue"><span>Onboarding</span><strong>{counts.ONBOARDING || 0}</strong><small>de {clients.length} clientes</small></article><article className="metric-card amber"><span>A2P Submitted</span><strong>{counts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article><article className="metric-card green"><span>Ads Live</span><strong>{counts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article></section>
+  return <section className="metric-grid status-metrics" aria-label="Clientes por estado"><article className="metric-card blue"><span>Onboarding</span><strong>{counts.ONBOARDING || 0}</strong><small>de {clients.length} clientes</small></article><article className="metric-card amber"><span>A2P Submitted</span><strong>{counts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article><article className="metric-card green"><span>Ads Live</span><strong>{counts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article><article className="metric-card purple"><span>Ads Paused</span><strong>{counts['ADS PAUSED'] || 0}</strong><small>campañas pausadas</small></article></section>
 }
 
 function AdminComposer({ clients, onCreated }) {
@@ -86,8 +86,8 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
   const overdue = data.tasks.filter(isOverdue)
   const stale = data.clients.filter(isStale)
   const lateLaunches = data.clients.filter(launchOverdue)
-  const attentionQueue = clientSummaries.filter(({ client, missingCount, clientBlockers }) => clientBlockers || launchOverdue(client) || !client.intake_form_completed || missingCount > 0)
-    .sort((a, b) => Number(Boolean(b.clientBlockers)) - Number(Boolean(a.clientBlockers)) || Number(launchOverdue(b.client)) - Number(launchOverdue(a.client)))
+  const attentionQueue = clientSummaries.filter(({ client, missingCount, clientBlockers }) => clientBlockers || client.status === 'ADS PAUSED' || launchOverdue(client) || !client.intake_form_completed || missingCount > 0)
+    .sort((a, b) => Number(Boolean(b.clientBlockers)) - Number(Boolean(a.clientBlockers)) || Number(b.client.status === 'ADS PAUSED') - Number(a.client.status === 'ADS PAUSED') || Number(launchOverdue(b.client)) - Number(launchOverdue(a.client)))
     .slice(0, 6)
 
   return <>
@@ -98,7 +98,7 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
       <article className="metric-card red"><span>Deadlines ADS vencidos</span><strong>{lateLaunches.length}</strong><small>campañas sin lanzar</small></article>
     </section>
     <section className="dashboard-grid">
-      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Prioridad ejecutiva</p><h3>Clientes que requieren atención</h3></div><Link to="/clientes">Ver filtros</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">No hay alertas críticas.</p>}{attentionQueue.map(({ client, missingCount, clientBlockers }) => <Link to={`/clientes/${client.id}`} className="attention-row" key={client.id}><div><strong>{client.code} · {client.business_name}</strong><small>{!client.intake_form_completed ? 'Formulario pendiente' : clientBlockers ? `${clientBlockers} bloqueo(s)` : launchOverdue(client) ? 'Deadline ADS vencido' : `${missingCount} campos pendientes`}</small></div><span>→</span></Link>)}</div></div>
+      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Prioridad ejecutiva</p><h3>Clientes que requieren atención</h3></div><Link to="/clientes">Ver filtros</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">No hay alertas críticas.</p>}{attentionQueue.map(({ client, missingCount, clientBlockers }) => <Link to={`/clientes/${client.id}`} className="attention-row" key={client.id}><div><strong>{client.code} · {client.business_name}</strong><small>{client.status === 'ADS PAUSED' ? `ADS pausados: ${client.ads_pause_reason}` : !client.intake_form_completed ? 'Formulario pendiente' : clientBlockers ? `${clientBlockers} bloqueo(s)` : launchOverdue(client) ? 'Deadline ADS vencido' : `${missingCount} campos pendientes`}</small></div><span>→</span></Link>)}</div></div>
       <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Próxima agenda</p><h3>Eventos</h3></div><Link to="/calendario">Calendario</Link></div><div className="attention-list">{data.upcomingEvents.length === 0 && <p className="muted">Sin eventos próximos.</p>}{data.upcomingEvents.map((event) => <div className="attention-row" key={event.id}><div><strong>{event.title}</strong><small>{new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(event.start_at))}</small></div></div>)}</div></div>
     </section>
     <AdminComposer clients={data.clients} onCreated={onCreated} />
@@ -108,9 +108,9 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
     <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
     <section>
       <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
-      <div className="dossier-grid">{clientSummaries.map(({ client, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+      <div className="dossier-grid">{clientSummaries.map(({ client, openTasks, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers || client.status === 'ADS PAUSED' ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
-        <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
+        <div className="dossier-meta"><span>{client.phase}</span><span>{openTasks} tareas abiertas</span>{client.status === 'ADS PAUSED' && <span className="pause-text">ADS pausados · {client.ads_pause_reason}</span>}{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
         <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
         <div className={`client-deadline ${launchOverdue(client) ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div><div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div><span className="card-link">Ver expediente completo →</span>
       </Link>)}</div>
