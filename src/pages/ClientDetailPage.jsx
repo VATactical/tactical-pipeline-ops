@@ -53,6 +53,11 @@ const fieldLabels = {
   ads_pause_reason: 'Motivo de pausa ADS',
   ads_paused_at: 'Fecha de pausa ADS',
   ads_paused_by: 'Usuario que pausó ADS',
+  archived: 'Cliente archivado',
+  archive_reason: 'Motivo de archivo',
+  archive_note: 'Nota de salida',
+  archived_at: 'Fecha de archivo',
+  archived_by: 'Usuario que archivó',
 }
 const dossierFields = sections.flatMap((section) => section.fields)
 const isMissing = (value, type) => type === 'boolean' ? value == null : type === 'number' ? value == null || value === '' || Number(value) <= 0 : value == null || value === '' || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
@@ -76,6 +81,9 @@ export default function ClientDetailPage() {
   const [highlightedSection, setHighlightedSection] = useState(null)
   const [pauseOpen, setPauseOpen] = useState(false)
   const [pauseReason, setPauseReason] = useState('')
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiveReason, setArchiveReason] = useState('')
+  const [archiveNote, setArchiveNote] = useState('')
 
   const refresh = async () => {
     const result = await loadClient(clientId)
@@ -106,7 +114,8 @@ export default function ClientDetailPage() {
   }
 
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
-  const canEdit = Boolean(profile?.permissions?.clients_edit)
+  const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role)
+  const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
   const dossierText = buildDossierText(client, updatedBy)
   const copyForGoogleDocs = async () => {
     try {
@@ -167,6 +176,28 @@ export default function ClientDetailPage() {
     } catch (resumeError) { setError(resumeError.message) }
     finally { setSaving(false) }
   }
+  const archiveClient = async (event) => {
+    event.preventDefault()
+    if (!archiveReason.trim()) { setError('Selecciona el motivo de salida.'); return }
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, { archived: true, archive_reason: archiveReason, archive_note: archiveNote })
+      await refresh()
+      setArchiveOpen(false); setArchiveReason(''); setArchiveNote('')
+      setMessage('Cliente archivado correctamente.')
+    } catch (archiveError) { setError(archiveError.message) }
+    finally { setSaving(false) }
+  }
+  const restoreClient = async () => {
+    if (!window.confirm('¿Restaurar este cliente a la operación activa?')) return
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, { archived: false })
+      await refresh()
+      setMessage('Cliente restaurado a la operación activa.')
+    } catch (restoreError) { setError(restoreError.message) }
+    finally { setSaving(false) }
+  }
   const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
   const launchOverdue = launchDate && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && launchDate < new Date()
   const slackChannelUrl = /^https?:\/\//i.test(client.slack_channel_link || '') ? client.slack_channel_link : ''
@@ -190,10 +221,12 @@ export default function ClientDetailPage() {
   }
 
   return <div className="page-stack">
-    <Link className="back-link" to="/clientes">← Todos los clientes</Link>
-    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · Active Client Dossier</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>{canEdit && client.status === 'ADS LIVE' && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>Pausar ADS</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">Abrir Slack ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">Abrir Drive ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
+    <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {client.archived ? 'Clientes archivados' : 'Todos los clientes'}</Link>
+    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? 'Archived Client Dossier' : 'Active Client Dossier'}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? 'ARCHIVADO' : client.status}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>Archivar cliente</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : 'Restaurar cliente'}</button>{canEdit && client.status === 'ADS LIVE' && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>Pausar ADS</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">Abrir Slack ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">Abrir Drive ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>Copiar para Google Docs</button><button className="secondary-button" type="button" onClick={downloadPdf}>Descargar WWWW PDF</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">Abrir Google Docs ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>Marcar como actualizado</button>}</div></header>
     <form className="dossier-search" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
+    {archiveOpen && <form className="content-card client-archive-form" onSubmit={archiveClient}><div><p className="eyebrow">Salida de la operación</p><h3>Archivar cliente</h3><p className="muted">El dossier y el historial se conservarán fuera de los clientes activos.</p></div><label>Motivo<select value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} required><option value="">Seleccionar…</option><option>Contrato finalizado</option><option>Cancelación del cliente</option><option>Falta de pago</option><option>Campaña terminada</option><option>Otro</option></select></label><label>Nota final opcional<textarea rows="4" maxLength="2000" value={archiveNote} onChange={(event) => setArchiveNote(event.target.value)} placeholder="Contexto de la salida, pendientes o condiciones para regresar…" /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(false); setArchiveReason(''); setArchiveNote('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Archivando…' : 'Confirmar archivo'}</button></div></form>}
+    {client.archived && <section className="content-card client-archive-summary"><div><p className="eyebrow">Cliente archivado</p><h3>{client.archive_reason}</h3>{client.archive_note && <p>{client.archive_note}</p>}<small>{client.archived_at ? `Archivado el ${new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}` : ''}</small></div>{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : 'Restaurar cliente'}</button>}</section>}
     {pauseOpen && <form className="content-card ads-pause-form" onSubmit={pauseAds}><div><p className="eyebrow">Pausar campaña</p><h3>¿Por qué se pausarán los ADS?</h3><p className="muted">El motivo quedará visible en el cliente y en el historial.</p></div><label>Motivo de pausa<textarea rows="4" maxLength="2000" value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} placeholder="Ej. CPL alto, método de pago rechazado o esperando aprobación del cliente…" required /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setPauseOpen(false); setPauseReason('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Pausando…' : 'Confirmar pausa'}</button></div></form>}
     <section className={`content-card intake-status ${client.intake_form_completed ? 'complete' : 'pending'}`}><div><p className="eyebrow">Antes del dossier</p><h3>{client.intake_form_completed ? 'Formulario del cliente recibido' : 'Formulario del cliente pendiente'}</h3><p className="muted">{client.intake_form_completed_at ? `Marcado el ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.intake_form_completed_at))}` : 'Confirma este paso antes de completar accesos y datos del WWWW.'}</p></div>{canEdit && <button className={client.intake_form_completed ? 'secondary-button' : 'primary-button compact-button'} type="button" disabled={saving} onClick={toggleIntakeForm}>{client.intake_form_completed ? 'Marcar pendiente' : 'Marcar formulario recibido'}</button>}</section>
     <section className="metric-grid compact"><article className="metric-card blue"><span>Gasto</span><strong>${client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
@@ -217,7 +250,7 @@ export default function ClientDetailPage() {
       })}
     </div>
 
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Operational Task Log</p><h3>Proceso asignado por rol</h3></div><span className="muted">{workflowSteps.filter((item) => item.completed).length} de {workflowSteps.length} visibles completados</span></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{step.title}</strong><small>{step.owner_name}</small></div></label>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Operational Task Log</p><h3>Proceso asignado por rol</h3></div><span className="muted">{workflowSteps.filter((item) => item.completed).length} de {workflowSteps.length} visibles completados</span></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{step.title}</strong><small>{step.owner_name}</small></div></label>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Notas del cliente</p><h3>Contexto compartido</h3></div><span className="muted">{notes.length} nota{notes.length === 1 ? '' : 's'}</span></div><div className="note-list">{notes.length === 0 && <p className="muted">Kevin todavía no ha agregado notas para este cliente.</p>}{notes.map((note) => <article className="note-card" key={note.id}><strong>{note.title}</strong>{note.body && <p>{note.body}</p>}<small>{new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`}>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => fieldLabels[field] || field).join(', ')}</p>}<small>{new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
     <div className="dashboard-grid"><section className="content-card"><p className="eyebrow">Tareas adicionales</p><h3>{tasks.length} visibles</h3>{tasks.slice(0, 8).map((task) => <div className="mini-row" key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{task.status} · {task.owner_name}</small></div></div>)}</section><section className="content-card"><p className="eyebrow">Bloqueos</p><h3>{blockers.filter((item) => !item.resolved).length} abiertos</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section></div>

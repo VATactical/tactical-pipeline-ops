@@ -124,13 +124,27 @@ export function AuthProvider({ children }) {
   }, [loadProfileResilient])
 
   const signIn = useCallback(async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-  }, [])
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      setSession(data.session)
+      await loadProfileResilient(data.user?.id)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadProfileResilient])
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (error) {
+      const { error: localError } = await supabase.auth.signOut({ scope: 'local' })
+      if (localError) throw error
+    }
+    setSession(null)
+    setProfile(null)
+    profileRef.current = null
+    setLoading(false)
   }, [])
 
   const value = useMemo(

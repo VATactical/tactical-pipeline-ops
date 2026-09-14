@@ -3,7 +3,7 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 export async function loadCalendarData() {
   const [eventsResult, clientsResult, notificationsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('calendar_events').select('*, clients(code, business_name)').order('start_at'),
-    supabase.from('clients').select('id, code, business_name, timezone').order('code'),
+    supabase.from('clients').select('id, code, business_name, timezone').eq('archived', false).order('code'),
     supabase.from('notifications').select('*').is('read_at', null).lte('notify_at', new Date().toISOString()).order('notify_at'),
     supabase.rpc('get_team_directory'),
   ]))

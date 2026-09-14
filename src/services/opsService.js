@@ -38,7 +38,7 @@ function normalizeStatus(status) {
 
 export async function loadOperations() {
   const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult] = await runWithSessionRetry(() => Promise.all([
-    supabase.from('clients').select('*').order('code'),
+    supabase.from('clients').select('*').eq('archived', false).order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('client_workflow_steps').select('*').order('sort_order'),
@@ -51,15 +51,19 @@ export async function loadOperations() {
   const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error
   if (error) throw error
 
+  const clients = clientsResult.data || []
+  const activeClientIds = new Set(clients.map((client) => client.id))
+  const belongsToActiveClient = (item) => !item.client_id || activeClientIds.has(item.client_id)
+
   return {
-    clients: clientsResult.data || [],
-    tasks: tasksResult.data || [],
-    blockers: blockersResult.data || [],
-    workflowSteps: workflowResult.data || [],
-    notes: notesResult.data || [],
+    clients,
+    tasks: (tasksResult.data || []).filter(belongsToActiveClient),
+    blockers: (blockersResult.data || []).filter(belongsToActiveClient),
+    workflowSteps: (workflowResult.data || []).filter(belongsToActiveClient),
+    notes: (notesResult.data || []).filter(belongsToActiveClient),
     activity: activityResult.data || [],
     eodReports: eodResult.data || [],
-    upcomingEvents: eventsResult.data || [],
+    upcomingEvents: (eventsResult.data || []).filter(belongsToActiveClient),
   }
 }
 

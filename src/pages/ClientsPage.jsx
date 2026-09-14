@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
@@ -12,6 +12,7 @@ const dossierComplete = (client) => requiredFields.every((key) => client[key] &&
 
 export default function ClientsPage() {
   const { profile } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [clients, setClients] = useState([])
   const [blockedIds, setBlockedIds] = useState(new Set())
   const [tasks, setTasks] = useState([])
@@ -42,8 +43,12 @@ export default function ClientsPage() {
     }).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false))
   }, [])
 
-  const counts = useMemo(() => Object.fromEntries(statuses.map((status) => [status, status === 'Todos' ? clients.length : clients.filter((client) => client.status === status).length])), [clients])
-  const filtered = useMemo(() => clients.filter((client) => {
+  const showArchived = searchParams.get('vista') === 'archivados'
+  const activeClients = useMemo(() => clients.filter((client) => !client.archived), [clients])
+  const archivedClients = useMemo(() => clients.filter((client) => client.archived), [clients])
+  const visibleClients = showArchived ? archivedClients : activeClients
+  const counts = useMemo(() => Object.fromEntries(statuses.map((status) => [status, status === 'Todos' ? visibleClients.length : visibleClients.filter((client) => client.status === status).length])), [visibleClients])
+  const filtered = useMemo(() => visibleClients.filter((client) => {
     const term = filters.search.trim().toLowerCase()
     const matchesSearch = !term || `${client.code} ${client.business_name} ${client.owner_name} ${client.address}`.toLowerCase().includes(term)
     const matchesStatus = filters.status === 'Todos' || client.status === filters.status
@@ -59,9 +64,10 @@ export default function ClientsPage() {
     if (filters.sort === 'Estado') return a.status.localeCompare(b.status) || naturalCode(a.code) - naturalCode(b.code)
     if (filters.sort === 'Actualización reciente') return new Date(b.updated_at) - new Date(a.updated_at)
     return naturalCode(a.code) - naturalCode(b.code)
-  }), [clients, blockedIds, filters, tasks])
+  }), [visibleClients, blockedIds, filters, tasks])
   const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.service || filters.priority !== 'Todas' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
   const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
+  const toggleArchiveView = () => { clearFilters(); setSearchParams(showArchived ? {} : { vista: 'archivados' }) }
   const canCreate = Boolean(profile?.permissions?.clients_create)
   const submitClient = async (event) => {
     event.preventDefault(); setSaving(true); setError('')
@@ -75,7 +81,7 @@ export default function ClientsPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">Pipeline</p><h2>Clientes</h2><p className="muted">Encuentra rápidamente el expediente que necesita atención.</p></div><div className="header-actions"><span className="status-pill">{clients.length} activos</span>{canCreate && <button className="primary-button compact-button" onClick={() => setShowForm((value) => !value)}>+ Registrar cliente</button>}</div></header>
+    <header className="page-header"><div><p className="eyebrow">{showArchived ? 'Historial de clientes' : 'Pipeline'}</p><h2>{showArchived ? 'Clientes archivados' : 'Clientes'}</h2><p className="muted">{showArchived ? 'Consulta expedientes retirados sin mezclarlos con la operación activa.' : 'Encuentra rápidamente el expediente que necesita atención.'}</p></div><div className="header-actions"><span className="status-pill">{activeClients.length} activos</span><button className="secondary-button compact-button archive-view-button" type="button" onClick={toggleArchiveView}>{showArchived ? '← Volver a activos' : `Archivados (${archivedClients.length})`}</button>{canCreate && !showArchived && <button className="primary-button compact-button" onClick={() => setShowForm((value) => !value)}>+ Registrar cliente</button>}</div></header>
     {error && <p className="form-error">{error}</p>}
     {showForm && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Nuevo cliente</p><h3>Registrar y generar SOP automáticamente</h3></div><button className="secondary-button" onClick={() => setShowForm(false)}>Cerrar</button></div><form className="client-form" onSubmit={submitClient}><div><label>Código</label><input value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))} placeholder="C11" required /></div><div><label>Nombre comercial</label><input value={form.business_name} onChange={(event) => setForm((current) => ({ ...current, business_name: event.target.value }))} required /></div><div><label>Propietario</label><input value={form.owner_name} onChange={(event) => setForm((current) => ({ ...current, owner_name: event.target.value }))} /></div><div><label>Responsable interno</label><select value={form.assigned_role} onChange={(event) => setForm((current) => ({ ...current, assigned_role: event.target.value }))}><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option><option value="superadmin">Kevin</option></select></div><div><label>Estado</label><select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select></div><div className="wide"><button className="primary-button" disabled={saving}>{saving ? 'Registrando…' : 'Registrar cliente'}</button></div></form></section>}
     <section className="client-filters content-card">
@@ -88,7 +94,7 @@ export default function ClientsPage() {
         <label>Bloqueos<select value={filters.blockers} onChange={(event) => setFilter('blockers', event.target.value)}><option>Todos</option><option>Con bloqueos</option><option>Sin bloqueos</option></select></label>
         <label>Ordenar<select value={filters.sort} onChange={(event) => setFilter('sort', event.target.value)}><option>Código</option><option>Actualización reciente</option><option>Nombre</option><option>Estado</option></select></label>
       </div>
-      <div className="filter-summary"><span>{filtered.length} de {clients.length} clientes</span>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div>
+      <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div>
     </section>
     {filtered.length ? <section className="client-grid">{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
@@ -96,14 +102,14 @@ export default function ClientsPage() {
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
       const responsible = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }[client.assigned_role] || 'Sin asignar'
-      return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+      return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Responsable: {responsible}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
-        <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.status === 'ADS PAUSED' && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && <span className="blocked">Bloqueo abierto</span>}</div>
+        <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && !client.archived && <span className="blocked">Bloqueo abierto</span>}</div>
         <span className="card-link">Ver expediente →</span>
       </Link>
-    })}</section> : <section className="content-card empty-state"><h3>No encontramos clientes</h3><p className="muted">Cambia o limpia los filtros para ver más resultados.</p><button className="secondary-button" onClick={clearFilters}>Limpiar filtros</button></section>}
+    })}</section> : <section className="content-card empty-state"><h3>{showArchived ? 'No hay clientes archivados' : 'No encontramos clientes'}</h3><p className="muted">{showArchived ? 'Los clientes que salgan de la operación aparecerán aquí.' : 'Cambia o limpia los filtros para ver más resultados.'}</p><button className="secondary-button" onClick={clearFilters}>Limpiar filtros</button></section>}
   </div>
 }

@@ -357,7 +357,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 }
 
 /* Mobile readability and touch layout */
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   html { font-size: 16px; -webkit-text-size-adjust: 100%; }
   html, body { max-width: 100%; overflow-x: hidden; }
   button, a, input, select, textarea { touch-action: manipulation; }
@@ -527,4 +527,31 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .client-card dl div { grid-template-columns: 1fr; gap: .2rem; }
   .section-heading { flex-direction: column; }
   .section-heading a { min-height: 36px; display: inline-flex; align-items: center; }
+}
+
+.archive-view-button { opacity: .88; }
+.client-card.archived-card { border-color: #425064; background: #0a1420; opacity: .92; }
+.client-signals .archived { border-color: #59697a; background: #263443; color: #d0dae4; }
+.lifecycle.archived { border-color: #647487; background: #293746; color: #e1e8ef; }
+.client-archive-form { display: grid; grid-template-columns: minmax(220px, .85fr) minmax(220px, 1fr) minmax(260px, 1.25fr); gap: 1rem; align-items: end; border-color: #6d5360; border-left: 4px solid #dc7187; }
+.client-archive-form h3, .client-archive-form p:last-child { margin-bottom: 0; }
+.client-archive-form .section-actions { align-self: end; }
+.client-archive-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-left: 4px solid #8291a1; background: #111b27; }
+.client-archive-summary h3 { margin-bottom: .35rem; }
+.client-archive-summary p { color: #b5c3d0; }
+.client-archive-summary small { color: #8397a9; }
+.archive-client-button { border-color: #735261; color: #efb4c1; }
+@media (max-width: 800px) {
+  .sidebar { max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .sidebar nav.mobile-open { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: none; }
+  .sidebar nav a { overflow: visible; }
+  .user-card.mobile-open { padding-bottom: max(.5rem, env(safe-area-inset-bottom)); }
+  .client-archive-form { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .client-archive-form .section-actions { flex-direction: column-reverse; }
+  .client-archive-form .section-actions button { width: 100%; }
+  .client-archive-summary { align-items: stretch; flex-direction: column; }
+  .client-archive-summary .primary-button { width: 100%; }
+}
+@media (max-width: 420px) {
+  .sidebar nav.mobile-open { grid-template-columns: minmax(0, 1fr); }
 }

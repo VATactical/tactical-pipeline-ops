@@ -53,7 +53,7 @@ export default function TasksPage() {
   useEffect(() => {
     runWithSessionRetry(() => Promise.all([
       supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
-      supabase.from('clients').select('id, code, business_name').order('code'),
+      supabase.from('clients').select('id, code, business_name').eq('archived', false).order('code'),
     ])).then(([tasksResult, clientsResult]) => {
       const queryError = tasksResult.error || clientsResult.error
       if (queryError) setError(queryError.message)
