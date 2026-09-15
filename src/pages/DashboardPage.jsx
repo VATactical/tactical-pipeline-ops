@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
+import { loadEodComplianceSummary } from '../services/eodService'
 import {
   createTeamNote,
   loadOperations,
@@ -74,7 +75,12 @@ function GeneralNotes({ notes }) {
   return <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Comunicaciones</p><h3>Notas generales</h3></div></div><div className="note-list">{general.map((note) => <article className="note-card" key={note.id}><strong>{note.title}</strong>{note.body && <p>{note.body}</p>}<small>{new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
 }
 
-function SuperadminDashboard({ data, blockers, onCreated }) {
+function EodComplianceCard({ summary }) {
+  if (!summary) return null
+  return <section className="content-card dashboard-eod-compliance"><div className="section-heading"><div><p className="eyebrow">Cierre diario · hora de Kevin</p><h3>EOD de hoy</h3><p className="muted">{summary.workDate} · corte 8:00 PM · {summary.kevinTimeZone}</p></div><Link to="/eod-reports">Ver detalle</Link></div><div className="eod-compliance-counts"><span className="submitted">{summary.counts.submitted} enviados</span><span className="working-late">{summary.counts.working_late} trabajando</span><span className="pending">{summary.counts.pending} pendientes</span></div><div className="dashboard-eod-users">{summary.rows.map((row) => <span className={row.state} key={row.member.id}>{row.member.full_name}: {row.state === 'submitted' ? 'Enviado' : row.state === 'working_late' ? 'Trabajando' : 'Pendiente'}</span>)}</div></section>
+}
+
+function SuperadminDashboard({ data, blockers, onCreated, eodCompliance }) {
   const clientSummaries = data.clients.map((client) => {
     const missingCount = dossierFields.filter((key) => isMissing(client[key])).length
     const openTasks = data.tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada').length
@@ -92,6 +98,7 @@ function SuperadminDashboard({ data, blockers, onCreated }) {
 
   return <>
     <ClientStatusCards clients={data.clients} />
+    <EodComplianceCard summary={eodCompliance} />
     <section className="metric-grid compact" aria-label="Alertas operativas">
       <article className="metric-card red"><span>Tareas atrasadas</span><strong>{overdue.length}</strong><small>requieren seguimiento</small></article>
       <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
@@ -145,10 +152,18 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [eodCompliance, setEodCompliance] = useState(null)
   const [seenAt, setSeenAt] = useState(profile?.last_task_seen_at)
   const refresh = useCallback(async () => {
-    try { setData(await loadOperations()) } catch (loadError) { setError(loadError.message) }
-  }, [])
+    try {
+      const [operations, compliance] = await Promise.all([
+        loadOperations(),
+        loadEodComplianceSummary(profile),
+      ])
+      setData(operations)
+      setEodCompliance(compliance)
+    } catch (loadError) { setError(loadError.message) }
+  }, [profile])
 
   useEffect(() => { refresh().finally(() => setLoading(false)); return subscribeToOperations(refresh) }, [refresh])
   useEffect(() => setSeenAt(profile?.last_task_seen_at), [profile?.last_task_seen_at])
@@ -171,6 +186,6 @@ export default function DashboardPage() {
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa el estado, crea notas y asigna tareas por cliente.' : 'Tus clientes, tareas y alertas asignadas.'}</p></div><span className="status-pill">Datos en vivo</span></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
-    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} newTasks={newTasks} markSeen={handleMarkSeen} />}
+    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} eodCompliance={eodCompliance} /> : <RoleDashboard data={data} openTasks={openTasks} blockers={activeBlockers} changeStatus={changeStatus} newTasks={newTasks} markSeen={handleMarkSeen} />}
   </div>
 }

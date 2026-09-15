@@ -1,15 +1,45 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 import { createAssignedTask } from './opsService'
+import { getCalendarDayWindow } from '../utils/timeZone'
 
 const canReviewAll = (profile) => profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
+export const DEFAULT_KEVIN_TIME_ZONE = 'America/New_York'
 
 function memberProfile(member) {
   return member ? { full_name: member.full_name, role: member.role, timezone: member.timezone } : null
 }
 
+export function getDateInTimeZone(date = new Date(), timeZone = DEFAULT_KEVIN_TIME_ZONE) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+export function getTimeInTimeZone(date = new Date(), timeZone = DEFAULT_KEVIN_TIME_ZONE) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  return { hour: Number(parts.hour), minute: Number(parts.minute), value: `${parts.hour}:${parts.minute}` }
+}
+
+export function isPastKevinCutoff(timeZone, date = new Date()) {
+  return getTimeInTimeZone(date, timeZone).hour >= 20
+}
+
+function resolveKevinTimeZone(members) {
+  return members.find((member) => member.role === 'superadmin')?.timezone || DEFAULT_KEVIN_TIME_ZONE
+}
+
 export async function loadEodData(profile, { windowStart, windowEnd }) {
   const reviewer = canReviewAll(profile)
-  const [reportsResult, tasksResult, reviewsResult, commentsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
+  const [reportsResult, tasksResult, reviewsResult, commentsResult, directoryResult, dailyStatusesResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).order('updated_at', { ascending: false }).limit(120),
     profile.role === 'superadmin'
       ? Promise.resolve({ data: [], error: null })
@@ -19,12 +49,14 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     reviewer ? supabase.from('eod_report_reviews').select('*') : Promise.resolve({ data: [], error: null }),
     supabase.from('eod_report_comments').select('*').order('created_at'),
     supabase.rpc('get_team_directory'),
+    supabase.from('eod_daily_status').select('*').order('work_date', { ascending: false }).limit(500),
   ]))
 
-  const error = reportsResult.error || tasksResult.error || reviewsResult.error || commentsResult.error || directoryResult.error
+  const error = reportsResult.error || tasksResult.error || reviewsResult.error || commentsResult.error || directoryResult.error || dailyStatusesResult.error
   if (error) throw error
 
-  const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
+  const directory = directoryResult.data || []
+  const members = new Map(directory.map((member) => [member.id, member]))
   const reviews = reviewsResult.data || []
   const comments = commentsResult.data || []
   const reports = (reportsResult.data || []).map((report) => ({
@@ -40,7 +72,79 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     })),
   }))
 
-  return { reports, completedTasks: tasksResult.data || [] }
+  return {
+    reports,
+    completedTasks: tasksResult.data || [],
+    dailyStatuses: dailyStatusesResult.data || [],
+    directory,
+    kevinTimeZone: resolveKevinTimeZone(directory),
+  }
+}
+
+export async function loadOwnEodState(profile) {
+  if (profile?.role === 'superadmin' || !profile?.permissions?.eod_reports) return { required: false }
+  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
+  if (directoryError) throw directoryError
+  const kevinTimeZone = resolveKevinTimeZone(directory || [])
+  const workDate = getDateInTimeZone(new Date(), kevinTimeZone)
+  const workDay = getCalendarDayWindow(new Date(), kevinTimeZone)
+  const [reportResult, statusResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('eod_reports').select('id').eq('user_id', profile.id)
+      .gte('submitted_at', workDay.start.toISOString()).lte('submitted_at', workDay.end.toISOString()).limit(1).maybeSingle(),
+    supabase.from('eod_daily_status').select('*').eq('user_id', profile.id).eq('work_date', workDate).maybeSingle(),
+  ]))
+  const error = reportResult.error || statusResult.error
+  if (error) throw error
+  return {
+    required: true,
+    submitted: Boolean(reportResult.data),
+    status: statusResult.data || null,
+    workDate,
+    kevinTimeZone,
+    afterCutoff: isPastKevinCutoff(kevinTimeZone),
+  }
+}
+
+export async function loadEodComplianceSummary(profile) {
+  if (!canReviewAll(profile)) return null
+  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
+  if (directoryError) throw directoryError
+  const members = (directory || []).filter((member) => member.role !== 'superadmin')
+  const kevinTimeZone = resolveKevinTimeZone(directory || [])
+  const day = getCalendarDayWindow(new Date(), kevinTimeZone)
+  const workDate = day.reportDate
+  const [reportsResult, statusesResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('eod_reports').select('user_id, submitted_at, updated_at')
+      .gte('submitted_at', day.start.toISOString()).lte('submitted_at', day.end.toISOString()),
+    supabase.from('eod_daily_status').select('*').eq('work_date', workDate),
+  ]))
+  const error = reportsResult.error || statusesResult.error
+  if (error) throw error
+  const reports = reportsResult.data || []
+  const statuses = statusesResult.data || []
+  const rows = members.map((member) => {
+    const submitted = reports.some((report) => report.user_id === member.id)
+    const status = statuses.find((item) => item.user_id === member.id)
+    return { member, status, state: submitted ? 'submitted' : status?.status === 'working_late' ? 'working_late' : 'pending' }
+  })
+  const counts = rows.reduce((totals, row) => ({ ...totals, [row.state]: totals[row.state] + 1 }), { submitted: 0, working_late: 0, pending: 0 })
+  return { workDate, kevinTimeZone, rows, counts }
+}
+
+export async function saveLateWorkStatus({ profileId, workDate, currentTask, expectedReportTime }) {
+  const cleanTask = currentTask.trim()
+  const slackNotice = `Still working on ${cleanTask || '[Task]'}, EOD report coming at ${expectedReportTime || '[Time]'} Kevin time.`
+  const { data, error } = await supabase.from('eod_daily_status').upsert({
+    user_id: profileId,
+    work_date: workDate,
+    status: 'working_late',
+    current_task: cleanTask,
+    expected_report_time: expectedReportTime || null,
+    slack_notice: slackNotice,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,work_date' }).select('*').single()
+  if (error) throw error
+  return data
 }
 
 export async function loadUnreadEodCount(profile) {
@@ -58,7 +162,7 @@ export async function loadUnreadEodCount(profile) {
   }).length
 }
 
-export async function saveEodReport({ profileId, reportDate, periodStart, periodEnd, completedTasks, manualTasks, notes }) {
+export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, notes }) {
   const submittedAt = new Date().toISOString()
   const { data, error } = await supabase.from('eod_reports').upsert({
     user_id: profileId,
@@ -72,6 +176,13 @@ export async function saveEodReport({ profileId, reportDate, periodStart, period
     updated_at: submittedAt,
   }, { onConflict: 'user_id,report_date' }).select('*').single()
   if (error) throw error
+  const { error: statusError } = await supabase.from('eod_daily_status').upsert({
+    user_id: profileId,
+    work_date: complianceDate,
+    status: 'submitted',
+    updated_at: submittedAt,
+  }, { onConflict: 'user_id,work_date' })
+  if (statusError) throw statusError
   return data
 }
 

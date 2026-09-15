@@ -599,6 +599,32 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .eod-comment small, .eod-reviewers small { color: #7890a8; }
 .eod-reviewers { display: flex; flex-wrap: wrap; gap: .4rem; }
 .eod-reviewers small, .task-created-label { padding: .3rem .48rem; border-radius: 7px; background: #14283a; }
+.eod-compliance-center { display: grid; gap: 1rem; border-left: 4px solid #5a71ff; }
+.eod-compliance-date { display: grid; min-width: 170px; gap: .35rem; color: #8fa4ba; font-size: .75rem; }
+.eod-compliance-date input { margin: 0; }
+.eod-compliance-counts { display: flex; flex-wrap: wrap; gap: .55rem; }
+.eod-compliance-counts span, .eod-compliance-status { display: inline-flex; width: max-content; padding: .38rem .62rem; border: 1px solid #31516b; border-radius: 999px; font-size: .7rem; font-weight: 850; }
+.eod-compliance-counts .submitted, .eod-compliance-status.submitted { border-color: #246b48; background: #102f23; color: #79e9a9; }
+.eod-compliance-counts .working-late, .eod-compliance-status.working_late, .eod-compliance-status.working-late { border-color: #805f1d; background: #332913; color: #ffd46e; }
+.eod-compliance-counts .pending, .eod-compliance-status.pending { border-color: #743341; background: #35171e; color: #ff9bab; }
+.eod-compliance-list { display: grid; gap: .55rem; }
+.eod-compliance-row { display: grid; grid-template-columns: minmax(160px, .8fr) auto minmax(220px, 1.2fr); align-items: center; gap: .8rem; padding: .8rem; border: 1px solid #20384d; border-radius: 11px; background: #091624; }
+.eod-compliance-row > div, .eod-compliance-row > p { display: grid; gap: .2rem; margin: 0; }
+.eod-compliance-row small { color: #7890a8; }
+.eod-late-card { display: grid; gap: 1rem; }
+.eod-late-card.cutoff-active { border-color: #805f1d; box-shadow: 0 18px 45px #0003, inset 0 0 24px #ffba2509; }
+.eod-late-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .35fr); gap: .75rem; }
+.eod-late-fields label { display: grid; gap: .4rem; }
+.eod-late-fields small { color: #7890a8; }
+.eod-slack-preview { display: grid; gap: .75rem; padding: .85rem; border: 1px solid #293e53; border-radius: 11px; background: #07131f; }
+.eod-slack-preview code { color: #c7d7e5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.eod-slack-preview > div { display: flex; flex-wrap: wrap; gap: .55rem; }
+.dashboard-eod-compliance { display: grid; gap: .9rem; border-left: 4px solid #5a71ff; }
+.dashboard-eod-users { display: flex; flex-wrap: wrap; gap: .45rem; }
+.dashboard-eod-users span { padding: .35rem .55rem; border-radius: 8px; background: #14283a; color: #a8c5dd; font-size: .72rem; }
+.dashboard-eod-users span.submitted { background: #102f23; color: #79e9a9; }
+.dashboard-eod-users span.working_late { background: #332913; color: #ffd46e; }
+.dashboard-eod-users span.pending { background: #35171e; color: #ff9bab; }
 .task-created-label { display: inline-flex; color: #75e5a4; font-size: .7rem; font-weight: 800; }
 
 @media (max-width: 800px) {
@@ -608,4 +634,9 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .eod-review-actions button { width: 100%; min-height: 44px; }
   .eod-comment-form { grid-template-columns: minmax(0, 1fr); }
   .eod-comment-form .primary-button { width: 100%; }
+  .eod-compliance-date { width: 100%; }
+  .eod-compliance-row { grid-template-columns: minmax(0, 1fr); align-items: flex-start; }
+  .eod-late-fields { grid-template-columns: minmax(0, 1fr); }
+  .eod-slack-preview > div { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .eod-slack-preview button { width: 100%; }
 }

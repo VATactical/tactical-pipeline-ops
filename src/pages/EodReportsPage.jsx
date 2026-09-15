@@ -4,9 +4,13 @@ import LoadingScreen from '../components/LoadingScreen'
 import {
   addEodComment,
   convertEodCommentToTask,
+  DEFAULT_KEVIN_TIME_ZONE,
+  getDateInTimeZone,
+  isPastKevinCutoff,
   loadEodData,
   saveEodReport,
   saveEodReview,
+  saveLateWorkStatus,
 } from '../services/eodService'
 import { getCalendarDayWindow } from '../utils/timeZone'
 
@@ -33,6 +37,12 @@ export default function EodReportsPage() {
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
   const [reports, setReports] = useState([])
+  const [directory, setDirectory] = useState([])
+  const [dailyStatuses, setDailyStatuses] = useState([])
+  const [kevinTimeZone, setKevinTimeZone] = useState(DEFAULT_KEVIN_TIME_ZONE)
+  const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), DEFAULT_KEVIN_TIME_ZONE))
+  const [lateTask, setLateTask] = useState('')
+  const [expectedReportTime, setExpectedReportTime] = useState('')
   const [manualTasks, setManualTasks] = useState([''])
   const [notes, setNotes] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
@@ -49,6 +59,14 @@ export default function EodReportsPage() {
     const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
     setCompletedTasks(data.completedTasks)
     setReports(data.reports)
+    setDirectory(data.directory)
+    setDailyStatuses(data.dailyStatuses)
+    setKevinTimeZone(data.kevinTimeZone)
+    const currentKevinDate = getDateInTimeZone(new Date(), data.kevinTimeZone)
+    setComplianceDate((current) => current || currentKevinDate)
+    const ownStatus = data.dailyStatuses.find((item) => item.user_id === profile.id && item.work_date === currentKevinDate)
+    setLateTask(ownStatus?.current_task || '')
+    setExpectedReportTime(ownStatus?.expected_report_time?.slice(0, 5) || '')
     if (!isSuperadmin) {
       const existing = data.reports.find((item) => item.user_id === profile.id && item.report_date === reportDate)
       if (existing) {
@@ -69,6 +87,28 @@ export default function EodReportsPage() {
     setError('')
     refresh().catch((loadError) => setError(loadError.message)).finally(() => setLoading(false))
   }, [refresh])
+
+  const currentKevinDate = getDateInTimeZone(new Date(), kevinTimeZone)
+  const afterKevinCutoff = isPastKevinCutoff(kevinTimeZone)
+  const ownReportToday = reports.find((report) => report.user_id === profile.id
+    && getDateInTimeZone(new Date(report.submitted_at || report.updated_at), kevinTimeZone) === currentKevinDate)
+  const ownDailyStatus = dailyStatuses.find((item) => item.user_id === profile.id && item.work_date === currentKevinDate)
+
+  const complianceRows = useMemo(() => directory
+    .filter((member) => member.role !== 'superadmin')
+    .map((member) => {
+      const report = reports.find((item) => item.user_id === member.id
+        && getDateInTimeZone(new Date(item.submitted_at || item.updated_at), kevinTimeZone) === complianceDate)
+      const status = dailyStatuses.find((item) => item.user_id === member.id && item.work_date === complianceDate)
+      const state = report ? 'submitted' : status?.status === 'working_late' ? 'working_late' : 'pending'
+      return { member, report, status, state }
+    })
+    .sort((a, b) => a.member.full_name.localeCompare(b.member.full_name)), [complianceDate, dailyStatuses, directory, kevinTimeZone, reports])
+
+  const complianceCounts = useMemo(() => complianceRows.reduce((counts, row) => {
+    counts[row.state] += 1
+    return counts
+  }, { submitted: 0, working_late: 0, pending: 0 }), [complianceRows])
 
   const reportCounts = useMemo(() => canReviewAll ? reports.reduce((counts, report) => {
     const state = getReviewState(report, profile.id)
@@ -142,6 +182,35 @@ export default function EodReportsPage() {
     setMessage('')
   }
 
+  const lateNotice = `Still working on ${lateTask.trim() || '[Task]'}, EOD report coming at ${expectedReportTime || '[Time]'} Kevin time.`
+
+  const registerLateWork = () => {
+    if (!lateTask.trim() || !expectedReportTime) {
+      setError('Indica la tarea actual y la hora estimada del reporte.')
+      return
+    }
+    runAction(
+      'late-work',
+      () => saveLateWorkStatus({
+        profileId: profile.id,
+        workDate: currentKevinDate,
+        currentTask: lateTask,
+        expectedReportTime,
+      }),
+      'Estado actualizado. Ya puedes copiar el aviso para Slack.',
+    )
+  }
+
+  const copyLateNotice = async () => {
+    try {
+      await navigator.clipboard.writeText(lateNotice)
+      setMessage('Aviso para Slack copiado.')
+      setError('')
+    } catch {
+      setError('No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.')
+    }
+  }
+
   const submit = async (event) => {
     event.preventDefault(); setSaving(true); setError(''); setMessage('')
     try {
@@ -154,6 +223,7 @@ export default function EodReportsPage() {
       await saveEodReport({
         profileId: profile.id,
         reportDate,
+        complianceDate: currentKevinDate,
         periodStart: cycle.start.toISOString(),
         periodEnd: cycle.end.toISOString(),
         completedTasks: selectedTasks,
@@ -172,9 +242,17 @@ export default function EodReportsPage() {
     <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{canReviewAll ? 'Centro de revisión diaria' : 'Informe de fin de día'}</h2><p className="muted">{canReviewAll ? 'Revisa el trabajo del equipo, registra seguimiento y conviértelo en tareas.' : 'Selecciona el trabajo completado hoy, de 00:00 a 23:59, y envíalo a Kevin y Alejandra.'}</p></div>{canSubmit && <button className="primary-button compact-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? 'Cerrar reporte' : 'Preparar reporte'}</button>}</header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
 
+    {canReviewAll && <section className="content-card eod-compliance-center">
+      <div className="section-heading"><div><p className="eyebrow">Control diario · hora de Kevin</p><h3>Cumplimiento EOD</h3><p className="muted">La regla de las 8:00 PM se calcula en {kevinTimeZone}.</p></div><label className="eod-compliance-date">Día<input type="date" value={complianceDate} onChange={(event) => setComplianceDate(event.target.value)} /></label></div>
+      <div className="eod-compliance-counts" aria-label="Resumen diario"><span className="submitted">{complianceCounts.submitted} enviados</span><span className="working-late">{complianceCounts.working_late} trabajando</span><span className="pending">{complianceCounts.pending} pendientes</span></div>
+      <div className="eod-compliance-list">{complianceRows.length === 0 && <p className="muted">No hay usuarios activos para este día.</p>}{complianceRows.map(({ member, status, state }) => <article className="eod-compliance-row" key={member.id}><div><strong>{member.full_name}</strong><small>{member.role}</small></div><span className={`eod-compliance-status ${state}`}>{state === 'submitted' ? 'Enviado' : state === 'working_late' ? 'Trabajando después de las 8 PM' : 'Pendiente'}</span>{state === 'working_late' && <p><b>{status.current_task}</b>{status.expected_report_time && <small>EOD estimado: {status.expected_report_time.slice(0, 5)} · hora Kevin</small>}</p>}</article>)}</div>
+    </section>}
+
     {canReviewAll && <section className="metric-grid eod-review-metrics" aria-label="Estado de reportes EOD"><article className="metric-card blue"><span>Nuevos</span><strong>{reportCounts.new}</strong><small>sin revisar por ti</small></article><article className="metric-card green"><span>Revisados</span><strong>{reportCounts.reviewed}</strong><small>confirmados por ti</small></article><article className="metric-card amber"><span>Seguimiento</span><strong>{reportCounts.followUp}</strong><small>requieren atención</small></article></section>}
 
     {canSubmit && <section className="content-card eod-cycle-summary"><div><p className="eyebrow">Ciclo diario</p><h3>Día calendario · 00:00–23:59</h3></div><div className="eod-period"><span>Desde <strong>{formatMoment(cycle.start, timeZone)}</strong></span><span>Hasta <strong>{formatMoment(cycle.end, timeZone)}</strong></span><small>{timeZone}</small></div></section>}
+
+    {canSubmit && <section className={`content-card eod-late-card ${afterKevinCutoff ? 'cutoff-active' : ''}`}><div className="section-heading"><div><p className="eyebrow">Regla de las 8:00 PM</p><h3>{ownReportToday ? 'Reporte de hoy enviado' : ownDailyStatus?.status === 'working_late' ? 'Sigues trabajando' : 'Estado de cierre'}</h3><p className="muted">La referencia es la hora de Kevin: {kevinTimeZone}. Si sigues activo después de las 8:00 PM, registra tu hora estimada y copia el aviso a Slack.</p></div><span className={`eod-compliance-status ${ownReportToday ? 'submitted' : ownDailyStatus?.status === 'working_late' ? 'working-late' : 'pending'}`}>{ownReportToday ? 'Enviado' : ownDailyStatus?.status === 'working_late' ? 'Trabajando' : afterKevinCutoff ? 'Acción requerida' : 'Pendiente'}</span></div>{!ownReportToday && <><div className="eod-late-fields"><label>Tarea actual<input maxLength="500" value={lateTask} onChange={(event) => setLateTask(event.target.value)} placeholder="Ej. Finalizando automatización de onboarding" /></label><label>Enviaré el EOD a las<input type="time" value={expectedReportTime} onChange={(event) => setExpectedReportTime(event.target.value)} /><small>Hora de Kevin</small></label></div><div className="eod-slack-preview"><code>{lateNotice}</code><div><button className="secondary-button" type="button" disabled={actionKey === 'late-work'} onClick={registerLateWork}>{actionKey === 'late-work' ? 'Guardando…' : 'Registrar que sigo trabajando'}</button><button className="secondary-button" type="button" onClick={copyLateNotice}>Copiar aviso para Slack</button></div></div></>}</section>}
 
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
       <div className="section-heading"><div><p className="eyebrow">Checklist de actividades</p><h3>{selectedTaskIds.length} de {completedTasks.length} tareas seleccionadas</h3><p className="muted">Desmarca cualquier tarea que no quieras incluir.</p></div>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? 'Desmarcar todas' : 'Seleccionar todas'}</button>}</div>

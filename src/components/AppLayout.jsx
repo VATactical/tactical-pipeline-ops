@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
 import { LanguageToggle } from '../i18n/LanguageContext'
-import { loadUnreadEodCount } from '../services/eodService'
+import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
 import TeamAvatar from './TeamAvatar'
 
 const roleLabels = {
@@ -21,6 +21,7 @@ export default function AppLayout() {
   const [eodUnreadCount, setEodUnreadCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -65,6 +66,27 @@ export default function AppLayout() {
 
   const logoUrl = resolveCompanyLogo(company.logo_url)
 
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      const state = await loadOwnEodState(profile)
+      if (state.required && !state.submitted) {
+        const lateDetail = state.afterCutoff
+          ? '\n\nYa pasaron las 8:00 PM en la hora de Kevin. Si continúas trabajando, registra la tarea y la hora estimada en EOD Reports y copia el aviso para Slack.'
+          : '\n\nPuedes cancelar, abrir EOD Reports y enviarlo antes de salir.'
+        const confirmed = window.confirm(`Todavía no has enviado tu reporte EOD del ${state.workDate}.${lateDetail}\n\n¿Cerrar sesión de todos modos?`)
+        if (!confirmed) return
+      }
+      await signOut()
+    } catch (error) {
+      const confirmed = window.confirm(`No pudimos verificar el estado del EOD (${error.message}). ¿Cerrar sesión de todos modos?`)
+      if (confirmed) await signOut()
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -99,7 +121,7 @@ export default function AppLayout() {
           <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span></div></div>
           <LanguageToggle compact />
           <NavLink className="account-link" to="/mi-cuenta">Mi cuenta</NavLink>
-          <button className="text-button" type="button" onClick={signOut}>Cerrar sesión</button>
+          <button className="text-button" type="button" disabled={signingOut} onClick={handleSignOut}>{signingOut ? 'Verificando EOD…' : 'Cerrar sesión'}</button>
         </div>
       </aside>
 
