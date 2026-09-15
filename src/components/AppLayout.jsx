@@ -75,7 +75,7 @@ export default function AppLayout() {
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
           <NavLink to="/eod-reports">EOD Reports</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
-          {profile?.role === 'superadmin' && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
+          {(profile?.role === 'superadmin' || profile?.permissions?.operations_admin) && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
         </nav>
 
         <div className={`user-card${mobileMenuOpen ? ' mobile-open' : ''}`}>

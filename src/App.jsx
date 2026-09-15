@@ -40,6 +40,8 @@ export default function App() {
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                 <Route path="equipo" element={<TeamPage />} />
+              </Route>
+              <Route element={<ProtectedRoute allowedPermissions={['operations_admin']} />}>
                 <Route path="mi-empresa" element={<CompanyPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

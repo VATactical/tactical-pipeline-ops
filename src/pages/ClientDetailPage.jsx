@@ -119,7 +119,7 @@ export default function ClientDetailPage() {
   }
 
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
-  const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role)
+  const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
   const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived

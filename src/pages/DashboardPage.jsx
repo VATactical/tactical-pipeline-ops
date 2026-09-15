@@ -154,7 +154,7 @@ export default function DashboardPage() {
   useEffect(() => setSeenAt(profile?.last_task_seen_at), [profile?.last_task_seen_at])
   const openTasks = data.tasks.filter((task) => task.status !== 'Completada')
   const activeBlockers = data.blockers.filter((blocker) => !blocker.resolved)
-  const isAdmin = profile?.role === 'superadmin'
+  const isAdmin = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const newTasks = isAdmin ? [] : data.tasks.filter((task) => (!task.owner_role || task.owner_role === profile?.role) && new Date(task.created_at) > new Date(seenAt || 0))
   const todayLabel = new Intl.DateTimeFormat('es', { timeZone: profile?.timezone || 'America/Managua', dateStyle: 'full' }).format(new Date())
 

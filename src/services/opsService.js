@@ -119,7 +119,7 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     comments: (details || body).trim(),
-    phase: 'Asignada por Kevin',
+    phase: 'Asignada por administración',
     status: 'Pendiente',
   }
   const { data, error } = await supabase.from('tasks').insert(payload).select('*, clients(code, business_name)').single()
