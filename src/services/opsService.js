@@ -37,22 +37,24 @@ function normalizeStatus(status) {
 }
 
 export async function loadOperations() {
-  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').eq('archived', false).order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('client_workflow_steps').select('*').order('sort_order'),
     supabase.from('notes').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(40),
-    supabase.from('eod_reports').select('*, profiles(full_name, role)').order('report_date', { ascending: false }).limit(8),
+    supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).limit(8),
     supabase.from('calendar_events').select('*, clients(code, business_name)').gte('start_at', new Date().toISOString()).order('start_at').limit(6),
+    supabase.rpc('get_team_directory'),
   ]))
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error || directoryResult.error
   if (error) throw error
 
   const clients = clientsResult.data || []
   const activeClientIds = new Set(clients.map((client) => client.id))
+  const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
   const belongsToActiveClient = (item) => !item.client_id || activeClientIds.has(item.client_id)
 
   return {
@@ -62,7 +64,10 @@ export async function loadOperations() {
     workflowSteps: (workflowResult.data || []).filter(belongsToActiveClient),
     notes: (notesResult.data || []).filter(belongsToActiveClient),
     activity: activityResult.data || [],
-    eodReports: eodResult.data || [],
+    eodReports: (eodResult.data || []).map((report) => {
+      const member = members.get(report.user_id)
+      return { ...report, profiles: member ? { full_name: member.full_name, role: member.role } : null }
+    }),
     upcomingEvents: (eventsResult.data || []).filter(belongsToActiveClient),
   }
 }
@@ -107,7 +112,7 @@ export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt 
   if (error) throw error
 }
 
-export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, dueAt }) {
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, ownerName, dueAt }) {
   const payload = {
     id: crypto.randomUUID(),
     client_id: clientId || null,
@@ -115,7 +120,7 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     evidence: (details || body).trim(),
     priority: normalizePriority(priority),
     owner_role: ownerRole || null,
-    owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
+    owner_name: ownerName || (ownerRole ? ownerNames[ownerRole] : 'Todos'),
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     comments: (details || body).trim(),

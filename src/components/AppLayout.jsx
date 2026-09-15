@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
 import { LanguageToggle } from '../i18n/LanguageContext'
+import { loadUnreadEodCount } from '../services/eodService'
 import TeamAvatar from './TeamAvatar'
 
 const roleLabels = {
@@ -17,6 +18,7 @@ export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
   const location = useLocation()
   const [notificationCount, setNotificationCount] = useState(0)
+  const [eodUnreadCount, setEodUnreadCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -31,6 +33,21 @@ export default function AppLayout() {
     window.addEventListener('focus', refreshCount)
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshCount) }
   }, [])
+
+  useEffect(() => {
+    const canReviewEod = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
+    if (!canReviewEod) { setEodUnreadCount(0); return undefined }
+    const refreshEodCount = () => loadUnreadEodCount(profile).then(setEodUnreadCount).catch(() => {})
+    refreshEodCount()
+    const timer = window.setInterval(refreshEodCount, 60000)
+    window.addEventListener('focus', refreshEodCount)
+    window.addEventListener('eod-review-updated', refreshEodCount)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshEodCount)
+      window.removeEventListener('eod-review-updated', refreshEodCount)
+    }
+  }, [profile])
 
   useEffect(() => {
     loadCompanySettings().then(setCompany).catch(() => {})
@@ -73,7 +90,7 @@ export default function AppLayout() {
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
-          <NavLink to="/eod-reports">EOD Reports</NavLink>
+          <NavLink to="/eod-reports">EOD Reports{eodUnreadCount > 0 && <span className="nav-badge">{eodUnreadCount}</span>}</NavLink>
           {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
           {(profile?.role === 'superadmin' || profile?.permissions?.operations_admin) && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
         </nav>
