@@ -3,11 +3,13 @@ import LoadingScreen from '../components/LoadingScreen'
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 import { createAssignedTask, updateTaskManagement, updateTaskStatus } from '../services/opsService'
 import { useAuth } from '../auth/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 
 const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', ownerRole: '', priority: 'Media', dueAt: '' }
 const ownerName = (role) => role === 'onboarding_media' ? 'Diego' : role === 'automation_funnels' ? 'Daniel' : role === 'user_admin' ? 'User Admin' : 'Todos'
 
 function TaskComposer({ clients, onCreated, profile }) {
+  const { t } = useLanguage()
   const isAdmin = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
   const emptyForm = { ...initialTask, ownerRole: isAdmin ? '' : profile.role }
   const [form, setForm] = useState(emptyForm)
@@ -18,12 +20,12 @@ function TaskComposer({ clients, onCreated, profile }) {
   const selected = clients.find((client) => client.id === form.clientId)
   const submit = async (event) => {
     event.preventDefault()
-    if (form.scope === 'client' && !form.clientId) { setError('Selecciona el cliente específico.'); return }
+    if (form.scope === 'client' && !form.clientId) { setError(t('Selecciona el cliente específico.')); return }
     setSaving(true); setError('')
     try {
       const task = await createAssignedTask({ ...form, clientId: form.scope === 'client' ? form.clientId : null, ownerRole: form.ownerRole || null })
       onCreated(task); setForm(emptyForm)
-    } catch (submitError) { setError(submitError.message) }
+    } catch (submitError) { setError(t(submitError.message)) }
     finally { setSaving(false) }
   }
   return <section className="content-card task-composer"><div className="section-heading"><div><p className="eyebrow">Nueva tarea</p><h3>Asignar trabajo</h3></div></div><form onSubmit={submit}>
@@ -41,6 +43,7 @@ function TaskComposer({ clients, onCreated, profile }) {
 
 export default function TasksPage() {
   const { profile } = useAuth()
+  const { t } = useLanguage()
   const [tasks, setTasks] = useState([])
   const [clients, setClients] = useState([])
   const [filter, setFilter] = useState('Abiertas')
@@ -81,8 +84,8 @@ export default function TasksPage() {
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">Ejecución</p><h2>Tareas</h2><p className="muted">Las completadas se conservan separadas en Historial.</p></div><span className="status-pill">{visible.length} visibles</span></header>
     {error && <p className="form-error">{error}</p>}{message && <p className="form-success">{message}</p>}
-    {profile?.permissions?.tasks_create && <TaskComposer clients={clients} profile={profile} onCreated={(task) => { setTasks((current) => [task, ...current]); setMessage('Tarea creada y alerta enviada.') }} />}
+    {profile?.permissions?.tasks_create && <TaskComposer clients={clients} profile={profile} onCreated={(task) => { setTasks((current) => [task, ...current]); setMessage(t('Tarea creada y alerta enviada.')) }} />}
     <section className="filter-bar"><input type="search" placeholder="Buscar tarea o cliente…" value={search} onChange={(event) => setSearch(event.target.value)} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="Abiertas">Abiertas</option><option value="Historial completadas">Historial completadas</option><option value="Todas">Todas</option></select><select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="Todas">Todas</option><option value="Urgente">Urgente</option><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></section>
-    <section className="content-card task-table">{visible.length === 0 && <p className="muted">No hay tareas en esta vista.</p>}{visible.map((task) => { const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date(); return <article className={`task-row ${overdue ? 'overdue' : ''}`} key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><div><strong>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : 'Tarea general'}</strong><p>{task.title}</p>{task.comments && <p className="task-detail">{task.comments}</p>}<small>{task.phase} · {task.owner_name}{task.due_at ? ` · ${overdue ? 'Atrasada' : 'Vence'} ${task.due_at}` : ''}</small>{(profile?.role === 'superadmin' || profile?.permissions?.operations_admin) && <div className="task-admin-controls"><select value={task.owner_role || ''} onChange={(event) => manageTask(task, { ownerRole: event.target.value })}><option value="">Todos</option><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option></select><select value={task.priority} onChange={(event) => manageTask(task, { priority: event.target.value })}><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option><option value="Urgente">Urgente</option></select><input type="date" value={task.due_at || ''} onChange={(event) => manageTask(task, { dueAt: event.target.value })} /></div>}</div><select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)}><option value="Pendiente">Pendiente</option><option value="En progreso">En progreso</option><option value="Bloqueada">Bloqueada</option><option value="Completada">Completada</option></select></article>})}</section>
+    <section className="content-card task-table">{visible.length === 0 && <p className="muted">No hay tareas en esta vista.</p>}{visible.map((task) => { const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date(); return <article className={`task-row ${overdue ? 'overdue' : ''}`} key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><div><strong data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</strong><p data-no-translate>{task.title}</p>{task.comments && <p className="task-detail" data-no-translate>{task.comments}</p>}<small><span data-no-translate>{task.phase} · {task.owner_name}</span>{task.due_at ? ` · ${t(overdue ? 'Atrasada' : 'Vence')} ${task.due_at}` : ''}</small>{(profile?.role === 'superadmin' || profile?.permissions?.operations_admin) && <div className="task-admin-controls"><select value={task.owner_role || ''} onChange={(event) => manageTask(task, { ownerRole: event.target.value })}><option value="">Todos</option><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option></select><select value={task.priority} onChange={(event) => manageTask(task, { priority: event.target.value })}><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option><option value="Urgente">Urgente</option></select><input type="date" value={task.due_at || ''} onChange={(event) => manageTask(task, { dueAt: event.target.value })} /></div>}</div><select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)}><option value="Pendiente">Pendiente</option><option value="En progreso">En progreso</option><option value="Bloqueada">Bloqueada</option><option value="Completada">Completada</option></select></article>})}</section>
   </div>
 }

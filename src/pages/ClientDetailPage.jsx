@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
 import { loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, updateWorkflowStep } from '../services/opsService'
 
@@ -71,6 +72,7 @@ const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(
 export default function ClientDetailPage() {
   const { clientId } = useParams()
   const { profile } = useAuth()
+  const { locale, t } = useLanguage()
   const [data, setData] = useState(null)
   const [draft, setDraft] = useState(null)
   const [editingSection, setEditingSection] = useState(null)
@@ -109,13 +111,13 @@ export default function ClientDetailPage() {
       const changes = Object.fromEntries(section.fields.map(([, key]) => [key, draft[key]]))
       await updateClient(clientId, changes)
       await refresh()
-      setEditingSection(null); setMessage(`${section.title} guardado correctamente.`)
-    } catch (saveError) { setError(saveError.message) }
+      setEditingSection(null); setMessage(`${t(section.title)} ${t('guardado correctamente.')}`)
+    } catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
   }
   const toggleStep = async (step) => {
     try { await updateWorkflowStep(step.id, !step.completed); await refresh() }
-    catch (updateError) { setError(updateError.message) }
+    catch (updateError) { setError(t(updateError.message)) }
   }
 
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
@@ -130,21 +132,21 @@ export default function ClientDetailPage() {
       await recordDossierEvent(clientId, 'copied_google_docs', profile.id)
       setMessage('Dossier copied successfully')
       await refresh()
-    } catch (copyError) { setError(copyError.message) }
+    } catch (copyError) { setError(t(copyError.message)) }
   }
   const downloadPdf = async () => {
     try {
       await downloadDossierPdf(client, dossierText)
       await recordDossierEvent(clientId, 'downloaded_pdf', profile.id)
-      setMessage('PDF descargado correctamente.')
-    } catch (downloadError) { setError(downloadError.message) }
+      setMessage(t('PDF descargado correctamente.'))
+    } catch (downloadError) { setError(t(downloadError.message)) }
   }
   const markDocsUpdated = async () => {
     try {
       await markGoogleDocsUpdated(clientId, profile.id)
       await refresh()
-      setMessage('Google Docs marcado como actualizado.')
-    } catch (updateError) { setError(updateError.message) }
+      setMessage(t('Google Docs marcado como actualizado.'))
+    } catch (updateError) { setError(t(updateError.message)) }
   }
   const toggleIntakeForm = async () => {
     if (!canEdit) return
@@ -157,21 +159,21 @@ export default function ClientDetailPage() {
         intake_form_completed_by: completed ? profile.id : null,
       })
       await refresh()
-      setMessage(completed ? 'Formulario del cliente marcado como recibido.' : 'Formulario marcado como pendiente.')
-    } catch (updateError) { setError(updateError.message) }
+      setMessage(t(completed ? 'Formulario del cliente marcado como recibido.' : 'Formulario marcado como pendiente.'))
+    } catch (updateError) { setError(t(updateError.message)) }
     finally { setSaving(false) }
   }
   const pauseAds = async (event) => {
     event.preventDefault()
     const reason = pauseReason.trim()
-    if (!reason) { setError('Escribe el motivo de la pausa.'); return }
+    if (!reason) { setError(t('Escribe el motivo de la pausa.')); return }
     setSaving(true); setError(''); setMessage('')
     try {
       await updateClient(clientId, { status: 'ADS PAUSED', ads_pause_reason: reason })
       await refresh()
       setPauseOpen(false); setPauseReason('')
-      setMessage('ADS pausados correctamente.')
-    } catch (pauseError) { setError(pauseError.message) }
+      setMessage(t('ADS pausados correctamente.'))
+    } catch (pauseError) { setError(t(pauseError.message)) }
     finally { setSaving(false) }
   }
   const resumeAds = async () => {
@@ -179,8 +181,8 @@ export default function ClientDetailPage() {
     try {
       await updateClient(clientId, { status: 'ADS LIVE' })
       await refresh()
-      setMessage('ADS reactivados correctamente.')
-    } catch (resumeError) { setError(resumeError.message) }
+      setMessage(t('ADS reactivados correctamente.'))
+    } catch (resumeError) { setError(t(resumeError.message)) }
     finally { setSaving(false) }
   }
   const revealMetaToken = async () => {
@@ -188,7 +190,7 @@ export default function ClientDetailPage() {
     try {
       const token = await revealClientMetaToken(clientId)
       setSecretValue(token); setSecretVisible(true)
-    } catch (secretError) { setError(secretError.message) }
+    } catch (secretError) { setError(t(secretError.message)) }
     finally { setSecretLoading(false) }
   }
   const hideMetaToken = () => {
@@ -197,40 +199,40 @@ export default function ClientDetailPage() {
   const copyMetaToken = async () => {
     try {
       await navigator.clipboard.writeText(secretValue)
-      setMessage('Access Token copiado de forma segura.')
-    } catch { setError('No se pudo copiar el token. Selecciónalo manualmente.') }
+      setMessage(t('Access Token copiado de forma segura.'))
+    } catch { setError(t('No se pudo copiar el token. Selecciónalo manualmente.')) }
   }
   const saveMetaToken = async (event) => {
     event.preventDefault()
-    if (!secretDraft.trim()) { setError('El Access Token no puede estar vacío.'); return }
+    if (!secretDraft.trim()) { setError(t('El Access Token no puede estar vacío.')); return }
     setSecretLoading(true); setError(''); setMessage('')
     try {
       await saveClientMetaToken(clientId, secretDraft)
       setSecretValue(''); setSecretVisible(false); setSecretDraft(''); setSecretEditing(false)
-      setMessage('Access Token actualizado y protegido.')
-    } catch (secretError) { setError(secretError.message) }
+      setMessage(t('Access Token actualizado y protegido.'))
+    } catch (secretError) { setError(t(secretError.message)) }
     finally { setSecretLoading(false) }
   }
   const archiveClient = async (event) => {
     event.preventDefault()
-    if (!archiveReason.trim()) { setError('Selecciona el motivo de salida.'); return }
+    if (!archiveReason.trim()) { setError(t('Selecciona el motivo de salida.')); return }
     setSaving(true); setError(''); setMessage('')
     try {
       await updateClient(clientId, { archived: true, archive_reason: archiveReason, archive_note: archiveNote })
       await refresh()
       setArchiveOpen(false); setArchiveReason(''); setArchiveNote('')
-      setMessage('Cliente archivado correctamente.')
-    } catch (archiveError) { setError(archiveError.message) }
+      setMessage(t('Cliente archivado correctamente.'))
+    } catch (archiveError) { setError(t(archiveError.message)) }
     finally { setSaving(false) }
   }
   const restoreClient = async () => {
-    if (!window.confirm('¿Restaurar este cliente a la operación activa?')) return
+    if (!window.confirm(t('¿Restaurar este cliente a la operación activa?'))) return
     setSaving(true); setError(''); setMessage('')
     try {
       await updateClient(clientId, { archived: false })
       await refresh()
-      setMessage('Cliente restaurado a la operación activa.')
-    } catch (restoreError) { setError(restoreError.message) }
+      setMessage(t('Cliente restaurado a la operación activa.'))
+    } catch (restoreError) { setError(t(restoreError.message)) }
     finally { setSaving(false) }
   }
   const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
@@ -246,11 +248,11 @@ export default function ClientDetailPage() {
       ...section.fields.flatMap(([label, key]) => [label, key, client[key]]),
     ].join(' ')).includes(query))
     if (matchIndex < 0) {
-      setError(`No encontramos “${dossierSearch.trim()}” en este dossier.`)
+      setError(t(`No encontramos “${dossierSearch.trim()}” en este dossier.`))
       setHighlightedSection(null)
       return
     }
-    setError(''); setMessage(`Resultado encontrado en ${sections[matchIndex].title}.`); setHighlightedSection(matchIndex)
+    setError(''); setMessage(t(`Resultado encontrado en ${sections[matchIndex].title}.`)); setHighlightedSection(matchIndex)
     document.getElementById(`dossier-section-${matchIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     window.setTimeout(() => setHighlightedSection((current) => current === matchIndex ? null : current), 2200)
   }
@@ -261,15 +263,15 @@ export default function ClientDetailPage() {
     <form className="dossier-search" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     {archiveOpen && <form className="content-card client-archive-form" onSubmit={archiveClient}><div><p className="eyebrow">Salida de la operación</p><h3>Archivar cliente</h3><p className="muted">El dossier y el historial se conservarán fuera de los clientes activos.</p></div><label>Motivo<select value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} required><option value="">Seleccionar…</option><option>Contrato finalizado</option><option>Cancelación del cliente</option><option>Falta de pago</option><option>Campaña terminada</option><option>Otro</option></select></label><label>Nota final opcional<textarea rows="4" maxLength="2000" value={archiveNote} onChange={(event) => setArchiveNote(event.target.value)} placeholder="Contexto de la salida, pendientes o condiciones para regresar…" /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(false); setArchiveReason(''); setArchiveNote('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Archivando…' : 'Confirmar archivo'}</button></div></form>}
-    {client.archived && <section className="content-card client-archive-summary"><div><p className="eyebrow">Cliente archivado</p><h3>{client.archive_reason}</h3>{client.archive_note && <p>{client.archive_note}</p>}<small>{client.archived_at ? `Archivado el ${new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}` : ''}</small></div>{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : 'Restaurar cliente'}</button>}</section>}
+    {client.archived && <section className="content-card client-archive-summary"><div><p className="eyebrow">Cliente archivado</p><h3 data-no-translate>{client.archive_reason}</h3>{client.archive_note && <p data-no-translate>{client.archive_note}</p>}<small>{client.archived_at ? t(`Archivado el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}`) : ''}</small></div>{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : 'Restaurar cliente'}</button>}</section>}
     {pauseOpen && <form className="content-card ads-pause-form" onSubmit={pauseAds}><div><p className="eyebrow">Pausar campaña</p><h3>¿Por qué se pausarán los ADS?</h3><p className="muted">El motivo quedará visible en el cliente y en el historial.</p></div><label>Motivo de pausa<textarea rows="4" maxLength="2000" value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} placeholder="Ej. CPL alto, método de pago rechazado o esperando aprobación del cliente…" required /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setPauseOpen(false); setPauseReason('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Pausando…' : 'Confirmar pausa'}</button></div></form>}
-    <section className={`content-card intake-status ${client.intake_form_completed ? 'complete' : 'pending'}`}><div><p className="eyebrow">Antes del dossier</p><h3>{client.intake_form_completed ? 'Formulario del cliente recibido' : 'Formulario del cliente pendiente'}</h3><p className="muted">{client.intake_form_completed_at ? `Marcado el ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.intake_form_completed_at))}` : 'Confirma este paso antes de completar accesos y datos del WWWW.'}</p></div>{canEdit && <button className={client.intake_form_completed ? 'secondary-button' : 'primary-button compact-button'} type="button" disabled={saving} onClick={toggleIntakeForm}>{client.intake_form_completed ? 'Marcar pendiente' : 'Marcar formulario recibido'}</button>}</section>
+    <section className={`content-card intake-status ${client.intake_form_completed ? 'complete' : 'pending'}`}><div><p className="eyebrow">Antes del dossier</p><h3>{client.intake_form_completed ? 'Formulario del cliente recibido' : 'Formulario del cliente pendiente'}</h3><p className="muted">{client.intake_form_completed_at ? t(`Marcado el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.intake_form_completed_at))}`) : 'Confirma este paso antes de completar accesos y datos del WWWW.'}</p></div>{canEdit && <button className={client.intake_form_completed ? 'secondary-button' : 'primary-button compact-button'} type="button" disabled={saving} onClick={toggleIntakeForm}>{client.intake_form_completed ? 'Marcar pendiente' : 'Marcar formulario recibido'}</button>}</section>
     <section className="metric-grid compact"><article className="metric-card blue"><span>Gasto</span><strong>${client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
     <section className="content-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action}</h3></section>
     <section className={`content-card launch-deadline ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'ADS LIVE' ? 'Campaña activa' : client.status === 'ADS PAUSED' ? 'Campaña pausada' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
-    {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? `Pausada el ${new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}` : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
-    {adStatusEvents.length > 0 && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p>{event.note}</p><small>{event.actor_name} · {new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
-    <section className="content-card docs-sync-status"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
+    {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p data-no-translate>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? t(`Pausada el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}`) : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
+    {adStatusEvents.length > 0 && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p data-no-translate>{event.note}</p><small><span data-no-translate>{event.actor_name}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
+    <section className="content-card docs-sync-status"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
     <section className="content-card credential-vault"><div className="section-heading"><div><p className="eyebrow">Bóveda de credenciales</p><h3>Meta Access Token</h3><p className="muted">No se incluye en el dossier, PDF, Google Docs ni búsquedas.</p></div><span className="credential-state">Protegido</span></div>{!canViewSensitive ? <p className="credential-restricted">Acceso restringido. Kevin puede habilitar el permiso individual desde Usuarios.</p> : <div className="credential-controls">{!secretVisible ? <button className="secondary-button" type="button" disabled={secretLoading} onClick={revealMetaToken}>{secretLoading ? 'Verificando permiso…' : 'Mostrar token'}</button> : <><div className="credential-value"><span>Access Token</span><code>{secretValue || 'No hay token configurado'}</code></div><div className="section-actions"><button className="secondary-button" type="button" onClick={copyMetaToken} disabled={!secretValue}>Copiar</button><button className="text-button" type="button" onClick={hideMetaToken}>Ocultar</button></div></>}{canManageSensitive && !secretEditing && <button className="text-button" type="button" onClick={() => { hideMetaToken(); setSecretEditing(true); setSecretDraft('') }}>Actualizar token</button>}{canManageSensitive && secretEditing && <form className="credential-editor" onSubmit={saveMetaToken}><label>Nuevo Access Token<textarea rows="4" value={secretDraft} autoComplete="off" spellCheck="false" onChange={(event) => setSecretDraft(event.target.value)} placeholder="Pega aquí el token nuevo" required /></label><div className="section-actions"><button className="text-button" type="button" onClick={() => { setSecretEditing(false); setSecretDraft('') }}>Cancelar</button><button className="primary-button compact-button" disabled={secretLoading}>{secretLoading ? 'Guardando…' : 'Guardar protegido'}</button></div></form>}</div>}</section>
     <section className="content-card missing-dossier-card"><p className="eyebrow">Falta en el dossier</p>{missingFields.length ? <div className="missing-chips">{missingFields.map((label) => <span key={label}>{label}</span>)}</div> : <p className="complete-note">Dossier WWWW completo</p>}</section>
     <div className="print-dossier">
@@ -281,14 +283,14 @@ export default function ClientDetailPage() {
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
-          <small className="section-updated">{lastUpdate ? `Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}` : 'Sin actualizaciones registradas'}</small>
+          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
     </div>
 
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Operational Task Log</p><h3>Proceso asignado por rol</h3></div><span className="muted">{workflowSteps.filter((item) => item.completed).length} de {workflowSteps.length} visibles completados</span></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{step.title}</strong><small>{step.owner_name}</small></div></label>)}</div></section>
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Notas del cliente</p><h3>Contexto compartido</h3></div><span className="muted">{notes.length} nota{notes.length === 1 ? '' : 's'}</span></div><div className="note-list">{notes.length === 0 && <p className="muted">Kevin todavía no ha agregado notas para este cliente.</p>}{notes.map((note) => <article className="note-card" key={note.id}><strong>{note.title}</strong>{note.body && <p>{note.body}</p>}<small>{new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`}>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => fieldLabels[field] || field).join(', ')}</p>}<small>{new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Notas del cliente</p><h3>Contexto compartido</h3></div><span className="muted">{notes.length} nota{notes.length === 1 ? '' : 's'}</span></div><div className="note-list">{notes.length === 0 && <p className="muted">Kevin todavía no ha agregado notas para este cliente.</p>}{notes.map((note) => <article className="note-card" key={note.id}><strong data-no-translate>{note.title}</strong>{note.body && <p data-no-translate>{note.body}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`} data-no-translate>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => t(fieldLabels[field] || field)).join(', ')}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
     <div className="dashboard-grid"><section className="content-card"><p className="eyebrow">Tareas adicionales</p><h3>{tasks.length} visibles</h3>{tasks.slice(0, 8).map((task) => <div className="mini-row" key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{task.status} · {task.owner_name}</small></div></div>)}</section><section className="content-card"><p className="eyebrow">Bloqueos</p><h3>{blockers.filter((item) => !item.resolved).length} abiertos</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section></div>
   </div>
 }

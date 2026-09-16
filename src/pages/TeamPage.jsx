@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import LoadingScreen from '../components/LoadingScreen'
+import { useLanguage } from '../i18n/LanguageContext'
 import { loadTeam, manageTeamUser } from '../services/teamService'
 
 const roles = [
@@ -25,6 +26,7 @@ function PermissionFields({ permissions, onChange, disabled }) {
 }
 
 export default function TeamPage() {
+  const { t } = useLanguage()
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -37,7 +39,7 @@ export default function TeamPage() {
   const [form, setForm] = useState({ email: '', password: '', fullName: '', role: 'onboarding_media', timezone: 'America/Managua', slackContact: '', whatsappContact: '', permissions: { ...defaultPermissions } })
 
   const refresh = async () => setProfiles(await loadTeam())
-  useEffect(() => { refresh().catch((loadError) => setError(loadError.message)).finally(() => setLoading(false)) }, [])
+  useEffect(() => { refresh().catch((loadError) => setError(t(loadError.message))).finally(() => setLoading(false)) }, [])
   const setFormField = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const setFormPermission = (key, value) => setForm((current) => ({ ...current, permissions: { ...current.permissions, [key]: value } }))
   const submit = async (event) => {
@@ -45,8 +47,8 @@ export default function TeamPage() {
     try {
       await manageTeamUser({ action: 'create', ...form, permissions: form.role === 'superadmin' ? allPermissions : form.permissions })
       setForm({ email: '', password: '', fullName: '', role: 'onboarding_media', timezone: 'America/Managua', slackContact: '', whatsappContact: '', permissions: { ...defaultPermissions } })
-      await refresh(); setMessage('Usuario creado y acceso confirmado.')
-    } catch (submitError) { setError(submitError.message) }
+      await refresh(); setMessage(t('Usuario creado y acceso confirmado.'))
+    } catch (submitError) { setError(t(submitError.message)) }
     finally { setSaving(false) }
   }
   const changeProfile = (id, key, value) => setProfiles((current) => current.map((profile) => profile.id === id ? { ...profile, [key]: value } : profile))
@@ -55,8 +57,8 @@ export default function TeamPage() {
     setSaving(true); setError(''); setMessage('')
     try {
       await manageTeamUser({ action: 'update', userId: profile.id, fullName: profile.full_name, role: profile.role, timezone: profile.timezone, slackContact: profile.slack_contact, whatsappContact: profile.whatsapp_contact, permissions: profile.role === 'superadmin' ? allPermissions : profile.permissions, active: profile.active })
-      await refresh(); setMessage(`${profile.full_name} actualizado correctamente.`)
-    } catch (updateError) { setError(updateError.message) }
+      await refresh(); setMessage(t(`${profile.full_name} actualizado correctamente.`))
+    } catch (updateError) { setError(t(updateError.message)) }
     finally { setSaving(false) }
   }
   const resetAccess = async (member) => {
@@ -64,8 +66,8 @@ export default function TeamPage() {
     try {
       await manageTeamUser({ action: 'reset_password', userId: member.id, password: resetPassword })
       setResetUserId(null); setResetPassword(''); setShowResetPassword(false)
-      setMessage(`Contraseña de ${member.full_name} restablecida. Comunícala por un canal seguro.`)
-    } catch (resetError) { setError(resetError.message) }
+      setMessage(t(`Contraseña de ${member.full_name} restablecida. Comunícala por un canal seguro.`))
+    } catch (resetError) { setError(t(resetError.message)) }
     finally { setSaving(false) }
   }
 

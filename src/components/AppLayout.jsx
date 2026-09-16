@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
-import { LanguageToggle } from '../i18n/LanguageContext'
+import { LanguageToggle, useLanguage } from '../i18n/LanguageContext'
 import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
 import TeamAvatar from './TeamAvatar'
 
@@ -16,6 +16,7 @@ const roleLabels = {
 
 export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
+  const { t } = useLanguage()
   const location = useLocation()
   const [notificationCount, setNotificationCount] = useState(0)
   const [eodUnreadCount, setEodUnreadCount] = useState(0)
@@ -73,14 +74,14 @@ export default function AppLayout() {
       const state = await loadOwnEodState(profile)
       if (state.required && !state.submitted) {
         const lateDetail = state.afterCutoff
-          ? '\n\nYa pasaron las 8:00 PM en la hora de Kevin. Si continúas trabajando, registra la tarea y la hora estimada en EOD Reports y copia el aviso para Slack.'
-          : '\n\nPuedes cancelar, abrir EOD Reports y enviarlo antes de salir.'
-        const confirmed = window.confirm(`Todavía no has enviado tu reporte EOD del ${state.workDate}.${lateDetail}\n\n¿Cerrar sesión de todos modos?`)
+          ? t('Ya pasaron las 8:00 PM en la hora de Kevin. Si continúas trabajando, registra la tarea y la hora estimada en EOD Reports y copia el aviso para Slack.')
+          : t('Puedes cancelar, abrir EOD Reports y enviarlo antes de salir.')
+        const confirmed = window.confirm(`${t(`Todavía no has enviado tu reporte EOD del ${state.workDate}.`)}\n\n${lateDetail}\n\n${t('¿Cerrar sesión de todos modos?')}`)
         if (!confirmed) return
       }
       await signOut()
     } catch (error) {
-      const confirmed = window.confirm(`No pudimos verificar el estado del EOD (${error.message}). ¿Cerrar sesión de todos modos?`)
+      const confirmed = window.confirm(`${t(`No pudimos verificar el estado del EOD (${error.message}).`)} ${t('¿Cerrar sesión de todos modos?')}`)
       if (confirmed) await signOut()
     } finally {
       setSigningOut(false)

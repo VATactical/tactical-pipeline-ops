@@ -56,6 +56,7 @@ const translations = {
   'Español': 'Spanish', 'Inglés': 'English', 'Tu perfil, avatar e idioma se actualizaron.': 'Your profile, avatar, and language were updated.',
   'Usuarios y permisos': 'Users and permissions', 'Crea accesos internos y controla qué puede hacer cada integrante.': 'Create internal access and control what each team member can do.',
   'Nuevo acceso': 'New access', 'Nombre': 'Name', 'Rol': 'Role', 'Permisos': 'Permissions', 'Crear usuario': 'Create user', 'Restablecer': 'Reset',
+  'Crear clientes': 'Create clients', 'Editar dossiers': 'Edit dossiers', 'Crear tareas': 'Create tasks', 'Crear eventos': 'Create events', 'Generar EOD': 'Generate EOD', 'Ver credenciales sensibles': 'View sensitive credentials',
   'Configura la identidad que aparece en la navegación, el footer y el navegador.': 'Configure the identity shown in navigation, footer, and the browser.',
   'Nombre del sistema': 'System name', 'Empresa': 'Company', 'Correo empresarial': 'Company email', 'Sitio web': 'Website', 'Cambiar logo': 'Change logo', 'Guardar empresa': 'Save company',
   'Acceso restringido': 'Restricted access', 'Tu sesión es válida, pero tu rol no tiene permiso para abrir esta sección.': 'Your session is valid, but your role cannot access this section.', 'Volver al panel': 'Back to dashboard',
@@ -104,9 +105,55 @@ const translations = {
   'más de 3 días': 'more than 3 days', 'nota': 'note', 'nueva': 'new', 'nuevas': 'new', 'próximos': 'upcoming', 'recibidos': 'received', 'registrado': 'recorded',
   'requieren seguimiento': 'require follow-up', 'tarea': 'task', 'tareas abiertas': 'open tasks', 'tareas pendientes': 'pending tasks', 'usuarios': 'users', 'verificación enviada': 'verification submitted',
   'visibles': 'visible', 'visibles completados': 'visible completed',
+  'Centro de revisión diaria': 'Daily review center', 'Revisa el trabajo del equipo, registra seguimiento y conviértelo en tareas.': 'Review team work, record follow-up, and turn it into tasks.',
+  'Selecciona el trabajo completado hoy, de 00:00 a 23:59, y envíalo a Kevin y Alejandra.': 'Select the work completed today, from 00:00 to 23:59, and submit it to Kevin and Alejandra.',
+  'Control diario · hora de Kevin': 'Daily control · Kevin time', 'Cumplimiento EOD': 'EOD compliance', 'La regla de las 8:00 PM se calcula en': 'The 8:00 PM rule is calculated in',
+  'Día': 'Day', 'enviados': 'submitted', 'trabajando': 'working', 'pendientes': 'pending', 'No hay usuarios activos para este día.': 'There are no active users for this day.',
+  'Trabajando después de las 8 PM': 'Working after 8 PM', 'EOD estimado:': 'Estimated EOD:', 'hora Kevin': 'Kevin time', 'Nuevos': 'New', 'sin revisar por ti': 'not reviewed by you',
+  'Revisados': 'Reviewed', 'confirmados por ti': 'confirmed by you', 'Seguimiento': 'Follow-up', 'Regla de las 8:00 PM': '8:00 PM rule',
+  'Reporte de hoy enviado': 'Today’s report submitted', 'Sigues trabajando': 'Still working', 'Estado de cierre': 'End-of-day status',
+  'La referencia es la hora de Kevin:': 'The reference is Kevin’s time:', 'Si sigues activo después de las 8:00 PM, registra tu hora estimada y copia el aviso a Slack.': 'If you are still working after 8:00 PM, record your estimated time and copy the notice to Slack.',
+  'Trabajando': 'Working', 'Acción requerida': 'Action required', 'Tarea actual': 'Current task', 'Enviaré el EOD a las': 'I will submit the EOD at',
+  'Registrar que sigo trabajando': 'Record that I am still working', 'Copiar aviso para Slack': 'Copy Slack notice',
+  'Indica la tarea actual y la hora estimada del reporte.': 'Enter your current task and the estimated report time.', 'Estado actualizado. Ya puedes copiar el aviso para Slack.': 'Status updated. You can now copy the Slack notice.',
+  'Aviso para Slack copiado.': 'Slack notice copied.', 'No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.': 'Could not copy automatically. Select the text and copy it manually.',
+  'Reporte EOD enviado a Kevin y Alejandra correctamente.': 'EOD report sent to Kevin and Alejandra successfully.', 'Revisión guardada.': 'Review saved.', 'Reporte marcado para seguimiento.': 'Report marked for follow-up.',
+  'Comentario agregado.': 'Comment added.', 'Seguimiento convertido en tarea de prioridad alta.': 'Follow-up converted into a high-priority task.', 'Revisado': 'Reviewed', 'Requiere seguimiento': 'Requires follow-up', 'Visto': 'Seen',
+  'Desmarca cualquier tarea que no quieras incluir.': 'Uncheck any task you do not want to include.', 'Resultados, bloqueos o contexto para supervisión…': 'Results, blockers, or context for supervisors…', 'Enviar reporte': 'Submit report', 'No hay informes con estos filtros.': 'There are no reports matching these filters.',
+  'Comentario del supervisor': 'Supervisor comment', 'Deja una observación o instrucción…': 'Leave an observation or instruction…', 'Agregar comentario': 'Add comment', 'Convertir en tarea alta': 'Convert to high-priority task', '✓ Tarea creada': '✓ Task created',
+  'Verificando EOD…': 'Checking EOD…', 'Cierre diario · hora de Kevin': 'Daily close · Kevin time', 'EOD de hoy': 'Today’s EOD', 'Ver detalle': 'View details',
+  'Ya pasaron las 8:00 PM en la hora de Kevin. Si continúas trabajando, registra la tarea y la hora estimada en EOD Reports y copia el aviso para Slack.': 'It is already past 8:00 PM in Kevin’s time zone. If you are still working, record the task and estimated time in EOD Reports and copy the Slack notice.',
+  'Puedes cancelar, abrir EOD Reports y enviarlo antes de salir.': 'You can cancel, open EOD Reports, and submit it before signing out.', '¿Cerrar sesión de todos modos?': 'Sign out anyway?',
+  'Salida de la operación': 'Exit from operations', 'Archivar cliente': 'Archive client', 'El dossier y el historial se conservarán fuera de los clientes activos.': 'The dossier and history will be preserved outside active clients.',
+  'Motivo': 'Reason', 'Seleccionar…': 'Select…', 'Contrato finalizado': 'Contract completed', 'Cancelación del cliente': 'Client cancellation', 'Falta de pago': 'Non-payment', 'Campaña terminada': 'Campaign completed', 'Otro': 'Other',
+  'Nota final opcional': 'Optional final note', 'Contexto de la salida, pendientes o condiciones para regresar…': 'Exit context, pending items, or conditions for returning…', 'Archivando…': 'Archiving…', 'Confirmar archivo': 'Confirm archive',
+  'Cliente archivado': 'Archived client', 'ARCHIVADO': 'ARCHIVED', 'Restaurando…': 'Restoring…', 'Restaurar cliente': 'Restore client', 'Cliente archivado correctamente.': 'Client archived successfully.', 'Cliente restaurado a la operación activa.': 'Client restored to active operations.',
+  '¿Restaurar este cliente a la operación activa?': 'Restore this client to active operations?',
+  'Bóveda de credenciales': 'Credentials vault', 'No se incluye en el dossier, PDF, Google Docs ni búsquedas.': 'It is not included in the dossier, PDF, Google Docs, or searches.', 'Protegido': 'Protected',
+  'Acceso restringido. Kevin puede habilitar el permiso individual desde Usuarios.': 'Restricted access. Kevin can enable individual permission from Users.', 'Verificando permiso…': 'Checking permission…', 'Mostrar token': 'Show token', 'No hay token configurado': 'No token configured', 'Copiar': 'Copy', 'Ocultar': 'Hide', 'Actualizar token': 'Update token',
+  'Access Token copiado de forma segura.': 'Access Token copied securely.', 'No se pudo copiar el token. Selecciónalo manualmente.': 'Could not copy the token. Select it manually.', 'El Access Token no puede estar vacío.': 'The Access Token cannot be empty.', 'Access Token actualizado y protegido.': 'Access Token updated and protected.',
+  'Formulario del cliente recibido': 'Client form received', 'Formulario del cliente pendiente': 'Client form pending', 'Confirma este paso antes de completar accesos y datos del WWWW.': 'Confirm this step before completing WWWW access and information.', 'Marcar pendiente': 'Mark pending', 'Marcar formulario recibido': 'Mark form received',
+  'Formulario del cliente marcado como recibido.': 'Client form marked as received.', 'Formulario marcado como pendiente.': 'Form marked as pending.', 'PDF descargado correctamente.': 'PDF downloaded successfully.', 'Google Docs marcado como actualizado.': 'Google Docs marked as updated.',
+  'guardado correctamente.': 'saved successfully.',
+  'Selecciona el motivo de salida.': 'Select the exit reason.', 'Motivo de archivo': 'Archive reason', 'Nota de salida': 'Exit note', 'Fecha de archivo': 'Archive date', 'Usuario que archivó': 'User who archived',
+  'Campaña activa': 'Campaign active', 'Lanzamiento atrasado': 'Launch overdue', 'Pendiente de lanzamiento': 'Pending launch', 'Sin fecha definida': 'No date set', 'Todavía no se ha copiado': 'Not copied yet', 'Sin actualizaciones registradas': 'No updates recorded',
+  'Nuevo expediente': 'New dossier', 'Crear cliente': 'Create client', 'Registra lo esencial; podrás completar el resto del dossier después.': 'Enter the essentials; you can complete the rest of the dossier later.', 'Teléfono': 'Phone',
+  'creó': 'created', 'actualizó': 'updated', 'eliminó': 'deleted', 'un cliente': 'a client', 'una nota': 'a note', 'un evento': 'an event', 'un registro operativo': 'an operations record',
+  'Administración': 'Administration', 'Administra los módulos, listas y enlaces del equipo.': 'Manage team modules, lists, and links.', 'Revisa el hub semanalmente y marca cada lección cuando esté comprendida.': 'Review the hub weekly and mark each lesson once understood.',
+  'Módulo creado.': 'Module created.', 'Lección agregada.': 'Lesson added.', 'Módulo eliminado.': 'Module deleted.', 'Módulo actualizado.': 'Module updated.', 'Lección eliminada.': 'Lesson deleted.', 'Lección actualizada.': 'Lesson updated.',
+  '¿Eliminar este módulo y sus lecciones?': 'Delete this module and its lessons?', '¿Eliminar esta lección?': 'Delete this lesson?',
+  'Notificaciones activadas.': 'Notifications enabled.', 'Cada usuario elige su propia hora local desde Mi cuenta.': 'Each user chooses their local time from My account.', 'Tú': 'You', 'Lun': 'Mon', 'Mar': 'Tue', 'Mié': 'Wed', 'Jue': 'Thu', 'Vie': 'Fri', 'Sáb': 'Sat', 'Dom': 'Sun',
+  '15 minutos': '15 minutes', '1 hora': '1 hour', '24 horas': '24 hours',
+  'Evento general': 'General event', 'Selecciona el cliente específico.': 'Select the specific client.', 'Atrasada': 'Overdue', 'Vence': 'Due',
+  'Actualizó el dossier': 'Updated the dossier',
+  'Usuario creado y acceso confirmado.': 'User created and access confirmed.', 'Administración operativa (sin usuarios)': 'Operations administration (without user management)', 'Usuario sin nombre': 'Unnamed user', 'Ver': 'Show',
+  'Selecciona una zona válida de la lista': 'Select a valid time zone from the list', 'Las contraseñas nuevas no coinciden.': 'The new passwords do not match.', 'Contraseña actualizada correctamente.': 'Password updated successfully.',
+  'Logo cargado. Guarda los cambios para aplicarlo.': 'Logo uploaded. Save the changes to apply it.', 'Identidad de TP | Ops actualizada.': 'TP | Ops identity updated.',
+  'Este usuario está desactivado.': 'This user is disabled.', 'Tu sesión venció. Inicia sesión nuevamente para continuar.': 'Your session expired. Sign in again to continue.',
+  'Selecciona un logo.': 'Select a logo.', 'El logo debe pesar menos de 5 MB.': 'The logo must be smaller than 5 MB.', 'Usa un archivo PNG, JPG o WebP.': 'Use a PNG, JPG, or WebP file.',
+  'La prioridad seleccionada no es válida.': 'The selected priority is invalid.', 'El estado seleccionado no es válido.': 'The selected status is invalid.', 'Selecciona una zona horaria válida.': 'Select a valid time zone.', 'Selecciona un avatar válido.': 'Select a valid avatar.', 'Selecciona un idioma válido.': 'Select a valid language.',
+  'La nueva contraseña debe tener al menos 10 caracteres.': 'The new password must be at least 10 characters.', 'La nueva contraseña debe ser diferente a la actual.': 'The new password must be different from the current password.', 'La contraseña actual no es correcta.': 'The current password is incorrect.',
 }
-
-const reverseTranslations = Object.fromEntries(Object.entries(translations).map(([spanish, english]) => [english, spanish]))
 
 const patterns = [
   [/^(\d+) integrantes$/, '$1 team members'], [/^(\d+) clientes$/, '$1 clients'], [/^(\d+) tareas abiertas$/, '$1 open tasks'], [/^(\d+) sin leer$/, '$1 unread'],
@@ -115,17 +162,22 @@ const patterns = [
   [/^Enviado (.+) · (\d+) actividades$/, 'Submitted $1 · $2 activities'], [/^Ciclo: (.+) — (.+)$/, 'Cycle: $1 — $2'],
   [/^(\d+) clientes totales$/, '$1 total clients'], [/^(\d+) dossiers incompletos$/, '$1 incomplete dossiers'], [/^(\d+) clientes bloqueados$/, '$1 blocked clients'],
   [/^Actualizado por (.+) · (.+)$/, 'Updated by $1 · $2'], [/^Responsable:\s*(.+)$/, 'Internal assignee: $1'], [/^Propietario del cliente:\s*(.+)$/, 'Client owner: $1'], [/^Responsable interno:\s*(.+)$/, 'Internal assignee: $1'], [/^Hora actual:\s*(.+)$/, 'Current time: $1'],
+  [/^La regla de las 8:00 PM se calcula en (.+)\.$/, 'The 8:00 PM rule is calculated in $1.'], [/^La referencia es la hora de Kevin: (.+)\.$/, 'The reference is Kevin’s time: $1.'],
+  [/^EOD estimado: (.+) · hora Kevin$/, 'Estimated EOD: $1 · Kevin time'], [/^(\d+) enviados$/, '$1 submitted'], [/^(\d+) trabajando$/, '$1 working'], [/^(\d+) pendientes$/, '$1 pending'],
+  [/^Enviado (.+)$/, 'Submitted $1'], [/^Archivado el (.+)$/, 'Archived on $1'], [/^Marcado el (.+)$/, 'Marked on $1'], [/^Pausada el (.+)$/, 'Paused on $1'],
+  [/^Últimos (\d+)$/, 'Latest $1'], [/^(\d+) eventos$/, '$1 events'], [/^(\d+) nota$/, '$1 note'], [/^(\d+) notas$/, '$1 notes'],
+  [/^(.+) actualizado correctamente\.$/, '$1 updated successfully.'], [/^Contraseña de (.+) restablecida\. Comunícala por un canal seguro\.$/, '$1’s password was reset. Share it through a secure channel.'],
+  [/^(.+) guardado correctamente\.$/, '$1 saved successfully.'],
+  [/^No encontramos “(.+)” en este dossier\.$/, 'We could not find “$1” in this dossier.'], [/^Resultado encontrado en (.+)\.$/, 'Result found in $1.'],
+  [/^Todavía no has enviado tu reporte EOD del (.+)\.$/, 'You have not submitted your EOD report for $1 yet.'], [/^No pudimos verificar el estado del EOD \((.+)\)\.$/, 'We could not verify the EOD status ($1).'],
 ]
 
-function translateValue(value, language) {
+export function translateValue(value, language) {
   const leading = value.match(/^\s*/)?.[0] || ''
   const trailing = value.match(/\s*$/)?.[0] || ''
   const clean = value.trim()
   if (!clean) return value
-  if (language === 'es') {
-    const translated = reverseTranslations[clean]
-    return translated ? `${leading}${translated}${trailing}` : value
-  }
+  if (language === 'es') return value
   let translated = translations[clean]
   if (!translated) {
     for (const [pattern, replacement] of patterns) {
@@ -196,7 +248,13 @@ export function LanguageProvider({ children }) {
     }
   }, [profile?.id, profile?.preferred_language, refreshProfile])
 
-  const value = useMemo(() => ({ language, setLanguage }), [language, setLanguage])
+  const value = useMemo(() => ({
+    language,
+    locale: language === 'en' ? 'en-US' : 'es-NI',
+    setLanguage,
+    t: (value) => translateValue(String(value ?? ''), language),
+    formatDate: (value, options = {}) => new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'es-NI', options).format(value instanceof Date ? value : new Date(value)),
+  }), [language, setLanguage])
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 
