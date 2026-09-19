@@ -31,8 +31,14 @@ export async function setTrainingItemCompleted(profileId, itemId, completed) {
 }
 
 export async function createTrainingModule(module) {
+  const titleEs = module.titleEs.trim()
+  const titleEn = module.titleEn.trim()
+  const descriptionEs = module.descriptionEs.trim()
+  const descriptionEn = module.descriptionEn.trim()
   const { data, error } = await supabase.from('training_modules').insert({
-    title: module.title.trim(), description: module.description.trim(), drive_url: module.driveUrl.trim(),
+    title: titleEs || titleEn, description: descriptionEs || descriptionEn,
+    title_es: titleEs, title_en: titleEn, description_es: descriptionEs, description_en: descriptionEn,
+    drive_url: module.driveUrl.trim(),
     audience_role: module.audienceRole || null, sort_order: Number(module.sortOrder), active: true,
   }).select('*').single()
   if (error) throw error
@@ -40,8 +46,14 @@ export async function createTrainingModule(module) {
 }
 
 export async function updateTrainingModule(module) {
+  const titleEs = (module.title_es || '').trim()
+  const titleEn = (module.title_en || '').trim()
+  const descriptionEs = (module.description_es || '').trim()
+  const descriptionEn = (module.description_en || '').trim()
   const { data, error } = await supabase.from('training_modules').update({
-    title: module.title.trim(), description: module.description.trim(), drive_url: module.drive_url.trim(),
+    title: titleEs || titleEn, description: descriptionEs || descriptionEn,
+    title_es: titleEs, title_en: titleEn, description_es: descriptionEs, description_en: descriptionEn,
+    drive_url: module.drive_url.trim(),
     audience_role: module.audience_role || null, sort_order: Number(module.sort_order), updated_at: new Date().toISOString(),
   }).eq('id', module.id).select('*').single()
   if (error) throw error
@@ -54,8 +66,13 @@ export async function deleteTrainingModule(id) {
 }
 
 export async function createTrainingItem(moduleId, item, nextOrder) {
+  const titleEs = item.titleEs.trim()
+  const titleEn = item.titleEn.trim()
+  const descriptionEs = item.descriptionEs.trim()
+  const descriptionEn = item.descriptionEn.trim()
   const { data, error } = await supabase.from('training_items').insert({
-    module_id: moduleId, title: item.title.trim(), description: item.description.trim(),
+    module_id: moduleId, title: titleEs || titleEn, description: descriptionEs || descriptionEn,
+    title_es: titleEs, title_en: titleEn, description_es: descriptionEs, description_en: descriptionEn,
     drive_url: item.driveUrl.trim(), resource_type: item.resourceType, sort_order: nextOrder,
   }).select('*').single()
   if (error) throw error
@@ -63,8 +80,13 @@ export async function createTrainingItem(moduleId, item, nextOrder) {
 }
 
 export async function updateTrainingItem(item) {
+  const titleEs = (item.title_es || '').trim()
+  const titleEn = (item.title_en || '').trim()
+  const descriptionEs = (item.description_es || '').trim()
+  const descriptionEn = (item.description_en || '').trim()
   const { data, error } = await supabase.from('training_items').update({
-    title: item.title.trim(), description: item.description.trim(), drive_url: item.drive_url.trim(),
+    title: titleEs || titleEn, description: descriptionEs || descriptionEn,
+    title_es: titleEs, title_en: titleEn, description_es: descriptionEs, description_en: descriptionEn,
     resource_type: item.resource_type, sort_order: Number(item.sort_order),
   }).eq('id', item.id).select('*').single()
   if (error) throw error

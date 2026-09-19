@@ -133,6 +133,9 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .client-progress { margin: 1rem 0; }.client-progress > div:first-child { display: flex; justify-content: space-between; color: #8fa4ba; font-size: .75rem; }.client-progress .progress-track { margin: .5rem 0 0; }
 .section-updated { display: block; margin-top: .8rem; color: #718aa2; font-size: .7rem; }
 .task-admin-controls { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }.task-admin-controls select, .task-admin-controls input { width: auto; min-width: 125px; margin: 0; padding: .45rem .55rem; font-size: .72rem; }
+.task-edit-card { border-color: #2b6c8c; box-shadow: 0 18px 45px #020a124d; }
+.task-edit-card .section-actions { justify-content: flex-end; }
+.task-edit-button { margin-top: .65rem; }
 .filter-controls { grid-template-columns: minmax(240px, 2fr) repeat(5, minmax(125px, 1fr)); }
 .metric-grid.compact { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .nav-badge { display: inline-grid; min-width: 1.35rem; height: 1.35rem; margin-left: .55rem; place-items: center; border-radius: 99px; background: #a52a3d; color: white; font-size: .66rem; }

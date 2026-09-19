@@ -36,9 +36,30 @@ const criticalPhrases = [
   'Bóveda de credenciales',
   'Formulario del cliente recibido',
   '¿Eliminar este módulo y sus lecciones?',
+  'Todos los usuarios',
+  'Título (ES)',
 ]
 for (const phrase of criticalPhrases) {
   if (!languageSource.includes(`'${phrase}':`)) violations.push(`Missing critical English translation: ${phrase}`)
+}
+
+const trainingSource = readFileSync('src/pages/TrainingPage.jsx', 'utf8')
+if (!trainingSource.includes("localize(module, 'title')") || !trainingSource.includes("localize(item, 'title')")) {
+  violations.push('TrainingPage must render bilingual module and lesson titles.')
+}
+
+const trainingServiceSource = readFileSync('src/services/trainingService.js', 'utf8')
+if (!trainingServiceSource.includes('title_es:') || !trainingServiceSource.includes('title_en:')) {
+  violations.push('trainingService must save Spanish and English content separately.')
+}
+
+const tasksSource = readFileSync('src/pages/TasksPage.jsx', 'utf8')
+const opsServiceSource = readFileSync('src/services/opsService.js', 'utf8')
+if (!tasksSource.includes("supabase.rpc('get_team_directory')") || !opsServiceSource.includes('assigned_to:')) {
+  violations.push('Tasks must support assignment to individual active team members.')
+}
+if (!tasksSource.includes('updateTaskDetails')) {
+  violations.push('Tasks must keep the full edit workflow available to operations admins.')
 }
 
 if (violations.length) {

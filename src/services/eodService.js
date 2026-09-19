@@ -217,8 +217,9 @@ export async function convertEodCommentToTask({ report, comment }) {
     title: comment.body.slice(0, 160),
     details: `Seguimiento del reporte EOD de ${assignee?.full_name || 'usuario'} correspondiente a ${report.report_date}.`,
     priority: 'Alta',
-    ownerRole: assignee?.role || null,
-    ownerName: assignee?.full_name || 'Equipo',
+    assignedTo: report.user_id,
+    assigneeRole: assignee?.role || null,
+    assigneeName: assignee?.full_name || 'Equipo',
     dueAt: null,
   })
   const { error } = await supabase.from('eod_report_comments').update({

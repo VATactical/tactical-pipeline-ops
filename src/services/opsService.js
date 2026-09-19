@@ -99,10 +99,11 @@ export async function updateTaskAssignment(taskId, ownerRole) {
   if (error) throw error
 }
 
-export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt }) {
+export async function updateTaskManagement(taskId, { assignedTo, assigneeName, assigneeRole, priority, dueAt }) {
   const changes = {
-    owner_role: ownerRole || null,
-    owner_name: ownerRole ? ownerNames[ownerRole] : 'Todos',
+    assigned_to: assignedTo || null,
+    owner_role: assigneeRole || null,
+    owner_name: assigneeName || 'Todos',
     priority: normalizePriority(priority),
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
@@ -112,15 +113,38 @@ export async function updateTaskManagement(taskId, { ownerRole, priority, dueAt 
   if (error) throw error
 }
 
-export async function createAssignedTask({ clientId, title, details = '', body = '', priority, ownerRole, ownerName, dueAt }) {
+export async function updateTaskDetails(taskId, { clientId, title, details = '', assignedTo, assigneeName, assigneeRole, priority, dueAt, status }) {
+  const changes = {
+    client_id: clientId || null,
+    title: title.trim(),
+    evidence: details.trim(),
+    comments: details.trim(),
+    assigned_to: assignedTo || null,
+    owner_role: assigneeRole || null,
+    owner_name: assigneeName || 'Todos',
+    priority: normalizePriority(priority),
+    due_at: dueAt || null,
+    due_label: dueAt || 'Sin fecha',
+    status: normalizeStatus(status),
+    updated_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase.from('tasks').update(changes).eq('id', taskId).select('*, clients(code, business_name)').single()
+  if (error) throw error
+  return data
+}
+
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt }) {
+  const resolvedRole = assigneeRole || ownerRole || null
+  const resolvedName = assigneeName || ownerName || (resolvedRole ? ownerNames[resolvedRole] : 'Todos')
   const payload = {
     id: crypto.randomUUID(),
     client_id: clientId || null,
     title: title.trim(),
     evidence: (details || body).trim(),
     priority: normalizePriority(priority),
-    owner_role: ownerRole || null,
-    owner_name: ownerName || (ownerRole ? ownerNames[ownerRole] : 'Todos'),
+    assigned_to: assignedTo || null,
+    owner_role: resolvedRole,
+    owner_name: resolvedName,
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     comments: (details || body).trim(),
