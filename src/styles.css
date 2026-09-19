@@ -105,6 +105,7 @@ select { padding: .65rem .8rem; border: 1px solid #294158; border-radius: 10px; 
 .composer-grid input, .composer-grid select { width: 100%; margin: 0; }
 textarea { width: 100%; padding: .9rem 1rem; border: 1px solid #2a4057; border-radius: 12px; outline: none; resize: vertical; background: #08131f; color: white; }
 textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
+.formatted-text { white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 4; }
 .new-task-alert { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border: 1px solid #7c5f1e; border-left: 4px solid #f3b43d; border-radius: 14px; background: #2b2413; }
 .new-task-alert strong { color: #ffd774; }.new-task-alert p { margin: .25rem 0 0; color: #c9b47b; font-size: .86rem; }
 .note-list { display: grid; gap: .7rem; }
@@ -636,6 +637,8 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .eod-comment { padding: .8rem; border: 1px solid #263d52; border-radius: 11px; background: #081522; }
 .eod-comment > div { display: flex; justify-content: space-between; gap: .6rem; }
 .eod-comment p { margin: .45rem 0; color: #c3d2df; white-space: pre-wrap; }
+.eod-notes-block { display: grid; gap: .45rem; padding: .85rem; border-left: 3px solid #2fc7f5; border-radius: 0 10px 10px 0; background: #0a1927; }
+.eod-notes-block > p { margin: 0; color: #c3d2df; font-size: .9rem; line-height: 1.7; }
 .eod-comment small, .eod-reviewers small { color: #7890a8; }
 .eod-reviewers { display: flex; flex-wrap: wrap; gap: .4rem; }
 .eod-reviewers small, .task-created-label { padding: .3rem .48rem; border-radius: 7px; background: #14283a; }
