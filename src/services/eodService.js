@@ -39,7 +39,9 @@ function resolveKevinTimeZone(members) {
 
 export async function loadEodData(profile, { windowStart, windowEnd }) {
   const reviewer = canReviewAll(profile)
-  const [reportsResult, tasksResult, reviewsResult, commentsResult, directoryResult, dailyStatusesResult] = await runWithSessionRetry(() => Promise.all([
+  const historyStart = new Date()
+  historyStart.setDate(historyStart.getDate() - 120)
+  const [reportsResult, tasksResult, reviewsResult, commentsResult, directoryResult, dailyStatusesResult, timeEntriesResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).order('updated_at', { ascending: false }).limit(120),
     profile.role === 'superadmin'
       ? Promise.resolve({ data: [], error: null })
@@ -50,15 +52,17 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     supabase.from('eod_report_comments').select('*').order('created_at'),
     supabase.rpc('get_team_directory'),
     supabase.from('eod_daily_status').select('*').order('work_date', { ascending: false }).limit(500),
+    supabase.from('time_entries').select('*').gte('work_date', historyStart.toISOString().slice(0, 10)).order('work_date', { ascending: false }),
   ]))
 
-  const error = reportsResult.error || tasksResult.error || reviewsResult.error || commentsResult.error || directoryResult.error || dailyStatusesResult.error
+  const error = reportsResult.error || tasksResult.error || reviewsResult.error || commentsResult.error || directoryResult.error || dailyStatusesResult.error || timeEntriesResult.error
   if (error) throw error
 
   const directory = directoryResult.data || []
   const members = new Map(directory.map((member) => [member.id, member]))
   const reviews = reviewsResult.data || []
   const comments = commentsResult.data || []
+  const timeEntries = (timeEntriesResult.data || []).map((entry) => ({ ...entry, profiles: memberProfile(members.get(entry.user_id)) }))
   const reports = (reportsResult.data || []).map((report) => ({
     ...report,
     profiles: memberProfile(members.get(report.user_id)),
@@ -70,6 +74,7 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
       ...comment,
       author: memberProfile(members.get(comment.author_id)),
     })),
+    time_entries: timeEntries.filter((entry) => entry.eod_report_id === report.id),
   }))
 
   return {
@@ -77,6 +82,7 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     completedTasks: tasksResult.data || [],
     dailyStatuses: dailyStatusesResult.data || [],
     directory,
+    timeEntries,
     kevinTimeZone: resolveKevinTimeZone(directory),
   }
 }
@@ -162,8 +168,17 @@ export async function loadUnreadEodCount(profile) {
   }).length
 }
 
-export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, notes }) {
+export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes }) {
   const submittedAt = new Date().toISOString()
+  const startedEntries = timeEntries.filter((entry) => entry.hours || entry.memo.trim())
+  if (startedEntries.some((entry) => !(Number(entry.hours) > 0) || !entry.memo.trim())) throw new Error('Cada registro de tiempo necesita horas y memo.')
+  const cleanEntries = startedEntries.map((entry) => ({
+    user_id: profileId,
+    work_date: reportDate,
+    hours: Number(entry.hours),
+    memo: entry.memo.trim(),
+  }))
+  if (cleanEntries.reduce((sum, entry) => sum + entry.hours, 0) > 24) throw new Error('Las horas del día no pueden superar 24.')
   const { data, error } = await supabase.from('eod_reports').upsert({
     user_id: profileId,
     report_date: reportDate,
@@ -176,6 +191,12 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
     updated_at: submittedAt,
   }, { onConflict: 'user_id,report_date' }).select('*').single()
   if (error) throw error
+  const { error: timeError } = await supabase.rpc('replace_eod_time_entries', {
+    p_report_id: data.id,
+    p_work_date: reportDate,
+    p_entries: cleanEntries.map(({ hours, memo }) => ({ hours, memo })),
+  })
+  if (timeError) throw timeError
   const { error: statusError } = await supabase.from('eod_daily_status').upsert({
     user_id: profileId,
     work_date: complianceDate,

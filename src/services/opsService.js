@@ -36,8 +36,8 @@ function normalizeStatus(status) {
   return normalized
 }
 
-export async function loadOperations() {
-  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
+export async function loadOperations(profileId) {
+  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult, directoryResult, noteReadsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').eq('archived', false).order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
@@ -47,14 +47,16 @@ export async function loadOperations() {
     supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).limit(8),
     supabase.from('calendar_events').select('*, clients(code, business_name)').gte('start_at', new Date().toISOString()).order('start_at').limit(6),
     supabase.rpc('get_team_directory'),
+    profileId ? supabase.from('note_reads').select('*').eq('user_id', profileId) : Promise.resolve({ data: [], error: null }),
   ]))
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error || directoryResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error || directoryResult.error || noteReadsResult.error
   if (error) throw error
 
   const clients = clientsResult.data || []
   const activeClientIds = new Set(clients.map((client) => client.id))
   const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
+  const noteReads = new Map((noteReadsResult.data || []).map((receipt) => [receipt.note_id, receipt]))
   const belongsToActiveClient = (item) => !item.client_id || activeClientIds.has(item.client_id)
 
   return {
@@ -62,13 +64,14 @@ export async function loadOperations() {
     tasks: (tasksResult.data || []).filter(belongsToActiveClient),
     blockers: (blockersResult.data || []).filter(belongsToActiveClient),
     workflowSteps: (workflowResult.data || []).filter(belongsToActiveClient),
-    notes: (notesResult.data || []).filter(belongsToActiveClient),
+    notes: (notesResult.data || []).filter(belongsToActiveClient).map((note) => ({ ...note, receipt: noteReads.get(note.id) || null, author: members.get(note.created_by) || null })),
     activity: activityResult.data || [],
     eodReports: (eodResult.data || []).map((report) => {
       const member = members.get(report.user_id)
       return { ...report, profiles: member ? { full_name: member.full_name, role: member.role } : null }
     }),
     upcomingEvents: (eventsResult.data || []).filter(belongsToActiveClient),
+    directory: directoryResult.data || [],
   }
 }
 
@@ -180,6 +183,39 @@ export async function createTeamNote({ clientId, title, body }) {
   return data
 }
 
+export async function markGeneralNoteSeen(noteId, profileId) {
+  const seenAt = new Date()
+  const { data, error } = await supabase.from('note_reads').upsert({
+    note_id: noteId,
+    user_id: profileId,
+    seen_at: seenAt.toISOString(),
+    visible_until: new Date(seenAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+  }, { onConflict: 'note_id,user_id' }).select('*').single()
+  if (error) throw error
+  return data
+}
+
+export async function convertGeneralNoteToTask({ note, assignee, profileId }) {
+  const task = await createAssignedTask({
+    clientId: note.client_id || null,
+    title: note.title,
+    details: note.body || 'Converted from team communications.',
+    priority: 'Media',
+    assignedTo: assignee?.id || null,
+    assigneeName: assignee?.full_name || 'Todos',
+    assigneeRole: assignee?.role || null,
+    dueAt: null,
+  })
+  const { error } = await supabase.from('notes').update({
+    task_id: task.id,
+    converted_at: new Date().toISOString(),
+    converted_by: profileId,
+    updated_at: new Date().toISOString(),
+  }).eq('id', note.id)
+  if (error) throw error
+  return task
+}
+
 export async function markTasksSeen(profileId) {
   const seenAt = new Date().toISOString()
   const { error } = await supabase.from('profiles').update({ last_task_seen_at: seenAt }).eq('id', profileId)
@@ -190,7 +226,7 @@ export async function markTasksSeen(profileId) {
 export function subscribeToOperations(onChange) {
   const channel = supabase.channel(`operations-${crypto.randomUUID()}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => onChange())
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notes' }, () => onChange())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => onChange())
     .subscribe()
   return () => { supabase.removeChannel(channel) }
 }

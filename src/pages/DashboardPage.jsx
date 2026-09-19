@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
 import { useLanguage } from '../i18n/LanguageContext'
+import { downloadCommunicationsPdf } from '../lib/reportExports'
+import { loadCompanySettings } from '../services/companyService'
 import { loadEodComplianceSummary } from '../services/eodService'
 import {
   createTeamNote,
+  convertGeneralNoteToTask,
   loadOperations,
+  markGeneralNoteSeen,
   markTasksSeen,
   subscribeToOperations,
   updateTaskStatus,
@@ -70,11 +74,41 @@ function AdminComposer({ clients, onCreated }) {
   )
 }
 
-function GeneralNotes({ notes }) {
-  const { locale } = useLanguage()
-  const general = notes.filter((note) => !note.client_id).slice(0, 5)
+function GeneralNotes({ notes, members, profile, onUpdated }) {
+  const { locale, t } = useLanguage()
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [clock, setClock] = useState(() => Date.now())
+  const [assignees, setAssignees] = useState({})
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const general = notes.filter((note) => !note.client_id)
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const active = general.filter((note) => !note.receipt || new Date(note.receipt.visible_until).getTime() > clock)
+  const history = general.filter((note) => note.receipt && new Date(note.receipt.visible_until).getTime() <= clock)
+  const visible = historyOpen ? history : active.slice(0, 8)
+  const canConvert = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
+  const markSeen = async (note) => {
+    setBusy(`seen-${note.id}`); setError('')
+    try { await markGeneralNoteSeen(note.id, profile.id); await onUpdated() }
+    catch (actionError) { setError(t(actionError.message)) }
+    finally { setBusy('') }
+  }
+  const convert = async (note) => {
+    const member = members.find((item) => item.id === assignees[note.id]) || null
+    setBusy(`task-${note.id}`); setError('')
+    try { await convertGeneralNoteToTask({ note, assignee: member, profileId: profile.id }); await onUpdated() }
+    catch (actionError) { setError(t(actionError.message)) }
+    finally { setBusy('') }
+  }
+  const exportPdf = async () => {
+    try { await downloadCommunicationsPdf({ notes: general, viewerName: profile.full_name, company: await loadCompanySettings() }) }
+    catch (exportError) { setError(t(exportError.message)) }
+  }
   if (!general.length) return null
-  return <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Comunicaciones</p><h3>Notas generales</h3></div></div><div className="note-list">{general.map((note) => <article className="note-card" key={note.id}><strong data-no-translate>{note.title}</strong>{note.body && <p data-no-translate>{note.body}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div></section>
+  return <section className="content-card communications-card"><div className="section-heading"><div><p className="eyebrow">{t('Comunicaciones')}</p><h3>{t(historyOpen ? 'Historial de notas' : 'Notas generales')}</h3><p className="muted">{t('Después de marcar una nota como vista permanecerá aquí durante 24 horas.')}</p></div><div className="section-actions"><button className="secondary-button" type="button" onClick={exportPdf}>{t('Exportar notas PDF')}</button><button className="text-button" type="button" onClick={() => setHistoryOpen((current) => !current)}>{historyOpen ? t('Ver activas') : `${t('Historial')} (${history.length})`}</button></div></div>{error && <p className="form-error">{error}</p>}<div className="note-list">{visible.length === 0 && <p className="muted">{t(historyOpen ? 'No hay notas en el historial.' : 'No hay comunicaciones activas.')}</p>}{visible.map((note) => <article className="note-card communication-note" key={note.id}><div><strong data-no-translate>{note.title}</strong>{note.receipt && !historyOpen && <span className="seen-badge">{t('Visto · visible 24 h')}</span>}</div>{note.body && <p data-no-translate>{note.body}</p>}<small><span data-no-translate>{note.author?.full_name || t('Equipo')}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small><div className="communication-actions">{!historyOpen && !note.receipt && <button className="secondary-button" type="button" disabled={busy === `seen-${note.id}`} onClick={() => markSeen(note)}>{t(busy === `seen-${note.id}` ? 'Guardando…' : 'Marcar como visto')}</button>}{note.task_id ? <span className="task-created-label">✓ {t('Tarea creada')}</span> : canConvert && <><select value={assignees[note.id] || ''} onChange={(event) => setAssignees((current) => ({ ...current, [note.id]: event.target.value }))}><option value="">{t('Todos / tarea compartida')}</option>{members.map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</select><button className="text-button" type="button" disabled={busy === `task-${note.id}`} onClick={() => convert(note)}>{t(busy === `task-${note.id}` ? 'Creando…' : 'Convertir en tarea')}</button></>}</div></article>)}</div></section>
 }
 
 function EodComplianceCard({ summary }) {
@@ -112,7 +146,7 @@ function SuperadminDashboard({ data, blockers, onCreated, eodCompliance }) {
       <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Próxima agenda</p><h3>Eventos</h3></div><Link to="/calendario">Calendario</Link></div><div className="attention-list">{data.upcomingEvents.length === 0 && <p className="muted">Sin eventos próximos.</p>}{data.upcomingEvents.map((event) => <div className="attention-row" key={event.id}><div><strong data-no-translate>{event.title}</strong><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(event.start_at))}</small></div></div>)}</div></div>
     </section>
     <AdminComposer clients={data.clients} onCreated={onCreated} />
-    <GeneralNotes notes={data.notes} />
+    <GeneralNotes notes={data.notes} members={data.directory} profile={data.profile} onUpdated={data.refresh} />
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades reportadas</p></article>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong data-no-translate>{item.actor_name}</strong><p>{t(item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó')} {t(item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : item.entity_type === 'calendar_events' ? 'un evento' : 'un registro operativo')}</p></div><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
     <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
@@ -135,7 +169,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, mark
   return <>
     <ClientStatusCards clients={data.clients} />
     {newTasks.length > 0 && <section className="new-task-alert" role="alert"><div><strong>{newTasks.length} tarea{newTasks.length === 1 ? '' : 's'} nueva{newTasks.length === 1 ? '' : 's'}</strong><p>Kevin agregó trabajo nuevo a tu tablero.</p></div><button className="secondary-button" onClick={markSeen}>Marcar como vistas</button></section>}
-    <GeneralNotes notes={data.notes} />
+    <GeneralNotes notes={data.notes} members={data.directory} profile={data.profile} onUpdated={data.refresh} />
     <section className="metric-grid" aria-label="Resumen operativo">
       <article className="metric-card blue"><span>Mis tareas abiertas</span><strong>{openTasks.length}</strong><small>{newTasks.length} nuevas</small></article>
       <article className="metric-card amber"><span>Mis tareas atrasadas</span><strong>{overdue.length}</strong><small>{stale.length} clientes sin actualización</small></article>
@@ -152,7 +186,7 @@ function RoleDashboard({ data, openTasks, blockers, changeStatus, newTasks, mark
 export default function DashboardPage() {
   const { profile } = useAuth()
   const { locale } = useLanguage()
-  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [], notes: [], activity: [], eodReports: [], upcomingEvents: [] })
+  const [data, setData] = useState({ clients: [], tasks: [], blockers: [], workflowSteps: [], notes: [], activity: [], eodReports: [], upcomingEvents: [], directory: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -161,10 +195,10 @@ export default function DashboardPage() {
   const refresh = useCallback(async () => {
     try {
       const [operations, compliance] = await Promise.all([
-        loadOperations(),
+        loadOperations(profile.id),
         loadEodComplianceSummary(profile),
       ])
-      setData(operations)
+      setData({ ...operations, profile, refresh })
       setEodCompliance(compliance)
     } catch (loadError) { setError(loadError.message) }
   }, [profile])
