@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import LoadingScreen from '../components/LoadingScreen'
 import { runWithSessionRetry, supabase } from '../lib/supabase'
-import { createAssignedTask, updateTaskDetails, updateTaskStatus } from '../services/opsService'
+import { createAssignedTask, updateTaskDetails, updateTaskProgress } from '../services/opsService'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
@@ -113,6 +113,33 @@ function TaskEditor({ task, clients, members, onCancel, onSaved }) {
   </section>
 }
 
+function TaskProgressEditor({ task, profileId, onSaved }) {
+  const { t } = useLanguage()
+  const [status, setStatus] = useState(task.status || 'Pendiente')
+  const [statusNote, setStatusNote] = useState(task.status_note || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const dirty = status !== task.status || statusNote !== (task.status_note || '')
+
+  const save = async () => {
+    setSaving(true); setError('')
+    try {
+      onSaved(await updateTaskProgress(task.id, { status, statusNote, profileId }))
+    } catch (saveError) {
+      setError(t(saveError.message))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="task-status-controls">
+    <label>{t('Estado')}<select value={status} onChange={(event) => setStatus(event.target.value)} aria-label={`${t('Estado')}: ${task.title}`}>{statuses.map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>
+    <label>{t('Nota de estado')}<textarea rows="2" maxLength="2000" value={statusNote} onChange={(event) => setStatusNote(event.target.value)} placeholder={t('Explica por qué sigue en progreso o está bloqueada…')} /></label>
+    {error && <small className="form-error">{error}</small>}
+    <button className="secondary-button" type="button" disabled={saving || !dirty} onClick={save}>{t(saving ? 'Guardando…' : 'Guardar estado')}</button>
+  </div>
+}
+
 export default function TasksPage() {
   const { profile } = useAuth()
   const { t } = useLanguage()
@@ -151,16 +178,6 @@ export default function TasksPage() {
     return matchesStatus && matchesPriority && (!term || `${task.title} ${task.owner_name} ${task.clients?.code || ''} ${task.clients?.business_name || ''}`.toLowerCase().includes(term))
   }), [tasks, filter, priority, search])
 
-  const changeStatus = async (id, status) => {
-    setError('')
-    try {
-      await updateTaskStatus(id, status)
-      setTasks((current) => current.map((task) => task.id === id ? { ...task, status, completed_at: status === 'Completada' ? new Date().toISOString() : null, completed_by: status === 'Completada' ? (task.assigned_to || profile.id) : null } : task))
-    } catch (updateError) {
-      setError(t(updateError.message))
-    }
-  }
-
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{t('Ejecución')}</p><h2>{t('Tareas')}</h2><p className="muted">{t('Las completadas se conservan separadas en Historial.')}</p></div><span className="status-pill">{visible.length} {t('visibles')}</span></header>
@@ -182,7 +199,7 @@ export default function TasksPage() {
             <small><span>{t('Asignada a')} </span><span data-no-translate>{task.owner_name || t('Todos')}</span>{task.due_at ? ` · ${t(overdue ? 'Atrasada' : 'Vence')} ${task.due_at}` : ''}</small>
             {canManage && <button className="text-button task-edit-button" type="button" onClick={() => { setEditingTask(task); setMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{t('Editar tarea')}</button>}
           </div>
-          <select value={task.status} onChange={(event) => changeStatus(task.id, event.target.value)} aria-label={`${t('Estado')}: ${task.title}`}>{statuses.map((value) => <option value={value} key={value}>{t(value)}</option>)}</select>
+          <TaskProgressEditor task={task} profileId={profile.id} onSaved={(updated) => { setTasks((current) => current.map((item) => item.id === updated.id ? updated : item)); setMessage(t('Estado y nota actualizados.')) }} />
         </article>
       })}
     </section>

@@ -43,6 +43,11 @@ for (const phrase of criticalPhrases) {
   if (!languageSource.includes(`'${phrase}':`)) violations.push(`Missing critical English translation: ${phrase}`)
 }
 
+const taskProgressSource = readFileSync('src/pages/TasksPage.jsx', 'utf8')
+const taskProgressServiceSource = readFileSync('src/services/opsService.js', 'utf8')
+if (!taskProgressSource.includes('updateTaskProgress')) violations.push('TasksPage must save status notes with task progress.')
+if (!taskProgressServiceSource.includes('status_note')) violations.push('Task progress updates must persist status_note.')
+
 const trainingSource = readFileSync('src/pages/TrainingPage.jsx', 'utf8')
 if (!trainingSource.includes("localize(module, 'title')") || !trainingSource.includes("localize(item, 'title')")) {
   violations.push('TrainingPage must render bilingual module and lesson titles.')

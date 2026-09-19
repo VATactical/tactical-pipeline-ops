@@ -94,6 +94,20 @@ export async function updateTaskStatus(taskId, status) {
   if (error) throw error
 }
 
+export async function updateTaskProgress(taskId, { status, statusNote, profileId }) {
+  const note = statusNote.trim()
+  const changes = {
+    status: normalizeStatus(status),
+    status_note: note,
+    status_note_updated_at: note ? new Date().toISOString() : null,
+    status_note_updated_by: note ? profileId : null,
+    updated_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase.from('tasks').update(changes).eq('id', taskId).select('*, clients(code, business_name)').single()
+  if (error) throw error
+  return data
+}
+
 export async function updateTaskAssignment(taskId, ownerRole) {
   const { error } = await supabase.from('tasks').update({ owner_role: ownerRole, owner_name: ownerNames[ownerRole] }).eq('id', taskId)
   if (error) throw error

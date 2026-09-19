@@ -96,6 +96,7 @@ const translations = {
   'Tareas adicionales': 'Additional tasks', 'Tareas atrasadas': 'Overdue tasks', 'Tipo': 'Type', 'Tipo de actualización': 'Update type', 'Última copia': 'Last copy', 'Últimos': 'Latest',
   'Kevin agregó trabajo nuevo a tu tablero.': 'Kevin added new work to your dashboard.', 'Kevin todavía no ha agregado notas para este cliente.': 'Kevin has not added notes for this client yet.',
   'Las completadas se conservan separadas en Historial.': 'Completed items are kept separately in History.', 'No encontramos ese cliente.': 'We could not find that client.',
+  'Nota de estado': 'Status note', 'Explica por qué sigue en progreso o está bloqueada…': 'Explain why it remains in progress or is blocked…', 'Guardar estado': 'Save status', 'Estado y nota actualizados.': 'Status and note updated.',
   'Sin eventos próximos.': 'No upcoming events.', 'Todavía no marcaste tareas como completadas en esta fecha.': 'You have not marked any tasks complete for this date yet.',
   'Tu usuario no tiene permiso para generar informes EOD.': 'Your user does not have permission to generate EOD reports.', 'Ver expediente completo →': 'View full dossier →',
   '¿Perdió su contraseña? Restablecer': 'Forgot your password? Reset it', '← Volver': '← Back',

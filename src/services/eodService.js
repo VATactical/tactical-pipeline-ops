@@ -43,7 +43,7 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).order('updated_at', { ascending: false }).limit(120),
     profile.role === 'superadmin'
       ? Promise.resolve({ data: [], error: null })
-      : supabase.from('tasks').select('id, title, completed_at, completed_by, clients(code, business_name)')
+      : supabase.from('tasks').select('id, title, status_note, completed_at, completed_by, clients(code, business_name)')
           .eq('completed_by', profile.id).gte('completed_at', windowStart).lte('completed_at', windowEnd)
           .order('completed_at', { ascending: false }),
     reviewer ? supabase.from('eod_report_reviews').select('*') : Promise.resolve({ data: [], error: null }),
