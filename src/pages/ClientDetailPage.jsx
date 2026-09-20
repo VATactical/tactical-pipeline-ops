@@ -9,21 +9,21 @@ import { loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMeta
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre comercial', 'business_name'], ['Nombre legal del negocio', 'legal_name'], ['Nombre del propietario', 'owner_name'], ['Número de teléfono', 'phone'], ['Correo electrónico', 'email', 'email'],
-    ['Dirección física', 'address'], ['Información legal · EIN / Tax ID', 'legal_business_info'], ['Estado Persona / KYC', 'kyc_status'],
+    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Correo de negocio · formulario', 'email', 'email'],
+    ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Notas adicionales del formulario', 'onboarding_form_notes'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
-    ['Servicio principal', 'services'], ['Oferta principal', 'offer'], ['KPI mensual objetivo', 'kpi'],
+    ['Servicios ofrecidos · formulario', 'services'], ['Ofertas o descuentos · formulario', 'offer'], ['KPI mensual objetivo', 'kpi'],
     ['Gasto diario objetivo', 'daily_budget', 'number'], ['Proyecto mínimo objetivo', 'minimum_project', 'number'],
     ['Tipo de proyecto', 'project_type'], ['Perfil del cliente objetivo', 'ideal_customer_profile'],
   ] },
   { title: 'Dónde · Mercado', fields: [
-    ['ZIP objetivo / Radio', 'target_zip_codes'], ['Mercados / Ciudades', 'markets'], ['Ubicaciones excluidas', 'exclusions'], ['Zona horaria', 'timezone'],
+    ['Áreas de servicio · ciudades / ZIP · formulario', 'markets'], ['ZIP objetivo / Radio', 'target_zip_codes'], ['Ubicaciones excluidas', 'exclusions'], ['Zona horaria', 'timezone'],
   ] },
   { title: 'Infraestructura', fields: [
     ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
-    ['URL del sitio existente', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Enlace GBP existente', 'gbp_link', 'url'],
-    ['Recursos disponibles', 'available_assets'],
+    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Enlace GBP existente', 'gbp_link', 'url'],
+    ['Activos de marca / Drive · formulario', 'available_assets'],
   ] },
   { title: 'Cuándo · Cronología', fields: [
     ['Fecha de onboarding', 'onboarding_date', 'date'], ['Fecha objetivo de lanzamiento', 'target_launch_date', 'date'],
