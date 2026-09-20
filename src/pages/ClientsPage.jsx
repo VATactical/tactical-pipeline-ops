@@ -19,6 +19,7 @@ export default function ClientsPage() {
   const [steps, setSteps] = useState([])
   const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
   const [showForm, setShowForm] = useState(false)
+  const [viewMode, setViewMode] = useState('cards')
   const [form, setForm] = useState({ code: '', business_name: '', legal_name: '', owner_name: '', assigned_role: 'onboarding_media', status: 'ONBOARDING' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -94,15 +95,15 @@ export default function ClientsPage() {
         <label>Bloqueos<select value={filters.blockers} onChange={(event) => setFilter('blockers', event.target.value)}><option>Todos</option><option>Con bloqueos</option><option>Sin bloqueos</option></select></label>
         <label>Ordenar<select value={filters.sort} onChange={(event) => setFilter('sort', event.target.value)}><option>Código</option><option>Actualización reciente</option><option>Nombre</option><option>Estado</option></select></label>
       </div>
-      <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div>
+      <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span><div className="view-toggle"><button type="button" className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}>Tarjetas</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
     </section>
-    {filtered.length ? <section className="client-grid">{filtered.map((client) => {
+    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
       const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
       const responsible = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }[client.assigned_role] || 'Sin asignar'
-      return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+      return <Link className={`client-card ${viewMode === 'list' ? 'client-list-row' : ''} ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p><p>Responsable interno: {responsible}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
