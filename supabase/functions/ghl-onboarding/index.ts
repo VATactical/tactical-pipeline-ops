@@ -118,6 +118,13 @@ async function findClient(supabase: ReturnType<typeof adminClient>, payload: Pay
     query = await supabase.from("clients").select("*").ilike("legal_name", legalName).limit(1).maybeSingle();
     if (query.error) throw query.error;
     if (query.data) return query.data;
+
+    // Clients may be created manually before their first GHL form import.
+    // In that case legal_name and the GHL identifiers can still be empty,
+    // while business_name already contains the registered business name.
+    query = await supabase.from("clients").select("*").ilike("business_name", legalName).limit(1).maybeSingle();
+    if (query.error) throw query.error;
+    if (query.data) return query.data;
   }
   return null;
 }
