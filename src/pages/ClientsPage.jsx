@@ -102,10 +102,9 @@ export default function ClientsPage() {
       const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
-      const responsible = { onboarding_media: 'Diego', automation_funnels: 'Daniel', superadmin: 'Kevin' }[client.assigned_role] || 'Sin asignar'
       return <Link className={`client-card ${viewMode === 'list' ? 'client-list-row' : ''} ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
-        <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p><p>Responsable interno: {responsible}</p>
+        <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && !client.archived && <span className="blocked">Bloqueo abierto</span>}</div>
