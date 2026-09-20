@@ -242,7 +242,7 @@ Deno.serve(async (request: Request) => {
     if (existing) {
       const safeChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => {
         const current = existing[key];
-        return current === null || current === "" || key.startsWith("ghl_")
+        return current === null || current === "" || emptyValue(text(current)) || key.startsWith("ghl_")
           || ["intake_form_completed", "intake_form_completed_at", "intake_source", "phase", "next_action", "updated_at"].includes(key);
       }));
       const { data, error } = await supabase.from("clients").update(safeChanges)
