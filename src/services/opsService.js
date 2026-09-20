@@ -173,11 +173,12 @@ export async function createAssignedTask({ clientId, title, details = '', body =
   return data
 }
 
-export async function createTeamNote({ clientId, title, body }) {
+export async function createTeamNote({ clientId, title, body, slackChannel = '#daily-comms-hub' }) {
   const { data, error } = await supabase.from('notes').insert({
     client_id: clientId || null,
     title: title.trim(),
     body: body.trim(),
+    slack_channel: slackChannel,
   }).select('*, clients(code, business_name)').single()
   if (error) throw error
   return data
