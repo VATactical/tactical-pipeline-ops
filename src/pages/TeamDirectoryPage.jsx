@@ -11,9 +11,17 @@ export default function TeamDirectoryPage() {
   const [error, setError] = useState('')
   useEffect(() => { loadTeamDirectory().then(setMembers).catch((e) => setError(e.message)).finally(() => setLoading(false)) }, [])
   if (loading) return <LoadingScreen />
+  const channels = [
+    ['#announcements', 'Actualizaciones para toda la agencia, políticas, logros y directrices de dirección. Solo lectura.'],
+    ['#daily-comms-hub', 'Colaboración en tiempo real, consultas rápidas y actualizaciones activas durante la jornada.'],
+    ['#active-projects', 'Campañas en curso, optimización de anuncios, iteraciones creativas y estados de A2P.'],
+    ['#client-ops', 'Escalado de cuentas, atención personalizada y cambios de estado gestionados por Alejandra.'],
+    ['#eod-reports', 'Registros de cierre diario enviados antes de finalizar el turno.'],
+  ]
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">Directorio interno</p><h2>Mi equipo</h2><p className="muted">Contacta rápidamente a cada integrante por correo, Slack o WhatsApp.</p></div><span className="status-pill">{members.length} integrantes</span></header>
     {error && <p className="form-error">{error}</p>}
+    <section className="content-card communication-guidelines"><div className="section-heading"><div><p className="eyebrow">Slack</p><h3>Canales y propósito</h3><p className="muted">Slack es para comunicarnos; TP OPS es la fuente principal para tareas, estados y KPI.</p></div></div><div className="channel-guideline-list">{channels.map(([channel, description]) => <article key={channel}><strong>{channel}</strong><span>{description}</span></article>)}</div></section>
     <section className="directory-grid">{members.map((member) => {
       const slack = contactLink(member.slack_contact, 'slack')
       const whatsapp = contactLink(member.whatsapp_contact, 'whatsapp')
