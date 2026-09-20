@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import React, { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import ProtectedRoute from './auth/ProtectedRoute'
@@ -6,26 +6,58 @@ import AppLayout from './components/AppLayout'
 import LoadingScreen from './components/LoadingScreen'
 import { LanguageProvider } from './i18n/LanguageContext'
 
-const AccessDeniedPage = lazy(() => import('./pages/AccessDeniedPage'))
-const DashboardPage = lazy(() => import('./pages/DashboardPage'))
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const TeamPage = lazy(() => import('./pages/TeamPage'))
-const ClientsPage = lazy(() => import('./pages/ClientsPage'))
-const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'))
-const TasksPage = lazy(() => import('./pages/TasksPage'))
-const CalendarPage = lazy(() => import('./pages/CalendarPage'))
-const EodReportsPage = lazy(() => import('./pages/EodReportsPage'))
-const TrainingPage = lazy(() => import('./pages/TrainingPage'))
-const MyAccountPage = lazy(() => import('./pages/MyAccountPage'))
-const TeamDirectoryPage = lazy(() => import('./pages/TeamDirectoryPage'))
-const CompanyPage = lazy(() => import('./pages/CompanyPage'))
-const CommunicationsPage = lazy(() => import('./pages/CommunicationsPage'))
+const lazyWithRetry = (importer, key) => lazy(() => {
+  const retryKey = `tp-ops-chunk-retry:${key}`
+  return importer()
+    .then((module) => {
+      window.sessionStorage.removeItem(retryKey)
+      return module
+    })
+    .catch((error) => {
+      if (!window.sessionStorage.getItem(retryKey)) {
+        window.sessionStorage.setItem(retryKey, '1')
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      window.sessionStorage.removeItem(retryKey)
+      throw error
+    })
+})
+
+const AccessDeniedPage = lazyWithRetry(() => import('./pages/AccessDeniedPage'), 'access-denied')
+const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage'), 'dashboard')
+const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'), 'login')
+const TeamPage = lazyWithRetry(() => import('./pages/TeamPage'), 'team')
+const ClientsPage = lazyWithRetry(() => import('./pages/ClientsPage'), 'clients')
+const ClientDetailPage = lazyWithRetry(() => import('./pages/ClientDetailPage'), 'client-detail')
+const TasksPage = lazyWithRetry(() => import('./pages/TasksPage'), 'tasks')
+const CalendarPage = lazyWithRetry(() => import('./pages/CalendarPage'), 'calendar')
+const EodReportsPage = lazyWithRetry(() => import('./pages/EodReportsPage'), 'eod-reports')
+const TrainingPage = lazyWithRetry(() => import('./pages/TrainingPage'), 'training')
+const MyAccountPage = lazyWithRetry(() => import('./pages/MyAccountPage'), 'my-account')
+const TeamDirectoryPage = lazyWithRetry(() => import('./pages/TeamDirectoryPage'), 'team-directory')
+const CompanyPage = lazyWithRetry(() => import('./pages/CompanyPage'), 'company')
+const CommunicationsPage = lazyWithRetry(() => import('./pages/CommunicationsPage'), 'communications')
+
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) { return { error } }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return <main className="centered-page"><div className="brand-mark large">TP</div><h2>No se pudo cargar esta página</h2><p>Actualiza una vez para sincronizar la versión más reciente.</p><button className="primary-button" type="button" onClick={() => window.location.reload()}>Reintentar</button></main>
+  }
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <LanguageProvider><Suspense fallback={<LoadingScreen />}><Routes>
+        <LanguageProvider><AppErrorBoundary><Suspense fallback={<LoadingScreen />}><Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
@@ -49,7 +81,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Route>
-        </Routes></Suspense></LanguageProvider>
+        </Routes></Suspense></AppErrorBoundary></LanguageProvider>
       </AuthProvider>
     </BrowserRouter>
   )
