@@ -58,6 +58,7 @@ export default function EodReportsPage() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [reviewFilter, setReviewFilter] = useState('Todos')
+  const [reportViewMode, setReportViewMode] = useState('cards')
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReport, setExpandedReport] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -300,8 +301,8 @@ export default function EodReportsPage() {
 
     <section className="content-card eod-report-center">
       <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3></div></div>
-      <div className="eod-report-filters"><input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…"/>{canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option>Todos</option><option>Nuevos</option><option>Revisado</option><option>Requiere seguimiento</option><option>Visto</option></select>}</div>
-      <div className="report-day-list">{groupedReports.length === 0 && <p className="muted">No hay informes con estos filtros.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className="report-user-grid">{group.items.map((report) => {
+      <div className="eod-report-filters"><input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…"/>{canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option>Todos</option><option>Nuevos</option><option>Revisado</option><option>Requiere seguimiento</option><option>Visto</option></select>}<div className="view-toggle"><button type="button" className={reportViewMode === 'cards' ? 'active' : ''} onClick={() => setReportViewMode('cards')}>Tarjetas</button><button type="button" className={reportViewMode === 'list' ? 'active' : ''} onClick={() => setReportViewMode('list')}>Lista</button></div></div>
+      <div className="report-day-list">{groupedReports.length === 0 && <p className="muted">No hay informes con estos filtros.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className={`report-user-grid ${reportViewMode === 'list' ? 'report-list-view' : ''}`}>{group.items.map((report) => {
         const reportTimeZone = report.profiles?.timezone || timeZone
         const state = getReviewState(report, profile.id)
         return <article className={`report-card eod-review-card ${state.unread ? 'unread' : ''}`} key={report.id}>
