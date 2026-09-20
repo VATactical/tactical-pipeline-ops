@@ -46,13 +46,9 @@ async function authenticate(request: Request) {
 }
 
 async function nextClientCode(supabase: ReturnType<typeof adminClient>) {
-  const { data, error } = await supabase.from("clients").select("code").ilike("code", "C%");
+  const { data, error } = await supabase.rpc("reserve_next_client_code");
   if (error) throw error;
-  const highest = (data || []).reduce((max, row) => {
-    const match = /^C(\d+)$/i.exec(row.code || "");
-    return match ? Math.max(max, Number(match[1])) : max;
-  }, 0);
-  return `C${highest + 1}`;
+  return String(data);
 }
 
 function clientChanges(payload: Payload) {
