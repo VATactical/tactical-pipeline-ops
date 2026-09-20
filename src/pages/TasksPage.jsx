@@ -22,7 +22,7 @@ function AssigneeSelect({ members, value, onChange, disabled = false, t }) {
 }
 
 function TaskComposer({ clients, members, onCreated, profile }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const isAdmin = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
   const emptyForm = { ...initialTask, assignedTo: isAdmin ? '' : profile.id }
   const [form, setForm] = useState(emptyForm)
@@ -151,6 +151,8 @@ export default function TasksPage() {
   const [filter, setFilter] = useState('Abiertas')
   const [priority, setPriority] = useState('Todas')
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState('board')
+  const [draggedTaskId, setDraggedTaskId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -178,6 +180,17 @@ export default function TasksPage() {
     return matchesStatus && matchesPriority && (!term || `${task.title} ${task.owner_name} ${task.clients?.code || ''} ${task.clients?.business_name || ''}`.toLowerCase().includes(term))
   }), [tasks, filter, priority, search])
 
+  const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members])
+  const moveTask = async (task, status) => {
+    if (!task || task.status === status) return
+    try {
+      const updated = await updateTaskProgress(task.id, { status, statusNote: task.status_note || '', profileId: profile.id })
+      setTasks((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
+      setMessage(t('Tarea movida correctamente.'))
+    } catch (moveError) { setError(t(moveError.message)) }
+    finally { setDraggedTaskId(null) }
+  }
+
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{t('Ejecución')}</p><h2>{t('Tareas')}</h2><p className="muted">{t('Las completadas se conservan separadas en Historial.')}</p></div><span className="status-pill">{visible.length} {t('visibles')}</span></header>
@@ -185,8 +198,10 @@ export default function TasksPage() {
     {message && <p className="form-success">{message}</p>}
     {profile?.permissions?.tasks_create && <TaskComposer clients={clients} members={members} profile={profile} onCreated={(task) => { setTasks((current) => [task, ...current]); setMessage(t('Tarea creada y alerta enviada.')) }} />}
     {editingTask && <TaskEditor task={editingTask} clients={clients} members={members} onCancel={() => setEditingTask(null)} onSaved={(updated) => { setTasks((current) => current.map((task) => task.id === updated.id ? updated : task)); setEditingTask(null); setMessage(t('Tarea actualizada correctamente.')) }} />}
-    <section className="filter-bar"><input type="search" placeholder={t('Buscar tarea o cliente…')} value={search} onChange={(event) => setSearch(event.target.value)} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="Abiertas">{t('Abiertas')}</option><option value="Historial completadas">{t('Historial completadas')}</option><option value="Todas">{t('Todas')}</option></select><select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="Todas">{t('Todas')}</option>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></section>
-    <section className="content-card task-table">
+    <section className="filter-bar"><input type="search" placeholder={t('Buscar tarea o cliente…')} value={search} onChange={(event) => setSearch(event.target.value)} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="Abiertas">{t('Abiertas')}</option><option value="Historial completadas">{t('Historial completadas')}</option><option value="Todas">{t('Todas')}</option></select><select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="Todas">{t('Todas')}</option>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select><div className="task-view-toggle" role="group" aria-label="Vista de tareas"><button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Tablero</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button></div></section>
+    {viewMode === 'board' ? <section className="task-board" aria-label="Tablero de tareas">
+      {statuses.map((status) => <div className="task-column" key={status} onDragOver={(event) => event.preventDefault()} onDrop={() => moveTask(tasks.find((task) => task.id === draggedTaskId), status)}><div className="task-column-header"><h3>{t(status)}</h3><span>{visible.filter((task) => task.status === status).length}</span></div>{visible.filter((task) => task.status === status).map((task) => { const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date(); const sender = memberById.get(task.created_by)?.full_name || task.created_by_name || 'Equipo'; return <article className={`task-board-card ${overdue ? 'overdue' : ''}`} draggable onDragStart={() => setDraggedTaskId(task.id)} key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{t(task.priority)}</span><strong data-no-translate>{task.title}</strong><small>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</small><small>Creada {task.created_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(task.created_at)) : '—'} · Por {sender}</small>{task.due_at && <small>{t(overdue ? 'Atrasada' : 'Vence')} {task.due_at}</small>}<button className="text-button" type="button" onClick={() => setEditingTask(task)}>{t('Editar tarea')}</button></article>})}</div>)}
+    </section> : <section className="content-card task-table">
       {visible.length === 0 && <p className="muted">{t('No hay tareas en esta vista.')}</p>}
       {visible.map((task) => {
         const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
@@ -196,12 +211,12 @@ export default function TasksPage() {
             <strong data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</strong>
             <p data-no-translate>{task.title}</p>
             {task.comments && <p className="task-detail" data-no-translate>{task.comments}</p>}
-            <small><span>{t('Asignada a')} </span><span data-no-translate>{task.owner_name || t('Todos')}</span>{task.due_at ? ` · ${t(overdue ? 'Atrasada' : 'Vence')} ${task.due_at}` : ''}</small>
+            <small><span>{t('Asignada a')} </span><span data-no-translate>{task.owner_name || t('Todos')}</span>{task.due_at ? ` · ${t(overdue ? 'Atrasada' : 'Vence')} ${task.due_at}` : ''}</small><small>Creada {task.created_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(task.created_at)) : '—'} · Por {memberById.get(task.created_by)?.full_name || task.created_by_name || 'Equipo'}</small>
             {canManage && <button className="text-button task-edit-button" type="button" onClick={() => { setEditingTask(task); setMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{t('Editar tarea')}</button>}
           </div>
           <TaskProgressEditor task={task} profileId={profile.id} onSaved={(updated) => { setTasks((current) => current.map((item) => item.id === updated.id ? updated : item)); setMessage(t('Estado y nota actualizados.')) }} />
         </article>
       })}
-    </section>
+    </section>}
   </div>
 }
