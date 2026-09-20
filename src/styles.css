@@ -418,6 +418,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .notification-row .secondary-button { width: 100%; }
   .report-list-view .report-card { display: grid; grid-template-columns: 1fr; }.report-list-view .report-open-button { grid-column: auto; grid-row: auto; width: 100%; }
   .eod-follow-up-summary { grid-template-columns: 1fr auto; }.eod-follow-up-summary small { grid-column: 1 / -1; }.eod-follow-up-summary .text-button { grid-column: 1 / -1; justify-self: start; }
+  .eod-review-card.report-collapsed { grid-template-columns: 1fr; }.eod-review-card.report-collapsed .report-open-button { grid-column: 1; grid-row: auto; width: max-content; }
 }
 
 /* Mobile readability and touch layout */
@@ -664,6 +665,18 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .eod-comment { padding: .8rem; border: 1px solid #263d52; border-radius: 11px; background: #081522; }
 .eod-comment > div { display: flex; justify-content: space-between; gap: .6rem; }
 .eod-comment p { margin: .45rem 0; color: #c3d2df; white-space: pre-wrap; }
+.eod-review-card.report-collapsed { grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .75rem; padding: .65rem .75rem; }
+.eod-review-card.report-collapsed .eod-report-title,
+.eod-review-card.report-collapsed .report-period,
+.eod-review-card.report-collapsed .eod-notes-block,
+.eod-review-card.report-collapsed .eod-review-actions,
+.eod-review-card.report-collapsed .eod-comment-form,
+.eod-review-card.report-collapsed .eod-follow-up-summary,
+.eod-review-card.report-collapsed .eod-reviewers { grid-column: 1 / -1; }
+.eod-review-card.report-collapsed .report-period { margin: 0; }
+.eod-review-card.report-collapsed .eod-activity-count,
+.eod-review-card.report-collapsed .eod-hours-total { margin: 0; }
+.eod-review-card.report-collapsed .report-open-button { grid-column: 2; grid-row: 3 / span 2; align-self: center; margin: 0; padding: .5rem .7rem; }
 .eod-notes-block { display: grid; gap: .45rem; padding: .85rem; border-left: 3px solid #2fc7f5; border-radius: 0 10px 10px 0; background: #0a1927; }
 .eod-notes-block > p { margin: 0; color: #c3d2df; font-size: .9rem; line-height: 1.7; }
 .eod-comment small, .eod-reviewers small { color: #7890a8; }
