@@ -19,12 +19,13 @@ export default function ClientsPage() {
   const [steps, setSteps] = useState([])
   const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
   const [showForm, setShowForm] = useState(false)
-  const [viewMode, setViewMode] = useState('cards')
+  const [viewMode, setViewMode] = useState(() => window.localStorage.getItem('tp-ops-client-view') || 'cards')
   const [form, setForm] = useState({ code: '', business_name: '', legal_name: '', owner_name: '', assigned_role: 'onboarding_media', status: 'ONBOARDING' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
+  useEffect(() => { window.localStorage.setItem('tp-ops-client-view', viewMode) }, [viewMode])
 
   useEffect(() => {
     runWithSessionRetry(() => Promise.all([
@@ -97,12 +98,19 @@ export default function ClientsPage() {
       </div>
       <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span><div className="view-toggle"><button type="button" className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}>Tarjetas</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
     </section>
-    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{filtered.map((client) => {
+    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{viewMode === 'list' && <div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>Tareas</span><span /></div>}{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
       const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
-      return <Link className={`client-card ${viewMode === 'list' ? 'client-list-row' : ''} ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+      if (viewMode === 'list') return <Link className={`client-list-row ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
+        <div className="client-list-name"><span className="client-code">{client.code}</span><strong>{client.business_name}</strong></div>
+        <span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>
+        <div className="client-list-progress"><strong>{progress}%</strong><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
+        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <span className="client-list-tasks">{clientTasks.length} tareas</span><span className="row-arrow">→</span>
+      </Link>
+      return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
