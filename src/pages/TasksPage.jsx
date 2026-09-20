@@ -142,7 +142,7 @@ function TaskProgressEditor({ task, profileId, onSaved }) {
 
 export default function TasksPage() {
   const { profile } = useAuth()
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const canManage = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const [tasks, setTasks] = useState([])
   const [clients, setClients] = useState([])
