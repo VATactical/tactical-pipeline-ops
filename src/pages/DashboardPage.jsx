@@ -17,6 +17,13 @@ import {
 } from '../services/opsService'
 
 const priorityRank = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
+const slackChannels = [
+  ['#announcements', 'Anuncios generales'],
+  ['#daily-comms-hub', 'Comunicación diaria'],
+  ['#active-projects', 'Proyectos activos'],
+  ['#client-ops', 'Operaciones de clientes'],
+  ['#eod-reports', 'Reportes EOD'],
+]
 const isOverdue = (task) => task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
 const isStale = (client) => Date.now() - new Date(client.updated_at).getTime() > 3 * 86400000
 const launchOverdue = (client) => client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
@@ -34,7 +41,7 @@ function ClientStatusCards({ clients }) {
 }
 
 function AdminComposer({ clients, onCreated }) {
-  const initial = { type: 'general_note', clientId: '', title: '', body: '' }
+  const initial = { type: 'general_note', clientId: '', title: '', body: '', slackChannel: '#daily-comms-hub' }
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -46,7 +53,7 @@ function AdminComposer({ clients, onCreated }) {
     if (!form.title.trim() || (needsClient && !form.clientId)) return
     setSaving(true); setError('')
     try {
-      await createTeamNote({ clientId: needsClient ? form.clientId : null, title: form.title, body: form.body })
+      await createTeamNote({ clientId: needsClient ? form.clientId : null, title: form.title, body: form.body, slackChannel: form.slackChannel })
       setForm(initial)
       onCreated('Nota guardada.')
     } catch (submitError) { setError(submitError.message) }
@@ -64,6 +71,7 @@ function AdminComposer({ clients, onCreated }) {
         </div>
         <div className="composer-grid">
           {needsClient && <label>Cliente<select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)} required><option value="">Seleccionar cliente…</option>{clients.map((client) => <option value={client.id} key={client.id}>{client.code} · {client.business_name}</option>)}</select></label>}
+          <label>Canal Slack<select value={form.slackChannel} onChange={(event) => setField('slackChannel', event.target.value)}>{slackChannels.map(([value, label]) => <option value={value} key={value}>{value} · {label}</option>)}</select></label>
           <label className="wide">Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder="Título de la nota" /></label>
           <label className="wide">Detalle<textarea value={form.body} onChange={(event) => setField('body', event.target.value)} rows="3" maxLength="5000" placeholder="Contexto, instrucciones o información adicional…" /></label>
         </div>
