@@ -54,6 +54,7 @@ export default function EodReportsPage() {
   const [userSearch, setUserSearch] = useState('')
   const [reviewFilter, setReviewFilter] = useState('Todos')
   const [commentDrafts, setCommentDrafts] = useState({})
+  const [expandedReport, setExpandedReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actionKey, setActionKey] = useState('')
@@ -95,6 +96,18 @@ export default function EodReportsPage() {
     setError('')
     refresh().catch((loadError) => setError(t(loadError.message))).finally(() => setLoading(false))
   }, [refresh])
+
+  useEffect(() => {
+    if (!expandedReport) return undefined
+    const closeOnEscape = (event) => event.key === 'Escape' && setExpandedReport(null)
+    document.addEventListener('keydown', closeOnEscape)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [expandedReport])
 
   const currentKevinDate = getDateInTimeZone(new Date(), kevinTimeZone)
   const afterKevinCutoff = isPastKevinCutoff(kevinTimeZone)
@@ -291,6 +304,7 @@ export default function EodReportsPage() {
           <small className="report-period">{t('Ciclo diario')}: {formatMoment(report.period_start, reportTimeZone, locale)} — {formatMoment(report.period_end, reportTimeZone, locale)} · {reportTimeZone}</small>
           <p className="eod-activity-count">{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</p>
           <p className="eod-hours-total">{t('Horas')}: <strong>{(report.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>
+          <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>Abrir reporte completo</button>
           <ul data-no-translate>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>
           {report.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{report.notes}</p></div>}
           {canReviewAll && <><div className="eod-review-actions"><button className="secondary-button" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Visto')}>Marcar visto</button><button className="secondary-button review-ok" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Revisado')}>Revisado</button><button className="secondary-button review-follow-up" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Requiere seguimiento')}>Requiere seguimiento</button></div>
@@ -300,5 +314,11 @@ export default function EodReportsPage() {
         </article>
       })}</div></section>)}</div>
     </section>
+    {expandedReport && <div className="eod-report-modal" role="dialog" aria-modal="true" aria-labelledby="expanded-report-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setExpandedReport(null) }}>
+      <article className="eod-report-modal-card">
+        <div className="eod-report-modal-header"><div><p className="eyebrow">Reporte EOD completo</p><h2 id="expanded-report-title">{expandedReport.profiles?.full_name || t('Usuario')} · {expandedReport.report_date}</h2><small>{t('Enviado')} {formatMoment(expandedReport.submitted_at || expandedReport.updated_at, timeZone, locale)}</small></div><button className="secondary-button" type="button" onClick={() => setExpandedReport(null)}>Cerrar</button></div>
+        <div className="eod-report-modal-body"><p className="report-period">{t('Ciclo diario')}: {formatMoment(expandedReport.period_start, expandedReport.profiles?.timezone || timeZone, locale)} — {formatMoment(expandedReport.period_end, expandedReport.profiles?.timezone || timeZone, locale)}</p><h3>Actividades</h3><ul data-no-translate>{[...(expandedReport.completed_tasks || []), ...(expandedReport.manual_tasks || [])].map((item, index) => <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul><p className="eod-hours-total">{t('Horas')}: <strong>{(expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>{expandedReport.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}{(expandedReport.comments || []).length > 0 && <div className="eod-comment-list"><strong>Seguimiento</strong>{expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}><div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div><p className="formatted-text" data-no-translate>{comment.body}</p></article>)}</div>}</div>
+      </article>
+    </div>}
   </div>
 }
