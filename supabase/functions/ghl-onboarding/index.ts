@@ -6,7 +6,11 @@ type Payload = Record<string, unknown>;
 const jsonHeaders = { "Content-Type": "application/json" };
 const webhookTokenSha256 = "f42da45e5bc881f96f9b54bb4a80edb7f8aebc1532ebd18c0fa622e7920b7ee5";
 const text = (value: unknown, max = 5000) => String(value ?? "").trim().slice(0, max);
-const emptyValue = (value: string) => !value || /^(n\/?a|none|pending)$/i.test(value);
+const emptyValue = (value: string) => !value || /^(null|undefined|n\/?a|none|pending)$/i.test(value);
+const fieldText = (value: unknown, max = 5000) => {
+  const valueText = text(value, max);
+  return emptyValue(valueText) ? "" : valueText;
+};
 
 function response(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -52,25 +56,32 @@ async function nextClientCode(supabase: ReturnType<typeof adminClient>) {
 }
 
 function clientChanges(payload: Payload) {
-  const firstName = text(payload.first_name, 200);
-  const lastName = text(payload.last_name, 200);
-  const fullName = text(payload.full_name, 300) || [firstName, lastName].filter(Boolean).join(" ");
-  const legalName = text(payload.registered_business_name, 300);
-  const website = text(payload.website, 1000);
+  const firstName = fieldText(payload.first_name, 200);
+  const lastName = fieldText(payload.last_name, 200);
+  const distinctNameParts = firstName && lastName && firstName.toLowerCase() === lastName.toLowerCase()
+    ? [firstName]
+    : [firstName, lastName].filter(Boolean);
+  const submittedFullName = fieldText(payload.full_name, 300);
+  const fullName = firstName && lastName && firstName.toLowerCase() === lastName.toLowerCase()
+    ? firstName
+    : submittedFullName || distinctNameParts.join(" ");
+  const businessName = fieldText(payload.business_name, 300) || fieldText(payload.company_name, 300);
+  const legalName = fieldText(payload.registered_business_name, 300);
+  const website = fieldText(payload.website, 1000);
   const wantsWebsite = /would like (a )?website|website included|i need (a website|one)|need a website|necesito.*sitio/i.test(website);
   const facebook = text(payload.facebook, 1000);
   const submittedAt = text(payload.submitted_at, 100) || new Date().toISOString();
   const date = Number.isNaN(Date.parse(submittedAt)) ? new Date().toISOString() : new Date(submittedAt).toISOString();
   const changes: Record<string, unknown> = {
     legal_name: legalName,
-    business_name: legalName,
+    business_name: businessName || legalName,
     owner_name: fullName,
-    phone: text(payload.business_phone, 100),
-    email: text(payload.business_email, 300),
-    services: text(payload.services),
-    offer: text(payload.offer),
-    markets: text(payload.service_areas),
-    target_zip_codes: text(payload.service_areas),
+    phone: fieldText(payload.business_phone, 100),
+    email: fieldText(payload.business_email, 300),
+    services: fieldText(payload.services),
+    offer: fieldText(payload.offer),
+    markets: fieldText(payload.service_areas),
+    target_zip_codes: fieldText(payload.service_areas),
     website_url: wantsWebsite || emptyValue(website) ? "" : website,
     needs_website_funnel: wantsWebsite ? true : emptyValue(website) ? null : false,
     facebook_page_url: /^https?:\/\//i.test(facebook) ? facebook : "",
@@ -98,9 +109,10 @@ function clientChanges(payload: Payload) {
 async function findClient(supabase: ReturnType<typeof adminClient>, payload: Payload) {
   const locationId = text(payload.location_id, 200);
   const contactId = text(payload.contact_id, 200);
-  const businessEmail = text(payload.business_email, 300);
-  const personalEmail = text(payload.personal_email, 300);
-  const legalName = text(payload.registered_business_name, 300);
+  const businessEmail = fieldText(payload.business_email, 300);
+  const personalEmail = fieldText(payload.personal_email, 300);
+  const legalName = fieldText(payload.registered_business_name, 300);
+  const businessName = fieldText(payload.business_name, 300) || fieldText(payload.company_name, 300);
 
   let query = await supabase.from("clients").select("*")
     .eq("ghl_location_id", locationId).eq("ghl_contact_id", contactId).maybeSingle();
@@ -123,6 +135,11 @@ async function findClient(supabase: ReturnType<typeof adminClient>, payload: Pay
     // In that case legal_name and the GHL identifiers can still be empty,
     // while business_name already contains the registered business name.
     query = await supabase.from("clients").select("*").ilike("business_name", legalName).limit(1).maybeSingle();
+    if (query.error) throw query.error;
+    if (query.data) return query.data;
+  }
+  if (businessName) {
+    query = await supabase.from("clients").select("*").ilike("business_name", businessName).limit(1).maybeSingle();
     if (query.error) throw query.error;
     if (query.data) return query.data;
   }
@@ -178,9 +195,10 @@ Deno.serve(async (request: Request) => {
   const locationId = text(payload.location_id, 200);
   const contactId = text(payload.contact_id, 200);
   const formId = text(payload.form_id, 200);
-  const legalName = text(payload.registered_business_name, 300);
-  if (!locationId || !contactId || !legalName) {
-    return response({ error: "location_id, contact_id, and registered_business_name are required" }, 422);
+  const legalName = fieldText(payload.registered_business_name, 300);
+  const businessName = fieldText(payload.business_name, 300) || fieldText(payload.company_name, 300);
+  if (!locationId || !contactId || (!legalName && !businessName)) {
+    return response({ error: "location_id, contact_id, and a business name are required" }, 422);
   }
 
   const eventKey = text(payload.event_id, 300) || await sha256([
