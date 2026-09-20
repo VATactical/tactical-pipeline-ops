@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createClient } from '../services/opsService'
 
 const initialForm = {
-  code: '', business_name: '', owner_name: '', email: '', phone: '', status: 'ONBOARDING',
+  code: '', business_name: '', legal_name: '', owner_name: '', email: '', phone: '', status: 'ONBOARDING',
   phase: 'Perfil', next_action: 'Completar dossier', daily_budget: 30, services: '', markets: '', timezone: '',
 }
 
@@ -29,7 +29,8 @@ export default function ClientCreatePage() {
       {error && <p className="form-error" role="alert">{error}</p>}
       <form className="content-card client-form" onSubmit={submit}>
         <div><label>Código</label><input required placeholder="C10" value={form.code} onChange={(event) => update('code', event.target.value)} /></div>
-        <div><label>Negocio</label><input required value={form.business_name} onChange={(event) => update('business_name', event.target.value)} /></div>
+        <div><label>Nombre comercial</label><input required value={form.business_name} onChange={(event) => update('business_name', event.target.value)} /></div>
+        <div><label>Nombre legal del negocio</label><input value={form.legal_name} onChange={(event) => update('legal_name', event.target.value)} /></div>
         <div><label>Propietario</label><input value={form.owner_name} onChange={(event) => update('owner_name', event.target.value)} /></div>
         <div><label>Correo</label><input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></div>
         <div><label>Teléfono</label><input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></div>
