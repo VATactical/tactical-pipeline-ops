@@ -58,7 +58,7 @@ export default function EodReportsPage() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [reviewFilter, setReviewFilter] = useState('Todos')
-  const [reportViewMode, setReportViewMode] = useState('cards')
+  const [reportViewMode, setReportViewMode] = useState(() => window.localStorage.getItem('tp-ops-eod-view') || 'cards')
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReport, setExpandedReport] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -66,6 +66,7 @@ export default function EodReportsPage() {
   const [actionKey, setActionKey] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  useEffect(() => { window.localStorage.setItem('tp-ops-eod-view', reportViewMode) }, [reportViewMode])
 
   const refresh = useCallback(async () => {
     const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
@@ -305,7 +306,7 @@ export default function EodReportsPage() {
       <div className="report-day-list">{groupedReports.length === 0 && <p className="muted">No hay informes con estos filtros.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className={`report-user-grid ${reportViewMode === 'list' ? 'report-list-view' : ''}`}>{group.items.map((report) => {
         const reportTimeZone = report.profiles?.timezone || timeZone
         const state = getReviewState(report, profile.id)
-        return <article className={`report-card eod-review-card ${state.unread ? 'unread' : ''}`} key={report.id}>
+        return <article className={`report-card eod-review-card report-collapsed ${state.unread ? 'unread' : ''}`} key={report.id}>
           <div className="eod-report-title"><div><strong data-no-translate>{report.profiles?.full_name || t('Usuario')}</strong><small>{t('Enviado')} {formatMoment(report.submitted_at || report.updated_at, timeZone, locale)}</small></div><span className={`eod-review-status ${state.label.toLowerCase().replaceAll(' ', '-')}`}>{t(state.label)}</span></div>
           <small className="report-period">{t('Ciclo diario')}: {formatMoment(report.period_start, reportTimeZone, locale)} — {formatMoment(report.period_end, reportTimeZone, locale)} · {reportTimeZone}</small>
           <p className="eod-activity-count">{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</p>
