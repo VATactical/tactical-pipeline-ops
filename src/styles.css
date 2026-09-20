@@ -417,6 +417,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .notification-row { flex-direction: column; }
   .notification-row .secondary-button { width: 100%; }
   .report-list-view .report-card { display: grid; grid-template-columns: 1fr; }.report-list-view .report-open-button { grid-column: auto; grid-row: auto; width: 100%; }
+  .eod-follow-up-summary { grid-template-columns: 1fr auto; }.eod-follow-up-summary small { grid-column: 1 / -1; }.eod-follow-up-summary .text-button { grid-column: 1 / -1; justify-self: start; }
 }
 
 /* Mobile readability and touch layout */
@@ -657,6 +658,9 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .eod-comment-form label { display: grid; gap: .4rem; }
 .eod-comment-form textarea { min-height: 76px; }
 .eod-comment-list { display: grid; gap: .6rem; padding-top: .85rem; border-top: 1px solid #1d3043; }
+.eod-follow-up-summary { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: .55rem .8rem; align-items: center; padding: .8rem .9rem; border: 1px solid #294158; border-radius: 12px; background: linear-gradient(135deg, #0c2031, #0a1725); }.eod-follow-up-summary strong { color: #8ee4ff; }.eod-follow-up-summary span { color: #dce8f3; font-size: .8rem; font-weight: 800; }.eod-follow-up-summary small { overflow: hidden; color: #8fa4ba; text-overflow: ellipsis; white-space: nowrap; }.eod-follow-up-summary .text-button { padding: 0; }
+.eod-report-center { overflow: hidden; }.eod-review-card { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }.eod-review-card:hover { border-color: #3b6d8b; box-shadow: 0 20px 50px #0004; transform: translateY(-1px); }.eod-report-filters { align-items: center; padding: .75rem; border: 1px solid #1d354a; border-radius: 12px; background: #081522; }.eod-report-filters .view-toggle { justify-self: end; }.report-open-button { border-color: #3b6d8b; background: #102b3e; color: #a3e8ff; font-weight: 850; }
+.client-filters { box-shadow: 0 14px 35px #0002; }.client-card, .task-board-card, .notification-row { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }.client-card:hover, .task-board-card:hover, .notification-row:hover { box-shadow: 0 14px 35px #0003; }
 .eod-comment { padding: .8rem; border: 1px solid #263d52; border-radius: 11px; background: #081522; }
 .eod-comment > div { display: flex; justify-content: space-between; gap: .6rem; }
 .eod-comment p { margin: .45rem 0; color: #c3d2df; white-space: pre-wrap; }
