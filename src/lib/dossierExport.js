@@ -1,5 +1,5 @@
 const pending = (value) => {
-  if (value == null || value === '') return 'Pending'
+  if (value == null || value === '' || /^(null|undefined|n\/?a|none)$/i.test(String(value).trim())) return 'Pending'
   return String(value)
 }
 const yesNo = (value) => value ? 'YES' : 'NO'
@@ -119,6 +119,9 @@ export async function downloadDossierPdf(client, text) {
     }
   }
 
-  const safeName = `${client.code}-${client.business_name}`.replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-')
+  const dossierName = pending(client.business_name) === 'Pending'
+    ? (pending(client.legal_name) === 'Pending' ? 'Client' : client.legal_name)
+    : client.business_name
+  const safeName = `${client.code}-${dossierName}`.replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-')
   pdf.save(`${safeName}-WWWW.pdf`)
 }
