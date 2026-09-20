@@ -5,6 +5,7 @@ import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
 import { LanguageToggle, useLanguage } from '../i18n/LanguageContext'
 import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
+import { loadUnreadCommunicationCount, subscribeToOperations } from '../services/opsService'
 import TeamAvatar from './TeamAvatar'
 
 const roleLabels = {
@@ -20,6 +21,7 @@ export default function AppLayout() {
   const location = useLocation()
   const [notificationCount, setNotificationCount] = useState(0)
   const [eodUnreadCount, setEodUnreadCount] = useState(0)
+  const [communicationCount, setCommunicationCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -57,6 +59,21 @@ export default function AppLayout() {
     window.addEventListener('company-settings-updated', updateCompany)
     return () => window.removeEventListener('company-settings-updated', updateCompany)
   }, [])
+
+  useEffect(() => {
+    if (!profile?.id) return undefined
+    const refreshCommunicationCount = () => loadUnreadCommunicationCount(profile.id).then(setCommunicationCount).catch(() => {})
+    refreshCommunicationCount()
+    const unsubscribe = subscribeToOperations((payload) => {
+      refreshCommunicationCount()
+      if (payload?.eventType === 'INSERT' && payload.new && 'Notification' in window && Notification.permission === 'granted') {
+        const scope = payload.new.client_id ? 'Mensaje específico de cliente' : 'Mensaje general del equipo'
+        new Notification(payload.new.title || scope, { body: payload.new.body || scope })
+      }
+    })
+    const timer = window.setInterval(refreshCommunicationCount, 60000)
+    return () => { unsubscribe(); window.clearInterval(timer) }
+  }, [profile?.id])
 
   useEffect(() => {
     document.title = company.system_name || 'TP | Ops'
@@ -107,7 +124,7 @@ export default function AppLayout() {
         </div>
 
         <nav id="main-navigation" className={mobileMenuOpen ? 'mobile-open' : ''} aria-label="Navegación principal">
-          <NavLink to="/" end>Panel</NavLink>
+          <NavLink to="/" end>Panel{communicationCount > 0 && <span className="nav-badge">{communicationCount}</span>}</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
