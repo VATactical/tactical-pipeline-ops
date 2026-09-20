@@ -9,7 +9,7 @@ import { loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMeta
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre del negocio', 'business_name'], ['Nombre del propietario', 'owner_name'], ['Número de teléfono', 'phone'], ['Correo electrónico', 'email', 'email'],
+    ['Nombre comercial', 'business_name'], ['Nombre legal del negocio', 'legal_name'], ['Nombre del propietario', 'owner_name'], ['Número de teléfono', 'phone'], ['Correo electrónico', 'email', 'email'],
     ['Dirección física', 'address'], ['Información legal · EIN / Tax ID', 'legal_business_info'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
