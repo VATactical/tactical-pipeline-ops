@@ -8,8 +8,19 @@ import { useLanguage } from '../i18n/LanguageContext'
 const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', assignedTo: '', priority: 'Media', dueAt: '' }
 const priorities = ['Baja', 'Media', 'Alta', 'Urgente']
 const statuses = ['Pendiente', 'En progreso', 'Bloqueada', 'Completada']
+const roleOptions = [
+  ['onboarding_media', 'Rol · Onboarding & Media'],
+  ['automation_funnels', 'Rol · Automations & Funnels'],
+  ['user_admin', 'Rol · User Admin'],
+  ['superadmin', 'Rol · Superadmin'],
+]
 
 function assigneeData(members, assignedTo) {
+  if (assignedTo?.startsWith('role:')) {
+    const role = assignedTo.slice(5)
+    const roleLabel = roleOptions.find(([value]) => value === role)?.[1].replace('Rol · ', '') || role
+    return { assignedTo: null, assigneeName: roleLabel, assigneeRole: role }
+  }
   const member = members.find((item) => item.id === assignedTo)
   return member ? { assignedTo: member.id, assigneeName: member.full_name, assigneeRole: member.role } : { assignedTo: null, assigneeName: 'Todos', assigneeRole: null }
 }
@@ -17,14 +28,18 @@ function assigneeData(members, assignedTo) {
 function AssigneeSelect({ members, value, onChange, disabled = false, t }) {
   return <select value={value || ''} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
     {!disabled && <option value="">{t('Todos / tarea compartida')}</option>}
-    {members.map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}
+    <optgroup label={t('Usuarios')}>
+      {members.map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}
+    </optgroup>
+    <optgroup label={t('Roles')}>
+      {roleOptions.map(([role, label]) => <option value={`role:${role}`} key={role}>{t(label)}</option>)}
+    </optgroup>
   </select>
 }
 
 function TaskComposer({ clients, members, onCreated, profile }) {
-  const { t, locale } = useLanguage()
-  const isAdmin = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
-  const emptyForm = { ...initialTask, assignedTo: isAdmin ? '' : profile.id }
+  const { t } = useLanguage()
+  const emptyForm = { ...initialTask, assignedTo: profile.id }
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -60,7 +75,7 @@ function TaskComposer({ clients, members, onCreated, profile }) {
       </div>
       <div className="composer-grid">
         {form.scope === 'client' && <label className="wide client-search-picker">{t('Buscar cliente')}<input type="search" value={form.clientSearch} placeholder={t('Escribe código o nombre…')} onChange={(event) => { setField('clientSearch', event.target.value); setField('clientId', '') }} required />{selected ? <span className="selected-client">{t('Seleccionado:')} {selected.code} · {selected.business_name}</span> : form.clientSearch && <div className="search-results">{matches.map((client) => <button type="button" key={client.id} onClick={() => setForm((current) => ({ ...current, clientId: client.id, clientSearch: `${client.code} · ${client.business_name}` }))}>{client.code} · {client.business_name}</button>)}{matches.length === 0 && <span>{t('No encontramos ese cliente.')}</span>}</div>}</label>}
-        <label>{t('Asignar a una persona')}<AssigneeSelect members={members} value={form.assignedTo} onChange={(value) => setField('assignedTo', value)} disabled={!isAdmin} t={t} /></label>
+        <label>{t('Asignar a usuario o rol')}<AssigneeSelect members={members} value={form.assignedTo} onChange={(value) => setField('assignedTo', value)} t={t} /></label>
         <label>{t('Prioridad')}<select value={form.priority} onChange={(event) => setField('priority', event.target.value)}>{priorities.map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>
         <label>{t('Fecha límite')}<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
         <label className="wide">{t('Título')}<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder={t('Qué debe realizarse')} /></label>
