@@ -223,10 +223,22 @@ export async function markTasksSeen(profileId) {
   return seenAt
 }
 
+export async function loadUnreadCommunicationCount(profileId) {
+  if (!profileId) return 0
+  const [notesResult, readsResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('notes').select('id'),
+    supabase.from('note_reads').select('note_id').eq('user_id', profileId),
+  ]))
+  const error = notesResult.error || readsResult.error
+  if (error) throw error
+  const readIds = new Set((readsResult.data || []).map((item) => item.note_id))
+  return (notesResult.data || []).filter((note) => !readIds.has(note.id)).length
+}
+
 export function subscribeToOperations(onChange) {
   const channel = supabase.channel(`operations-${crypto.randomUUID()}`)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => onChange())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => onChange())
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => onChange(payload))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, (payload) => onChange(payload))
     .subscribe()
   return () => { supabase.removeChannel(channel) }
 }
