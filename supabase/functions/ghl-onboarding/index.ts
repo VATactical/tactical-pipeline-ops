@@ -57,7 +57,7 @@ function clientChanges(payload: Payload) {
   const fullName = text(payload.full_name, 300) || [firstName, lastName].filter(Boolean).join(" ");
   const legalName = text(payload.registered_business_name, 300);
   const website = text(payload.website, 1000);
-  const wantsWebsite = /would like (a )?website|website included/i.test(website);
+  const wantsWebsite = /would like (a )?website|website included|i need (a website|one)|need a website|necesito.*sitio/i.test(website);
   const facebook = text(payload.facebook, 1000);
   const submittedAt = text(payload.submitted_at, 100) || new Date().toISOString();
   const date = Number.isNaN(Date.parse(submittedAt)) ? new Date().toISOString() : new Date(submittedAt).toISOString();
