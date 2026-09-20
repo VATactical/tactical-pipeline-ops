@@ -237,6 +237,7 @@ export async function createClient(client) {
     id: crypto.randomUUID(),
     code: client.code.trim().toUpperCase(),
     business_name: client.business_name.trim(),
+    legal_name: client.legal_name?.trim() || '',
     daily_budget: Number(client.daily_budget || 0),
     assigned_role: client.assigned_role || 'onboarding_media',
   }
