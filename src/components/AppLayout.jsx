@@ -129,6 +129,7 @@ export default function AppLayout() {
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
           <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
+          <NavLink to="/comunicaciones">Comunicaciones{communicationCount > 0 && <span className="nav-badge">{communicationCount}</span>}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
           <NavLink to="/eod-reports">EOD Reports{eodUnreadCount > 0 && <span className="nav-badge">{eodUnreadCount}</span>}</NavLink>
