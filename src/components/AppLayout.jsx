@@ -68,7 +68,8 @@ export default function AppLayout() {
       refreshCommunicationCount()
       if (payload?.eventType === 'INSERT' && payload.new && 'Notification' in window && Notification.permission === 'granted') {
         const scope = payload.new.client_id ? 'Mensaje específico de cliente' : 'Mensaje general del equipo'
-        new Notification(payload.new.title || scope, { body: payload.new.body || scope })
+        const channel = payload.new.slack_channel ? ` · ${payload.new.slack_channel}` : ''
+        new Notification(payload.new.title || scope, { body: `${payload.new.body || scope}${channel}` })
       }
     })
     const timer = window.setInterval(refreshCommunicationCount, 60000)
