@@ -881,3 +881,47 @@ html[data-theme='light'] .channel-guideline-list article { border-color: #dce6ee
 html[data-theme='light'] .channel-guideline-list strong { color: #0b648d; }
 html[data-theme='light'] .channel-guideline-list span { color: #3e566b; }
 html[data-theme='light'] .communication-guidelines .muted { color: #536b80; }
+
+/* Light-mode contrast pass: communications and team calendar cards. */
+html[data-theme='light'] .note-card,
+html[data-theme='light'] .notification-row {
+  border-color: #c8d8e5;
+  background: #ffffff;
+  color: #182536;
+  box-shadow: 0 6px 18px #24435b10;
+}
+html[data-theme='light'] .note-card strong,
+html[data-theme='light'] .notification-row strong {
+  color: #182536;
+}
+html[data-theme='light'] .note-card p,
+html[data-theme='light'] .notification-row p {
+  color: #334b61;
+}
+html[data-theme='light'] .note-card small,
+html[data-theme='light'] .notification-row small {
+  color: #60758a;
+}
+html[data-theme='light'] .notification-row.seen {
+  border-left-color: #8299aa;
+  background: #f5f8fa;
+  opacity: 1;
+}
+html[data-theme='light'] .clock-card {
+  border-color: #c6d8e5;
+  background: #ffffff;
+  color: #182536;
+  box-shadow: 0 6px 18px #24435b10;
+}
+html[data-theme='light'] .clock-card.current {
+  border-color: #159dcc;
+  background: #e7f6fc;
+  box-shadow: inset 0 0 0 1px #159dcc22, 0 6px 18px #24435b10;
+}
+html[data-theme='light'] .clock-card strong {
+  color: #182536;
+}
+html[data-theme='light'] .clock-card span,
+html[data-theme='light'] .clock-card small {
+  color: #526b80;
+}
