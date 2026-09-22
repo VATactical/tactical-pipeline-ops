@@ -152,7 +152,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <main className="main-content"><div className="content-area"><Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span><small>Hecho por Diego Romario · Nicaragua</small></div></footer></main>
+      <main className="main-content"><div className="content-area"><Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span></div></footer></main>
     </div>
   )
 }
