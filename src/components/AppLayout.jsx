@@ -25,6 +25,12 @@ export default function AppLayout() {
   const [company, setCompany] = useState(defaultCompany)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('tp-theme') || 'dark')
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem('tp-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -140,6 +146,7 @@ export default function AppLayout() {
         <div className={`user-card${mobileMenuOpen ? ' mobile-open' : ''}`}>
           <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span></div></div>
           <LanguageToggle compact />
+          <button className="theme-toggle" type="button" aria-pressed={theme === 'light'} onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}><span aria-hidden="true">{theme === 'dark' ? '☀' : '◐'}</span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</button>
           <NavLink className="account-link" to="/mi-cuenta">Mi cuenta</NavLink>
           <button className="text-button" type="button" disabled={signingOut} onClick={handleSignOut}>{signingOut ? 'Verificando EOD…' : 'Cerrar sesión'}</button>
         </div>
