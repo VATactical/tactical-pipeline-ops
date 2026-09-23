@@ -35,6 +35,12 @@ function shiftDate(dateString, amount) {
   return date.toISOString().slice(0, 10)
 }
 
+function startOfWeek(dateString) {
+  const date = new Date(`${dateString}T12:00:00Z`)
+  const day = date.getUTCDay()
+  return shiftDate(dateString, day === 0 ? -6 : 1 - day)
+}
+
 export default function EodReportsPage() {
   const { profile } = useAuth()
   const { locale, t } = useLanguage()
@@ -46,7 +52,7 @@ export default function EodReportsPage() {
   const cycle = useMemo(() => getCalendarDayWindow(cycleReference, timeZone), [cycleReference, timeZone])
   const reportDate = cycle.reportDate
   const currentReportDate = getDateInTimeZone(new Date(), timeZone)
-  const reportDateMin = shiftDate(currentReportDate, -1)
+  const reportDateMin = startOfWeek(currentReportDate)
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
   const [reports, setReports] = useState([])
@@ -245,7 +251,7 @@ export default function EodReportsPage() {
 
     {canReviewAll && <section className="metric-grid eod-review-metrics" aria-label="Estado de reportes EOD"><article className="metric-card blue"><span>Nuevos</span><strong>{reportCounts.new}</strong><small>sin revisar por ti</small></article><article className="metric-card green"><span>Revisados</span><strong>{reportCounts.reviewed}</strong><small>confirmados por ti</small></article><article className="metric-card amber"><span>Seguimiento</span><strong>{reportCounts.followUp}</strong><small>requieren atención</small></article></section>}
 
-    {canSubmit && <section className="content-card eod-cycle-summary"><div><p className="eyebrow">Ciclo diario</p><h3>Día calendario · 00:00–23:59</h3></div><div className="eod-period"><span>Desde <strong>{formatMoment(cycle.start, timeZone, locale)}</strong></span><span>Hasta <strong>{formatMoment(cycle.end, timeZone, locale)}</strong></span><small>{timeZone}</small></div></section>}
+    {canSubmit && <section className="content-card eod-cycle-summary"><div><p className="eyebrow">Ciclo diario</p><h3>Día calendario · 00:00–23:59</h3><p className="muted">Envía un reporte dentro de TP OPS al finalizar tu turno. Puedes completar cualquier día desde el lunes de esta semana hasta hoy.</p></div><div className="eod-period"><span>Desde <strong>{formatMoment(cycle.start, timeZone, locale)}</strong></span><span>Hasta <strong>{formatMoment(cycle.end, timeZone, locale)}</strong></span><small>{timeZone}</small></div></section>}
 
     {/* Se retiró el bloque de la regla de las 8:00 PM. El EOD se envía al finalizar cada turno. */}
     {/*
@@ -253,7 +259,7 @@ export default function EodReportsPage() {
 
     */}
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
-      <div className="section-heading"><div><p className="eyebrow">Checklist de actividades</p><h3>{selectedTaskIds.length} de {completedTasks.length} tareas seleccionadas</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><label className="eod-report-date">{t('Fecha del reporte')}<input type="date" value={reportDate} min={reportDateMin} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? 'Desmarcar todas' : 'Seleccionar todas'}</button>}</div>
+      <div className="section-heading"><div><p className="eyebrow">Checklist de actividades</p><h3>{selectedTaskIds.length} de {completedTasks.length} tareas seleccionadas</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><label className="eod-report-date">Fecha del reporte<input type="date" value={reportDate} min={reportDateMin} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /><small>La hora se registra automáticamente al enviarlo.</small></label>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? 'Desmarcar todas' : 'Seleccionar todas'}</button>}</div>
       <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
       <div className="section-heading"><div><p className="eyebrow">Trabajo adicional</p><h3>Agregar actividad manual</h3></div><button className="secondary-button" type="button" onClick={() => setManualTasks((current) => [...current, ''])}>+ Agregar</button></div>
       <div className="manual-task-list">{manualTasks.map((item, index) => <div className="manual-task-row" key={index}><input value={item} onChange={(event) => changeManual(index, event.target.value)} placeholder="Ej. Reunión con cliente o revisión manual" /><button className="text-button" type="button" onClick={() => setManualTasks((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Quitar</button></div>)}</div>
