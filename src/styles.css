@@ -76,6 +76,9 @@ input:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 1rem; align-items: start; }
 .admin-grid, .role-progress-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .header-actions { display: flex; align-items: center; gap: .7rem; }.compact-button { margin: 0; padding: .65rem .9rem; font-size: .82rem; }
+.eod-prepare-button { min-height: 48px; padding: .85rem 1.25rem; border: 1px solid #159bd1; border-radius: 14px; background: linear-gradient(135deg, #08aeea, #4058f5); box-shadow: 0 10px 24px #1a69d44d; font-size: .95rem; letter-spacing: .01em; text-shadow: 0 1px 1px #15347766; }
+.eod-prepare-button:hover { background: linear-gradient(135deg, #06c0ff, #536aff); box-shadow: 0 12px 28px #1a69d466; transform: translateY(-1px); }
+.eod-prepare-button:focus-visible { outline: 3px solid #78dcff; outline-offset: 3px; }
 .progress-card strong { color: #64d6ff; font-size: 1.8rem; }.progress-track { height: 9px; margin: 1.1rem 0 .65rem; overflow: hidden; border-radius: 99px; background: #172b3e; }.progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #19c6ff, #5967ff); }.progress-card > small { color: #7890a8; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .section-heading a, .back-link { color: #64d6ff; font-size: .83rem; font-weight: 800; text-decoration: none; }
@@ -792,6 +795,7 @@ html[data-theme='light'] .eod-late-card,
 html[data-theme='light'] .eod-compliance-center,
 html[data-theme='light'] .eod-form,
 html[data-theme='light'] .weekly-hours-panel { color: #182536; }
+html[data-theme='light'] .eod-prepare-button { border-color: #087ab1; background: linear-gradient(135deg, #079ed8, #4058e8); color: #ffffff; box-shadow: 0 10px 24px #1671b43d; }
 html[data-theme='light'] .eod-report-filters,
 html[data-theme='light'] .eod-report-card,
 html[data-theme='light'] .eod-review-card,
