@@ -97,10 +97,7 @@ export default function AppLayout() {
     try {
       const state = await loadOwnEodState(profile)
       if (state.required && !state.submitted) {
-        const lateDetail = state.afterCutoff
-          ? t('Ya pasaron las 8:00 PM en la hora de Kevin. Si continúas trabajando, registra la tarea y la hora estimada en EOD Reports y copia el aviso para Slack.')
-          : t('Puedes cancelar, abrir EOD Reports y enviarlo antes de salir.')
-        const confirmed = window.confirm(`${t(`Todavía no has enviado tu reporte EOD del ${state.workDate}.`)}\n\n${lateDetail}\n\n${t('¿Cerrar sesión de todos modos?')}`)
+        const confirmed = window.confirm(`${t(`Todavía no has enviado tu reporte EOD del ${state.workDate}.`)}\n\n${t('Debes enviarlo dentro de TP OPS al finalizar tu turno.')}\n\n${t('¿Cerrar sesión de todos modos?')}`)
         if (!confirmed) return
       }
       await signOut()
