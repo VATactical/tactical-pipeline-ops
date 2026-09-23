@@ -90,42 +90,6 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
   }
 }
 
-export async function saveStandaloneTimeEntry({ profileId, workDate, hours, memo }) {
-  const cleanMemo = String(memo || '').trim()
-  const cleanHours = Number(hours)
-  if (!workDate || !(cleanHours > 0) || cleanHours > 24 || !cleanMemo) {
-    throw new Error('Cada registro de tiempo necesita fecha, horas y memo.')
-  }
-
-  const { data: existing, error: existingError } = await runWithSessionRetry(() => supabase
-    .from('time_entries')
-    .select('hours')
-    .eq('user_id', profileId)
-    .eq('work_date', workDate))
-  if (existingError) throw existingError
-  const dailyTotal = (existing || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
-  if (dailyTotal + cleanHours > 24) throw new Error('Las horas del día no pueden superar 24.')
-
-  const { data, error } = await runWithSessionRetry(() => supabase.from('time_entries').insert({
-    user_id: profileId,
-    work_date: workDate,
-    hours: cleanHours,
-    memo: cleanMemo,
-  }).select('*').single())
-  if (error) throw error
-  return data
-}
-
-export async function deleteStandaloneTimeEntry({ entryId, profileId }) {
-  const { error } = await runWithSessionRetry(() => supabase
-    .from('time_entries')
-    .delete()
-    .eq('id', entryId)
-    .eq('user_id', profileId)
-    .is('eod_report_id', null))
-  if (error) throw error
-}
-
 export async function loadOwnEodState(profile) {
   if (profile?.role === 'superadmin' || !profile?.permissions?.eod_reports) return { required: false }
   const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
