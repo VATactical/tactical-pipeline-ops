@@ -74,7 +74,10 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
       ...comment,
       author: memberProfile(members.get(comment.author_id)),
     })),
-    time_entries: timeEntries.filter((entry) => entry.eod_report_id === report.id),
+    // Weekly entries can be recorded before the daily EOD is submitted. Keep
+    // them attached to the matching report by user/date, even while their
+    // eod_report_id is still null.
+    time_entries: timeEntries.filter((entry) => entry.user_id === report.user_id && entry.work_date === report.report_date),
   }))
 
   return {
@@ -85,6 +88,42 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
     timeEntries,
     kevinTimeZone: resolveKevinTimeZone(directory),
   }
+}
+
+export async function saveStandaloneTimeEntry({ profileId, workDate, hours, memo }) {
+  const cleanMemo = String(memo || '').trim()
+  const cleanHours = Number(hours)
+  if (!workDate || !(cleanHours > 0) || cleanHours > 24 || !cleanMemo) {
+    throw new Error('Cada registro de tiempo necesita fecha, horas y memo.')
+  }
+
+  const { data: existing, error: existingError } = await runWithSessionRetry(() => supabase
+    .from('time_entries')
+    .select('hours')
+    .eq('user_id', profileId)
+    .eq('work_date', workDate))
+  if (existingError) throw existingError
+  const dailyTotal = (existing || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
+  if (dailyTotal + cleanHours > 24) throw new Error('Las horas del día no pueden superar 24.')
+
+  const { data, error } = await runWithSessionRetry(() => supabase.from('time_entries').insert({
+    user_id: profileId,
+    work_date: workDate,
+    hours: cleanHours,
+    memo: cleanMemo,
+  }).select('*').single())
+  if (error) throw error
+  return data
+}
+
+export async function deleteStandaloneTimeEntry({ entryId, profileId }) {
+  const { error } = await runWithSessionRetry(() => supabase
+    .from('time_entries')
+    .delete()
+    .eq('id', entryId)
+    .eq('user_id', profileId)
+    .is('eod_report_id', null))
+  if (error) throw error
 }
 
 export async function loadOwnEodState(profile) {
