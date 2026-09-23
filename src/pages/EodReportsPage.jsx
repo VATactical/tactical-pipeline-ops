@@ -92,7 +92,8 @@ export default function EodReportsPage() {
       } else {
         setSelectedTaskIds(data.completedTasks.map((task) => task.id))
         setManualTasks([''])
-        setManualHours([{ hours: '', memo: '' }])
+        const ownEntriesForDay = (data.timeEntries || []).filter((entry) => entry.user_id === profile.id && entry.work_date === reportDate)
+        setManualHours(ownEntriesForDay.length ? ownEntriesForDay.map((item) => ({ hours: String(item.hours), memo: item.memo })) : [{ hours: '', memo: '' }])
         setNotes('')
       }
     }
@@ -298,7 +299,7 @@ export default function EodReportsPage() {
 
     {!canSubmit && !canReviewAll && <section className="content-card"><p className="muted">Tu usuario no tiene permiso para generar informes EOD.</p></section>}
 
-    <WeeklyHoursPanel entries={timeEntries} directory={directory} profile={profile} canReviewAll={canReviewAll} currentDate={reportDate} />
+    <WeeklyHoursPanel entries={timeEntries} directory={directory} profile={profile} canReviewAll={canReviewAll} currentDate={reportDate} onChanged={refresh} />
 
     <section className="content-card eod-report-center">
       <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3></div></div>
