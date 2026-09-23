@@ -234,7 +234,7 @@ export default function EodReportsPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{canReviewAll ? 'Centro de revisión diaria' : 'Informe de fin de día'}</h2><p className="muted">{canReviewAll ? 'Revisa el trabajo del equipo, registra seguimiento y conviértelo en tareas.' : 'Selecciona el trabajo completado hoy, de 00:00 a 23:59, y envíalo a Kevin y Alejandra.'}</p></div>{canSubmit && <button className="primary-button compact-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? 'Cerrar reporte' : 'Preparar reporte'}</button>}</header>
+    <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{canReviewAll ? 'Centro de revisión diaria' : 'Informe de fin de día'}</h2><p className="muted">{canReviewAll ? 'Revisa el trabajo del equipo, registra seguimiento y conviértelo en tareas.' : 'Envía un solo reporte dentro de TP OPS al finalizar tu turno. Kevin lo revisa cada mañana de 9:00 a 10:00 a. m.'}</p></div>{canSubmit && <button className="primary-button compact-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? 'Cerrar reporte' : 'Preparar reporte'}</button>}</header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
 
     {canReviewAll && <section className="content-card eod-compliance-center">
