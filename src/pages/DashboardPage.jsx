@@ -121,7 +121,7 @@ function GeneralNotes({ notes, members, profile, onUpdated }) {
 
 function EodComplianceCard({ summary }) {
   if (!summary) return null
-  return <section className="content-card dashboard-eod-compliance"><div className="section-heading"><div><p className="eyebrow">Cierre diario · hora de Kevin</p><h3>EOD de hoy</h3><p className="muted">{summary.workDate} · corte 8:00 PM · {summary.kevinTimeZone}</p></div><Link to="/eod-reports">Ver detalle</Link></div><div className="eod-compliance-counts"><span className="submitted">{summary.counts.submitted} enviados</span><span className="working-late">{summary.counts.working_late} trabajando</span><span className="pending">{summary.counts.pending} pendientes</span></div><div className="dashboard-eod-users">{summary.rows.map((row) => <span className={row.state} key={row.member.id}>{row.member.full_name}: {row.state === 'submitted' ? 'Enviado' : row.state === 'working_late' ? 'Trabajando' : 'Pendiente'}</span>)}</div></section>
+  return <section className="content-card dashboard-eod-compliance"><div className="section-heading"><div><p className="eyebrow">Reportes diarios</p><h3>EOD de hoy</h3><p className="muted">{summary.workDate} · Envío dentro de TP OPS al finalizar el turno.</p></div><Link to="/eod-reports">Ver detalle</Link></div><div className="eod-compliance-counts"><span className="submitted">{summary.counts.submitted} enviados</span><span className="pending">{summary.counts.pending} pendientes</span></div><div className="dashboard-eod-users">{summary.rows.map((row) => <span className={row.state} key={row.member.id}>{row.member.full_name}: {row.state === 'submitted' ? 'Enviado' : 'Pendiente'}</span>)}</div></section>
 }
 
 function SuperadminDashboard({ data, blockers, onCreated, eodCompliance }) {
