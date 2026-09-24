@@ -1016,3 +1016,26 @@ html[data-theme='light'] .client-detail-tabs { border-color: #c8d8e5; background
 html[data-theme='light'] .client-detail-tabs button { color: #526b80; }
 html[data-theme='light'] .client-detail-tabs button:hover { color: #183247; background: #edf6fa; }
 html[data-theme='light'] .client-detail-tabs button.active { border-color: #159dcc; background: #e4f5fb; color: #075d83; }
+
+
+/* Compact client identity, actions, and persistent tab strip */
+.client-dossier-page { gap: .8rem; }
+.client-sticky-shell { gap: .35rem; padding: .15rem 0 .35rem; }
+.client-detail-header { align-items: center; gap: 1rem; padding-bottom: 0; }
+.client-detail-header > div:first-child { flex: 1 1 340px; min-width: 0; }
+.client-detail-header .eyebrow { margin-bottom: .25rem; }
+.client-detail-header h2 { margin: 0 0 .25rem; font-size: clamp(1.55rem, 2.1vw, 2.2rem); line-height: 1.08; letter-spacing: -.035em; }
+.client-detail-header .muted { margin: 0; font-size: .88rem; line-height: 1.35; }
+.dossier-actions { max-width: 690px; gap: .45rem; }
+.dossier-actions > .secondary-button, .dossier-actions > button { padding: .5rem .68rem; font-size: .76rem; }
+.client-detail-tabs { gap: .35rem; padding: .38rem; }
+.client-detail-tabs button { padding: .55rem .7rem; font-size: .76rem; }
+@media (max-width: 1100px) {
+  .client-detail-header { align-items: flex-start; flex-wrap: wrap; }
+  .dossier-actions { max-width: 100%; justify-content: flex-start; }
+}
+@media (max-width: 800px) {
+  .client-detail-header { gap: .65rem; }
+  .client-detail-header h2 { font-size: clamp(1.45rem, 7vw, 1.9rem); }
+  .dossier-actions > .secondary-button, .dossier-actions > button { padding: .45rem .6rem; font-size: .72rem; }
+}
