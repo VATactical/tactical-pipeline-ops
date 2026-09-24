@@ -5,7 +5,7 @@ import AdsReportsPanel from '../components/AdsReportsPanel'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
-import { createClientNote, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, updateWorkflowStep } from '../services/opsService'
+import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTask, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, updateClientNote, updateTaskDetails, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
@@ -69,6 +69,14 @@ const displayValue = (value, type) => {
   return value || 'Pendiente'
 }
 const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const taskRoles = [
+  ['onboarding_media', 'Onboarding & Media'],
+  ['automation_funnels', 'Automations & Funnels'],
+  ['user_admin', 'User Admin'],
+  ['superadmin', 'Superadmin'],
+]
+const emptyTaskDraft = { title: '', details: '', assignedTo: '', priority: 'Media', dueAt: '', status: 'Pendiente' }
+
 
 export default function ClientDetailPage() {
   const { clientId } = useParams()
@@ -95,6 +103,11 @@ export default function ClientDetailPage() {
   const [secretDraft, setSecretDraft] = useState('')
   const [noteTitle, setNoteTitle] = useState('')
   const [noteBody, setNoteBody] = useState('')
+  const [editingNoteId, setEditingNoteId] = useState(null)
+  const [noteDraft, setNoteDraft] = useState({ title: '', body: '' })
+  const [taskFormOpen, setTaskFormOpen] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState(null)
+  const [taskDraft, setTaskDraft] = useState(emptyTaskDraft)
   const tabs = [
     ['dossier', 'Dossier'],
     ['ads', 'Ads'],
@@ -125,7 +138,7 @@ export default function ClientDetailPage() {
   if (!data && !error) return <LoadingScreen />
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
-  const { client, tasks, blockers, workflowSteps, auditLog, notes, adStatusEvents } = data
+  const { client, tasks, blockers, workflowSteps, auditLog, notes, adStatusEvents, directory = [] } = data
   const missingFields = dossierFields.filter(([, key, type]) => isMissing(client[key], type)).map(([label]) => label)
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
   const startEditing = (index) => { setDraft(client); setEditingSection(index); setMessage(''); setError('') }
@@ -156,9 +169,93 @@ export default function ClientDetailPage() {
     finally { setSaving(false) }
   }
 
+  const saveClientNote = async (event) => {
+    event.preventDefault()
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClientNote(editingNoteId, noteDraft)
+      await refresh()
+      setEditingNoteId(null); setNoteDraft({ title: '', body: '' })
+      setMessage(t('Nota actualizada correctamente.'))
+    } catch (noteError) { setError(t(noteError.message)) }
+    finally { setSaving(false) }
+  }
+  const removeClientNote = async (noteId) => {
+    if (!window.confirm(t('¿Eliminar esta nota?'))) return
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await deleteClientNote(noteId)
+      await refresh()
+      setMessage(t('Nota eliminada correctamente.'))
+    } catch (noteError) { setError(t(noteError.message)) }
+    finally { setSaving(false) }
+  }
+  const openNewTaskForm = () => {
+    setEditingTaskId(null)
+    setTaskDraft({ ...emptyTaskDraft, assignedTo: canManageTasks ? '' : profile.id })
+    setTaskFormOpen(true); setError(''); setMessage('')
+  }
+  const openTaskEditor = (task) => {
+    setEditingTaskId(task.id)
+    setTaskDraft({
+      title: task.title || '',
+      details: task.comments || task.evidence || '',
+      assignedTo: task.assigned_to || (task.owner_role ? `role:${task.owner_role}` : ''),
+      priority: task.priority || 'Media',
+      dueAt: task.due_at || '',
+      status: task.status || 'Pendiente',
+    })
+    setTaskFormOpen(true); setError(''); setMessage('')
+  }
+  const resolveTaskAssignee = (selected) => {
+    if (!canManageTasks) return { assignedTo: profile.id, assigneeName: profile.full_name || 'Usuario', assigneeRole: profile.role }
+    if (selected?.startsWith('role:')) {
+      const role = selected.slice(5)
+      const roleLabel = taskRoles.find(([value]) => value === role)?.[1].replace('Rol · ', '') || role
+      return { assignedTo: null, assigneeName: roleLabel, assigneeRole: role }
+    }
+    const member = directory.find((item) => item.id === selected && item.active !== false)
+    return member
+      ? { assignedTo: member.id, assigneeName: member.full_name, assigneeRole: member.role }
+      : { assignedTo: null, assigneeName: 'Todos', assigneeRole: null }
+  }
+  const saveClientTask = async (event) => {
+    event.preventDefault()
+    setSaving(true); setError(''); setMessage('')
+    try {
+      const assignee = resolveTaskAssignee(taskDraft.assignedTo)
+      if (editingTaskId) {
+        await updateTaskDetails(editingTaskId, { ...taskDraft, clientId, ...assignee })
+        setMessage(t('Tarea actualizada correctamente.'))
+      } else {
+        await createAssignedTask({
+          clientId, title: taskDraft.title, details: taskDraft.details,
+          priority: taskDraft.priority, dueAt: taskDraft.dueAt, ...assignee,
+        })
+        setMessage(t('Tarea agregada al cliente.'))
+      }
+      await refresh()
+      setTaskFormOpen(false); setEditingTaskId(null); setTaskDraft(emptyTaskDraft)
+    } catch (taskError) { setError(t(taskError.message)) }
+    finally { setSaving(false) }
+  }
+  const removeClientTask = async (taskId) => {
+    if (!window.confirm(t('¿Eliminar esta tarea?'))) return
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await deleteClientTask(taskId)
+      await refresh()
+      setMessage(t('Tarea eliminada correctamente.'))
+    } catch (taskError) { setError(t(taskError.message)) }
+    finally { setSaving(false) }
+  }
+
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canCreateNotes = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
+  const canManageNotes = canCreateNotes
+  const canManageTasks = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin))
+  const canCreateTasks = !client.archived && (canManageTasks || Boolean(profile?.permissions?.tasks_create))
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
   const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
@@ -331,19 +428,41 @@ export default function ClientDetailPage() {
         <label>{t('Contenido')}<textarea rows="3" value={noteBody} onChange={(event) => setNoteBody(event.target.value)} maxLength="5000" placeholder={t('Escribe una nota específica para este cliente…')} /></label>
         <button className="primary-button compact-button" disabled={saving || !noteTitle.trim()}>{saving ? t('Guardando…') : t('Agregar nota')}</button>
       </form>}
-      <div className="note-list">{notes.length === 0 && <p className="muted">{t('Aún no hay notas para este cliente.')}</p>}{notes.map((note) => <article className="note-card" key={note.id}><strong data-no-translate>{note.title}</strong>{note.body && <p data-no-translate>{note.body}</p>}<small>{note.author?.full_name || t('Usuario')} · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small></article>)}</div>
-    </section>
-    <section className="content-card client-tab-section tab-audit"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`} data-no-translate>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => t(fieldLabels[field] || field)).join(', ')}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
+      <div className="note-list">{notes.length === 0 && <p className="muted">{t('Aún no hay notas para este cliente.')}</p>}{notes.map((note) => <article className="note-card" key={note.id}>
+        {editingNoteId === note.id ? <form className="client-note-form" onSubmit={saveClientNote}>
+          <label>{t('Título de la nota')}<input value={noteDraft.title} onChange={(event) => setNoteDraft((current) => ({ ...current, title: event.target.value }))} maxLength="160" required /></label>
+          <label>{t('Contenido')}<textarea rows="3" value={noteDraft.body} onChange={(event) => setNoteDraft((current) => ({ ...current, body: event.target.value }))} maxLength="5000" /></label>
+          <div className="section-actions"><button className="text-button" type="button" onClick={() => setEditingNoteId(null)}>{t('Cancelar')}</button><button className="primary-button compact-button" disabled={saving || !noteDraft.title.trim()}>{saving ? t('Guardando…') : t('Guardar cambios')}</button></div>
+        </form> : <>
+          <div className="section-heading"><strong data-no-translate>{note.title}</strong>{canManageNotes && <div className="section-actions"><button className="text-button" type="button" onClick={() => { setEditingNoteId(note.id); setNoteDraft({ title: note.title, body: note.body || '' }) }}>{t('Editar nota')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientNote(note.id)}>{t('Eliminar nota')}</button></div>}</div>
+          {note.body && <p data-no-translate>{note.body}</p>}
+          <small>{note.author?.full_name || t('Usuario')} · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small>
+        </>}
+      </article>)}</div>
+    </section>    <section className="content-card client-tab-section tab-audit"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`} data-no-translate>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => t(fieldLabels[field] || field)).join(', ')}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
     <div className="client-tab-section tab-tasks client-task-groups">
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Tareas adicionales')}</p><h3>{t('Pendientes')} · {tasks.filter((task) => !['Completada', 'Completed'].includes(task.status)).length}</h3></div></div>
-        {tasks.filter((task) => !['Completada', 'Completed'].includes(task.status)).length === 0 && <p className="muted">{t('No hay tareas pendientes.')}</p>}
-        {tasks.filter((task) => !['Completada', 'Completed'].includes(task.status)).map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small></div></article>)}
+      <section className="content-card">
+        <div className="section-heading"><div><p className="eyebrow">{t('Tareas adicionales')}</p><h3>{t('Pendientes')} · {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').length}</h3></div>{canCreateTasks && <button className="primary-button compact-button" type="button" onClick={openNewTaskForm}>{t('Nueva tarea')}</button>}</div>
+        {taskFormOpen && <section className="content-card task-composer"><form onSubmit={saveClientTask}>
+          <div className="section-heading"><div><p className="eyebrow">{t(editingTaskId ? 'Edición' : 'Nueva tarea')}</p><h3>{t(editingTaskId ? 'Editar tarea' : 'Asignar trabajo')}</h3></div><button className="text-button" type="button" onClick={() => { setTaskFormOpen(false); setEditingTaskId(null) }}>{t('Cancelar')}</button></div>
+          <div className="composer-grid">
+            <label className="wide">{t('Título')}<input value={taskDraft.title} onChange={(event) => setTaskDraft((current) => ({ ...current, title: event.target.value }))} maxLength="160" required /></label>
+            <label className="wide">{t('Detalle')}<textarea rows="3" value={taskDraft.details} onChange={(event) => setTaskDraft((current) => ({ ...current, details: event.target.value }))} /></label>
+            {canManageTasks && <label>{t('Asignar a usuario o rol')}<select value={taskDraft.assignedTo} onChange={(event) => setTaskDraft((current) => ({ ...current, assignedTo: event.target.value }))}><option value="">{t('Todos / tarea compartida')}</option><optgroup label={t('Usuarios')}>{directory.filter((member) => member.active !== false).map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</optgroup><optgroup label={t('Roles')}>{taskRoles.map(([role, label]) => <option value={`role:${role}`} key={role}>{t(label)}</option>)}</optgroup></select></label>}
+            <label>{t('Prioridad')}<select value={taskDraft.priority} onChange={(event) => setTaskDraft((current) => ({ ...current, priority: event.target.value }))}>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>
+            {editingTaskId && canManageTasks && <label>{t('Estado')}<select value={taskDraft.status} onChange={(event) => setTaskDraft((current) => ({ ...current, status: event.target.value }))}>{['Pendiente', 'En progreso', 'Bloqueada', 'Completada'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>}
+            <label>{t('Fecha límite')}<input type="date" value={taskDraft.dueAt} onChange={(event) => setTaskDraft((current) => ({ ...current, dueAt: event.target.value }))} /></label>
+            <div className="section-actions wide"><button className="primary-button compact-button" disabled={saving || !taskDraft.title.trim()}>{saving ? t('Guardando…') : t(editingTaskId ? 'Guardar cambios' : 'Crear tarea')}</button></div>
+          </div>
+        </form></section>}
+        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').length === 0 && <p className="muted">{t('No hay tareas pendientes.')}</p>}
+        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Historial')}</p><h3>{t('Completadas')} · {tasks.filter((task) => ['Completada', 'Completed'].includes(task.status)).length}</h3></div></div>
-        {tasks.filter((task) => ['Completada', 'Completed'].includes(task.status)).length === 0 && <p className="muted">{t('No hay tareas completadas.')}</p>}
-        {tasks.filter((task) => ['Completada', 'Completed'].includes(task.status)).map((task) => <article className="client-task-row completed" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small></div></article>)}
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Historial')}</p><h3>{t('Completadas')} · {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length}</h3></div></div>
+        {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length === 0 && <p className="muted">{t('No hay tareas completadas.')}</p>}
+        {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').map((task) => <article className="client-task-row completed" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Proceso asignado por rol')}</p><h3>{workflowSteps.filter((item) => item.completed).length} {t('de')} {workflowSteps.length} {t('completadas')}</h3></div></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{step.title}</strong><small>{step.owner_name}</small></div></label>)}</div></section>
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{workflowSteps.filter((item) => item.completed).length} {t('de')} {workflowSteps.length} {t('completadas')}</h3></div></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageTasks && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
       <section className="content-card"><p className="eyebrow">{t('Bloqueos')}</p><h3>{blockers.filter((item) => !item.resolved).length} {t('abiertos')}</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section>
     </div>
   </div>
