@@ -4,7 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 type Payload = Record<string, unknown>;
 
 const jsonHeaders = { "Content-Type": "application/json" };
-const webhookTokenSha256 = "f42da45e5bc881f96f9b54bb4a80edb7f8aebc1532ebd18c0fa622e7920b7ee5";
+const webhookTokenSha256 = "c97fcd2e5c6af79de316b020dce025355c1aaf02651f207f159e18fb5585b416";
 const text = (value: unknown, max = 5000) => String(value ?? "").trim().slice(0, max);
 const emptyValue = (value: string) => !value || /^(null|undefined|n\/?a|none|pending)$/i.test(value);
 const fieldText = (value: unknown, max = 5000) => {
