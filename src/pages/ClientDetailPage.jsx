@@ -273,19 +273,26 @@ export default function ClientDetailPage() {
   const driveFolderUrl = /^https?:\/\//i.test(client.drive_folder_link || '') ? client.drive_folder_link : ''
   const searchDossier = (event) => {
     event.preventDefault()
-    const query = normalizeSearch(dossierSearch.trim())
-    if (!query) return
-    const matchIndex = sections.findIndex((section) => normalizeSearch([
-      section.title,
-      ...section.fields.flatMap(([label, key]) => [label, key, client[key]]),
-    ].join(' ')).includes(query))
+    const rawQuery = normalizeSearch(dossierSearch.trim())
+    if (!rawQuery) return
+    const query = rawQuery === 'gpb' ? 'gbp' : rawQuery
+    const terms = query.split(/\\s+/).filter(Boolean)
+    const matchIndex = sections.findIndex((section) => {
+      const searchable = normalizeSearch([
+        section.title,
+        ...section.fields.flatMap(([label, key]) => [label, key, client[key]]),
+      ].join(' '))
+      return terms.every((term) => searchable.includes(term))
+    })
     if (matchIndex < 0) {
       setError(t(`No encontramos “${dossierSearch.trim()}” en este dossier.`))
       setHighlightedSection(null)
       return
     }
     setError(''); setMessage(t(`Resultado encontrado en ${sections[matchIndex].title}.`)); setHighlightedSection(matchIndex)
-    document.getElementById(`dossier-section-${matchIndex}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const targetSection = document.getElementById(`dossier-section-${matchIndex}`)
+    const stickyHeight = document.querySelector('.client-sticky-shell')?.getBoundingClientRect().height || 0
+    if (targetSection) window.scrollTo({ top: window.scrollY + targetSection.getBoundingClientRect().top - stickyHeight - 16, behavior: 'smooth' })
     window.setTimeout(() => setHighlightedSection((current) => current === matchIndex ? null : current), 2200)
   }
 

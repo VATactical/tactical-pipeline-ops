@@ -1060,3 +1060,20 @@ html[data-theme='light'] .client-detail-tabs button.active { border-color: #159d
 .dossier-overview-grid .metric-card strong { margin-top: .7rem; font-size: 2rem; }
 html[data-theme='light'] .compact-setup-status .setup-status-item.complete { border-color: #9acdb1; background: #eef9f2; color: #174d37; }
 html[data-theme='light'] .compact-setup-status .setup-status-item.pending { border-color: #e1d19a; background: #fffaf0; color: #554416; }
+
+/* Search feedback, calmer spacing, and accessible light theme */
+.client-detail-header h2 { font-size: clamp(1.45rem, 1.8vw, 1.9rem); }
+.compact-sticky-search { gap: .2rem; padding: .28rem .45rem; }
+.compact-sticky-search > label { margin: 0; font-size: .58rem; }
+.compact-sticky-search input { height: 33px; padding: .32rem .6rem; }
+.compact-sticky-search button { padding: .36rem .65rem; }
+.dossier-overview-grid { gap: .8rem; }
+.dossier-overview-grid .metric-grid.compact .metric-card { min-height: 96px; padding: .9rem 1rem; }
+.dossier-overview-grid .metric-card strong { margin-top: .55rem; font-size: 1.8rem; }
+.dossier-overview-grid .content-card h3 { font-size: 1.05rem; line-height: 1.4; }
+.missing-chips { gap: .55rem; }
+.missing-chips span { padding: .42rem .62rem; line-height: 1.3; }
+html[data-theme='light'] .compact-sticky-search { border-color: #c9d9e6; background: #fff; }
+html[data-theme='light'] .dossier-section { border-color: #d6e1eb; background: #fff; }
+html[data-theme='light'] .dossier-section.search-highlight { border-color: #159dcc; box-shadow: 0 0 0 3px #159dcc20, 0 12px 28px #24435b12; }
+html[data-theme='light'] .missing-chips span { border-color: #e2cc7f; background: #fff8df; color: #5d4b16; }
