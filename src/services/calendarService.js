@@ -12,8 +12,7 @@ export async function loadCalendarData() {
   return { events: eventsResult.data || [], clients: clientsResult.data || [], notifications: notificationsResult.data || [], members: directoryResult.data || [] }
 }
 
-export async function createCalendarEvent(event, profileId) {
-  const zonedToIso = (value, timeZone) => {
+const zonedToIso = (value, timeZone) => {
     if (!value) return null
     const [date, time] = value.split('T')
     const [year, month, day] = date.split('-').map(Number)
@@ -28,9 +27,11 @@ export async function createCalendarEvent(event, profileId) {
       const shown = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute)
       instant += desired - shown
     }
-    return new Date(instant).toISOString()
-  }
-  const { data, error } = await supabase.from('calendar_events').insert({
+  return new Date(instant).toISOString()
+}
+
+function calendarEventPayload(event, profileId) {
+  return {
     client_id: event.clientId || null,
     title: event.title.trim(),
     event_type: event.eventType,
@@ -40,9 +41,25 @@ export async function createCalendarEvent(event, profileId) {
     meeting_url: event.meetingUrl.trim(),
     notes: event.notes.trim(),
     reminder_minutes: event.reminders,
-    created_by: profileId,
     assigned_to: event.assignedTo === 'self' ? profileId : event.assignedTo || null,
+  }
+}
+
+export async function createCalendarEvent(event, profileId) {
+  const { data, error } = await supabase.from('calendar_events').insert({
+    ...calendarEventPayload(event, profileId),
+    created_by: profileId,
   }).select('*, clients(code, business_name)').single()
+  if (error) throw error
+  return data
+}
+
+export async function updateCalendarEvent(event, eventId, profileId) {
+  const { data, error } = await supabase.from('calendar_events')
+    .update(calendarEventPayload(event, profileId))
+    .eq('id', eventId)
+    .select('*, clients(code, business_name)')
+    .single()
   if (error) throw error
   return data
 }

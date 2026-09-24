@@ -2,13 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
 import { useLanguage } from '../i18n/LanguageContext'
-import { createCalendarEvent, loadCalendarData, markNotificationRead } from '../services/calendarService'
+import { createCalendarEvent, loadCalendarData, markNotificationRead, updateCalendarEvent } from '../services/calendarService'
 
 const timezones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['America/Managua', 'Africa/Lagos', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles']
 const reminderLabels = { 15: '15 minutos', 60: '1 hora', 1440: '24 horas' }
 const blankEvent = (timezone) => ({ title: '', eventType: 'Reunión', clientId: '', assignedTo: 'self', startAt: '', endAt: '', meetingUrl: '', notes: '', reminders: [15, 60, 1440], timezone })
 const dayKey = (date, timezone) => new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
 const calendarKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+const isoToLocalInput = (value, timeZone) => {
+  if (!value) return ''
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(value)).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
 
 function TeamClocks({ members, currentId }) {
   const { locale, t } = useLanguage()
@@ -30,6 +38,7 @@ export default function CalendarPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [calendarFilter, setCalendarFilter] = useState('mine')
+  const [editingEventId, setEditingEventId] = useState(null)
   const [notificationPermission, setNotificationPermission] = useState(() => 'Notification' in window ? Notification.permission : 'unsupported')
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const refresh = async () => setData(await loadCalendarData())
@@ -47,7 +56,52 @@ export default function CalendarPage() {
   const eventsFor = (key) => visibleEvents.filter((event) => dayKey(new Date(event.start_at), displayZone) === key)
   const selectedEvents = eventsFor(selectedDay)
   const toggleReminder = (minutes) => setForm((current) => ({ ...current, reminders: current.reminders.includes(minutes) ? current.reminders.filter((item) => item !== minutes) : [...current.reminders, minutes] }))
-  const submit = async (event) => { event.preventDefault(); setSaving(true); setError(''); setMessage(''); try { await createCalendarEvent(form, profile.id); setForm(blankEvent(displayZone)); await refresh(); setMessage(t('Evento creado con sus recordatorios.')) } catch (e) { setError(t(e.message)) } finally { setSaving(false) } }
+  const canEditEvent = (event) => profile?.permissions?.calendar_manage && (event.created_by === profile.id || profile?.permissions?.operations_admin)
+  const beginEdit = (event) => {
+    setEditingEventId(event.id)
+    setForm({
+      title: event.title || '',
+      eventType: event.event_type || 'Reunión',
+      clientId: event.client_id || '',
+      assignedTo: event.assigned_to === profile.id ? 'self' : event.assigned_to || '',
+      startAt: isoToLocalInput(event.start_at, event.timezone || displayZone),
+      endAt: isoToLocalInput(event.end_at, event.timezone || displayZone),
+      meetingUrl: event.meeting_url || '',
+      notes: event.notes || '',
+      reminders: event.reminder_minutes || [],
+      timezone: event.timezone || displayZone,
+    })
+    setError('')
+    setMessage('')
+    window.setTimeout(() => document.getElementById('calendar-event-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+  }
+  const cancelEdit = () => {
+    setEditingEventId(null)
+    setForm(blankEvent(displayZone))
+    setError('')
+  }
+  const submit = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setMessage('')
+    try {
+      if (editingEventId) {
+        await updateCalendarEvent(form, editingEventId, profile.id)
+        setMessage(t('Evento actualizado.'))
+      } else {
+        await createCalendarEvent(form, profile.id)
+        setMessage(t('Evento creado con sus recordatorios.'))
+      }
+      setEditingEventId(null)
+      setForm(blankEvent(displayZone))
+      await refresh()
+    } catch (e) {
+      setError(t(e.message))
+    } finally {
+      setSaving(false)
+    }
+  }
   const enableNotifications = async () => { if (!('Notification' in window)) return setMessage(t('Las alertas internas seguirán activas.')); const permission = await Notification.requestPermission(); setNotificationPermission(permission); setMessage(t(permission === 'granted' ? 'Notificaciones activadas.' : 'Las alertas internas seguirán activas.')) }
   const dismiss = async (id) => { try { await markNotificationRead(id); setData((current) => ({ ...current, notifications: current.notifications.filter((item) => item.id !== id) })) } catch (e) { setError(e.message) } }
 
@@ -57,13 +111,13 @@ export default function CalendarPage() {
     <TeamClocks members={data.members} currentId={profile.id} />
     {error && <p className="form-error">{error}</p>}{message && <p className="form-success">{message}</p>}
     {data.notifications.map((notice) => <section className="new-task-alert calendar-notice" role="alert" key={notice.id}><div><strong>{notice.title}</strong><p>{notice.body}</p></div><button className="secondary-button" onClick={() => dismiss(notice.id)}>Marcar vista</button></section>)}
-    <section className="calendar-workspace content-card"><div className="month-panel"><div className="month-toolbar"><button className="secondary-button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>←</button><h3>{new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(month)}</h3><button className="secondary-button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>→</button></div><div className="month-grid weekday-row">{(language === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']).map((day) => <b key={day}>{day}</b>)}</div><div className="month-grid">{monthDays.map((day, i) => { if (!day) return <span className="calendar-day empty" key={`e-${i}`} />; const key = calendarKey(day); const count = eventsFor(key).length; return <button className={`calendar-day ${selectedDay === key ? 'selected' : ''}`} onClick={() => setSelectedDay(key)} key={key}><span>{day.getDate()}</span>{count > 0 && <b>{count}</b>}</button> })}</div></div><aside className="day-agenda"><p className="eyebrow">{selectedDay}</p><h3>Agenda del día</h3>{selectedEvents.length === 0 && <p className="muted">Sin eventos.</p>}{selectedEvents.map((event) => <article key={event.id}><time>{new Intl.DateTimeFormat(locale, { timeZone: displayZone, hour: '2-digit', minute: '2-digit' }).format(new Date(event.start_at))}</time><strong data-no-translate>{event.title}</strong><small data-no-translate>{event.clients ? `${event.clients.code} · ${event.clients.business_name}` : t('General')}</small><small>{t('Asignado a')}: {event.assigned_to ? data.members.find((member) => member.id === event.assigned_to)?.full_name || t('Usuario sin nombre') : t('Todo el equipo')}</small>{event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noreferrer">Abrir enlace ↗</a>}</article>)}</aside></section>
-    {profile?.permissions?.calendar_manage && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Nuevo</p><h3>Crear evento</h3></div></div><form className="calendar-form" onSubmit={submit}>
+    <section className="calendar-workspace content-card"><div className="month-panel"><div className="month-toolbar"><button className="secondary-button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>←</button><h3>{new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(month)}</h3><button className="secondary-button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>→</button></div><div className="month-grid weekday-row">{(language === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']).map((day) => <b key={day}>{day}</b>)}</div><div className="month-grid">{monthDays.map((day, i) => { if (!day) return <span className="calendar-day empty" key={`e-${i}`} />; const key = calendarKey(day); const count = eventsFor(key).length; return <button className={`calendar-day ${selectedDay === key ? 'selected' : ''}`} onClick={() => setSelectedDay(key)} key={key}><span>{day.getDate()}</span>{count > 0 && <b>{count}</b>}</button> })}</div></div><aside className="day-agenda"><p className="eyebrow">{selectedDay}</p><h3>Agenda del día</h3>{selectedEvents.length === 0 && <p className="muted">Sin eventos.</p>}{selectedEvents.map((event) => <article key={event.id}><time>{new Intl.DateTimeFormat(locale, { timeZone: displayZone, hour: '2-digit', minute: '2-digit' }).format(new Date(event.start_at))}</time><strong data-no-translate>{event.title}</strong><small data-no-translate>{event.clients ? `${event.clients.code} · ${event.clients.business_name}` : t('General')}</small><small>{t('Asignado a')}: {event.assigned_to ? data.members.find((member) => member.id === event.assigned_to)?.full_name || t('Usuario sin nombre') : t('Todo el equipo')}</small>{event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noreferrer">Abrir enlace ↗</a>}{canEditEvent(event) && <button type="button" className="secondary-button" onClick={() => beginEdit(event)}>{t('Editar')}</button>}</article>)}</aside></section>
+    {profile?.permissions?.calendar_manage && <section className="content-card" id="calendar-event-form"><div className="section-heading"><div><p className="eyebrow">{editingEventId ? t('Editar') : t('Nuevo')}</p><h3>{t(editingEventId ? 'Editar evento' : 'Crear evento')}</h3></div></div><form className="calendar-form" onSubmit={submit}>
       <label>Título<input value={form.title} onChange={(event) => setField('title', event.target.value)} required /></label><label>Tipo<select value={form.eventType} onChange={(event) => setField('eventType', event.target.value)}><option>Reunión</option><option>Evento</option><option>Nota</option></select></label>
       <label>{t('Cliente')}<select value={form.clientId} onChange={(event) => setField('clientId', event.target.value)}><option value="">General / Todos</option>{data.clients.map((client) => <option value={client.id} key={client.id}>{client.code} · {client.business_name}</option>)}</select></label><label>{t('Asignar a')}<select value={form.assignedTo} onChange={(event) => setField('assignedTo', event.target.value)}><option value="self">{t('Mi usuario')}</option><option value="">{t('Todo el equipo')}</option>{data.members.filter((member) => member.id !== profile.id).map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</select></label><label>{t('Zona del evento')}<select value={form.timezone} onChange={(event) => setField('timezone', event.target.value)}>{timezones.map((zone) => <option value={zone} key={zone}>{zone}</option>)}</select></label>
       <label>Inicio<input type="datetime-local" value={form.startAt} onChange={(event) => setField('startAt', event.target.value)} required /></label><label>Final<input type="datetime-local" value={form.endAt} onChange={(event) => setField('endAt', event.target.value)} /></label><label className="wide">Enlace de reunión<input type="url" value={form.meetingUrl} onChange={(event) => setField('meetingUrl', event.target.value)} /></label><label className="wide">Notas<textarea rows="3" value={form.notes} onChange={(event) => setField('notes', event.target.value)} /></label>
-      <div className="wide"><span className="field-label">Notificar antes</span><div className="reminder-options">{[15, 60, 1440].map((minutes) => <label key={minutes}><input type="checkbox" checked={form.reminders.includes(minutes)} onChange={() => toggleReminder(minutes)} />{reminderLabels[minutes]}</label>)}</div></div><div className="wide"><button className="primary-button compact-button" disabled={saving}>{saving ? 'Creando…' : 'Crear evento'}</button></div>
+      <div className="wide"><span className="field-label">Notificar antes</span><div className="reminder-options">{[15, 60, 1440].map((minutes) => <label key={minutes}><input type="checkbox" checked={form.reminders.includes(minutes)} onChange={() => toggleReminder(minutes)} />{reminderLabels[minutes]}</label>)}</div></div><div className="wide calendar-form-actions">{editingEventId && <button type="button" className="secondary-button" onClick={cancelEdit}>{t('Cancelar')}</button>}<button className="primary-button compact-button" disabled={saving}>{saving ? t(editingEventId ? 'Guardando…' : 'Creando…') : t(editingEventId ? 'Guardar cambios' : 'Crear evento')}</button></div>
     </form></section>}
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Próximos</p><h3>Agenda del equipo</h3></div></div><div className="calendar-list">{upcoming.length === 0 && <p className="muted">No hay eventos próximos.</p>}{upcoming.map((event) => <article className="calendar-event" key={event.id}><time>{new Intl.DateTimeFormat(locale, { timeZone: displayZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.start_at))}</time><div><strong data-no-translate>{event.title}</strong><p><span data-no-translate>{event.clients ? `${event.clients.code} · ${event.clients.business_name}` : t('Evento general')}</span> · {t(event.event_type)}</p><small>{t('Asignado a')}: {event.assigned_to ? data.members.find((member) => member.id === event.assigned_to)?.full_name || t('Usuario sin nombre') : t('Todo el equipo')} · {t('Zona del evento')}: {event.timezone}</small></div>{event.meeting_url && <a className="secondary-button" href={event.meeting_url} target="_blank" rel="noreferrer">Abrir enlace ↗</a>}</article>)}</div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Próximos</p><h3>Agenda del equipo</h3></div></div><div className="calendar-list">{upcoming.length === 0 && <p className="muted">No hay eventos próximos.</p>}{upcoming.map((event) => <article className="calendar-event" key={event.id}><time>{new Intl.DateTimeFormat(locale, { timeZone: displayZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.start_at))}</time><div><strong data-no-translate>{event.title}</strong><p><span data-no-translate>{event.clients ? `${event.clients.code} · ${event.clients.business_name}` : t('Evento general')}</span> · {t(event.event_type)}</p><small>{t('Asignado a')}: {event.assigned_to ? data.members.find((member) => member.id === event.assigned_to)?.full_name || t('Usuario sin nombre') : t('Todo el equipo')} · {t('Zona del evento')}: {event.timezone}</small></div>{event.meeting_url && <a className="secondary-button" href={event.meeting_url} target="_blank" rel="noreferrer">Abrir enlace ↗</a>}{canEditEvent(event) && <button type="button" className="secondary-button" onClick={() => beginEdit(event)}>{t('Editar')}</button>}</article>)}</div></section>
   </div>
 }
