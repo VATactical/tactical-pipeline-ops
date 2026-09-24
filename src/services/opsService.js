@@ -91,7 +91,7 @@ export async function loadClient(clientId) {
   if (error) throw error
 
   const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
-  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [], auditLog: auditResult.data || [], notes: (notesResult.data || []).map((note) => ({ ...note, author: members.get(note.created_by) || null })), adStatusEvents: adStatusResult.data || [] }
+  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [], auditLog: auditResult.data || [], notes: (notesResult.data || []).map((note) => ({ ...note, author: members.get(note.created_by) || null })), adStatusEvents: adStatusResult.data || [], directory: directoryResult.data || [] }
 }
 
 export async function createClientNote({ clientId, profileId, title, body }) {
@@ -105,6 +105,26 @@ export async function createClientNote({ clientId, profileId, title, body }) {
   }).select('*').single()
   if (error) throw error
   return data
+}
+
+export async function updateClientNote(noteId, { title, body }) {
+  const cleanTitle = title.trim()
+  if (!cleanTitle) throw new Error('Escribe un título para la nota.')
+  const { data, error } = await supabase.from('notes')
+    .update({ title: cleanTitle, body: body.trim(), updated_at: new Date().toISOString() })
+    .eq('id', noteId).select('*').single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteClientNote(noteId) {
+  const { error } = await supabase.from('notes').delete().eq('id', noteId)
+  if (error) throw error
+}
+
+export async function deleteClientTask(taskId) {
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+  if (error) throw error
 }
 
 export async function updateTaskStatus(taskId, status) {
