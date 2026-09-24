@@ -41,6 +41,7 @@ export async function createCalendarEvent(event, profileId) {
     notes: event.notes.trim(),
     reminder_minutes: event.reminders,
     created_by: profileId,
+    assigned_to: event.assignedTo === 'self' ? profileId : event.assignedTo || null,
   }).select('*, clients(code, business_name)').single()
   if (error) throw error
   return data
