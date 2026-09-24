@@ -421,6 +421,12 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .password-change-grid { grid-template-columns: 1fr; }
   .password-change-grid label:first-child { grid-column: auto; }
   .client-detail-header { gap: 1rem; }
+  .client-sticky-shell { margin: 0 -.2rem; padding: .25rem .2rem .45rem; }
+  .client-detail-tabs { overflow-x: auto; }
+  .client-detail-tabs button { flex: 0 0 auto; min-width: 88px; }
+  .client-task-groups { grid-template-columns: 1fr; }
+  .client-dossier-page[data-client-tab="tasks"] .client-task-groups { grid-template-columns: 1fr; }
+  .client-task-groups > :nth-child(3) { grid-column: auto; }
   .dossier-search > div { grid-template-columns: 1fr; }
   .dossier-search button { width: 100%; }
   .directory-grid { justify-content: stretch; }
@@ -972,3 +978,23 @@ html[data-theme='light'] .clock-card span,
 html[data-theme='light'] .clock-card small {
   color: #526b80;
 }
+
+/* Client detail tabs */
+.client-sticky-shell { position: sticky; top: 0; z-index: 8; display: grid; gap: .45rem; padding: .3rem 0 .55rem; border-bottom: 1px solid #1c3043; background: #07111cee; backdrop-filter: blur(14px); }
+.client-task-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.client-dossier-page[data-client-tab="tasks"] .client-task-groups { display: grid; }
+.client-task-groups > :nth-child(3) { grid-column: 1 / -1; }
+.client-task-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .75rem; align-items: start; padding: .85rem 0; border-top: 1px solid #20384e; }
+.client-task-row:first-of-type { border-top: 0; }
+.client-task-row > div { min-width: 0; }
+.client-task-row small { display: block; margin-top: .35rem; color: #8ba2b8; }
+.client-task-row.completed { opacity: .78; }
+.client-note-form { display: grid; gap: .7rem; margin: 0 0 1rem; padding: 1rem; border: 1px solid #294158; border-radius: 12px; background: #091522; }
+.client-note-form label { display: grid; gap: .35rem; }
+.client-note-form input, .client-note-form textarea { margin: 0; }
+.client-note-form button { justify-self: start; }
+
+html[data-theme='light'] .client-sticky-shell { border-color: #c8d8e5; background: #f6fafced; }
+html[data-theme='light'] .client-task-row { border-color: #d5e2eb; }
+html[data-theme='light'] .client-task-row small { color: #526b80; }
+html[data-theme='light'] .client-note-form { border-color: #c8d8e5; background: #f8fbfd; }

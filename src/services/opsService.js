@@ -76,7 +76,7 @@ export async function loadOperations(profileId) {
 }
 
 export async function loadClient(clientId) {
-  const [clientResult, tasksResult, blockersResult, workflowResult, auditResult, notesResult, adStatusResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientResult, tasksResult, blockersResult, workflowResult, auditResult, notesResult, adStatusResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').eq('id', clientId).single(),
     supabase.from('tasks').select('*').eq('client_id', clientId).order('created_at'),
     supabase.from('blockers').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
@@ -84,12 +84,27 @@ export async function loadClient(clientId) {
     supabase.from('client_audit_log').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(50),
     supabase.from('notes').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
     supabase.from('client_ad_status_events').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(30),
+    supabase.rpc('get_team_directory'),
   ]))
 
-  const error = clientResult.error || tasksResult.error || blockersResult.error || workflowResult.error || auditResult.error || notesResult.error || adStatusResult.error
+  const error = clientResult.error || tasksResult.error || blockersResult.error || workflowResult.error || auditResult.error || notesResult.error || adStatusResult.error || directoryResult.error
   if (error) throw error
 
-  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [], auditLog: auditResult.data || [], notes: notesResult.data || [], adStatusEvents: adStatusResult.data || [] }
+  const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
+  return { client: clientResult.data, tasks: tasksResult.data || [], blockers: blockersResult.data || [], workflowSteps: workflowResult.data || [], auditLog: auditResult.data || [], notes: (notesResult.data || []).map((note) => ({ ...note, author: members.get(note.created_by) || null })), adStatusEvents: adStatusResult.data || [] }
+}
+
+export async function createClientNote({ clientId, profileId, title, body }) {
+  const cleanTitle = title.trim()
+  if (!cleanTitle) throw new Error('Escribe un título para la nota.')
+  const { data, error } = await supabase.from('notes').insert({
+    client_id: clientId,
+    created_by: profileId,
+    title: cleanTitle,
+    body: body.trim(),
+  }).select('*').single()
+  if (error) throw error
+  return data
 }
 
 export async function updateTaskStatus(taskId, status) {
