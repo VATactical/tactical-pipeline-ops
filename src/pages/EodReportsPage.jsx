@@ -78,9 +78,12 @@ export default function EodReportsPage() {
   const [actionKey, setActionKey] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [draftHydrated, setDraftHydrated] = useState(false)
+  const draftKey = profile?.id && reportDate ? `tp-ops-eod-draft-${profile.id}-${reportDate}` : ''
   useEffect(() => { window.localStorage.setItem('tp-ops-eod-view', reportViewMode) }, [reportViewMode])
 
   const refresh = useCallback(async () => {
+    setDraftHydrated(false)
     const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
     setCompletedTasks(data.completedTasks)
     setReports(data.reports)
@@ -90,6 +93,7 @@ export default function EodReportsPage() {
     if (!isSuperadmin) {
       const existing = data.reports.find((item) => item.user_id === profile.id && item.report_date === reportDate)
       if (existing) {
+        if (draftKey) window.localStorage.removeItem(draftKey)
         const existingIds = new Set((existing.completed_tasks || []).map((item) => item.id))
         setSelectedTaskIds(data.completedTasks.filter((task) => existingIds.has(task.id)).map((task) => task.id))
         const existingEntries = existing.time_entries || []
@@ -102,18 +106,26 @@ export default function EodReportsPage() {
           : [{ title: '', description: '', hours: '' }])
         setNotes(existing.notes || '')
       } else {
-        setSelectedTaskIds(data.completedTasks.map((task) => task.id))
-        setManualSections([{ title: '', description: '', hours: '' }])
-        setNotes('')
+        let savedDraft = null
+        try { savedDraft = draftKey ? JSON.parse(window.localStorage.getItem(draftKey) || 'null') : null } catch { savedDraft = null }
+        setSelectedTaskIds(savedDraft?.selectedTaskIds?.filter((id) => data.completedTasks.some((task) => task.id === id)) || data.completedTasks.map((task) => task.id))
+        setManualSections(savedDraft?.manualSections?.length ? savedDraft.manualSections : [{ title: '', description: '', hours: '' }])
+        setNotes(savedDraft?.notes || '')
       }
+      setDraftHydrated(true)
     }
-  }, [cycle, isSuperadmin, profile, reportDate])
+  }, [cycle, draftKey, isSuperadmin, profile, reportDate])
 
   useEffect(() => {
     setLoading(true)
     setError('')
     refresh().catch((loadError) => setError(t(loadError.message))).finally(() => setLoading(false))
   }, [refresh])
+
+  useEffect(() => {
+    if (!draftHydrated || !composerOpen || !draftKey || isSuperadmin) return
+    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, notes, savedAt: new Date().toISOString() }))
+  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, notes, selectedTaskIds])
 
   useEffect(() => {
     if (!expandedReport) return undefined
@@ -220,7 +232,13 @@ export default function EodReportsPage() {
   }
 
   const submit = async (event) => {
-    event.preventDefault(); setSaving(true); setError(''); setMessage('')
+    event.preventDefault(); setError(''); setMessage('')
+    const activeSections = manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours)
+    if (activeSections.some((section) => !section.title.trim() || !section.description.trim() || !(Number(section.hours) > 0))) {
+      setError(t('Cada sección necesita título, descripción y horas.'))
+      return
+    }
+    setSaving(true)
     try {
       const selectedTasks = completedTasks.filter((task) => selectedTaskIds.includes(task.id)).map((task) => ({
         id: task.id,
@@ -245,6 +263,7 @@ export default function EodReportsPage() {
       })
       await refresh()
       setComposerOpen(false)
+      if (draftKey) window.localStorage.removeItem(draftKey)
       setMessage(t('Reporte EOD enviado a Kevin y Alejandra correctamente.'))
     } catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
