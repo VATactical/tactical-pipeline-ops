@@ -454,6 +454,28 @@ html[data-theme='light'] .text-button, html[data-theme='light'] .section-heading
 html[data-theme='light'] .client-list-row, html[data-theme='light'] .client-card, html[data-theme='light'] .dossier-card, html[data-theme='light'] .task-column, html[data-theme='light'] .task-board-card { border-color: #d6e1eb; background: #ffffff; }
 html[data-theme='light'] .client-list-row:hover, html[data-theme='light'] .client-card:hover, html[data-theme='light'] .task-board-card:hover { border-color: #7db8d4; background: #f5fbff; }
 html[data-theme='light'] .client-card > p, html[data-theme='light'] .client-card dd, html[data-theme='light'] .pipeline-row p, html[data-theme='light'] .task-row p, html[data-theme='light'] .blocker-row p { color: #536b80; }
+html[data-theme='light'] .status-tabs button, html[data-theme='light'] .view-toggle button:not(.text-button) { border-color: #c7d7e5; background: #f6f9fc; color: #29435b; }
+html[data-theme='light'] .status-tabs button:hover, html[data-theme='light'] .view-toggle button:not(.text-button):hover { border-color: #7db8d4; background: #edf8fc; }
+html[data-theme='light'] .status-tabs button.active, html[data-theme='light'] .view-toggle button.active { border-color: #087cae; background: #dff3fb; color: #075d83; }
+html[data-theme='light'] .status-tabs button span { background: #dceaf2; color: #42627a; }
+html[data-theme='light'] .status-tabs button.active span { background: #087cae; color: #ffffff; }
+html[data-theme='light'] .client-list-header { color: #526b80; }
+html[data-theme='light'] .client-code, html[data-theme='light'] .client-list-name .client-code { color: #087cae; }
+html[data-theme='light'] .client-list-progress strong { color: #087cae; }
+html[data-theme='light'] .client-list-tasks { color: #536b80; }
+html[data-theme='light'] .client-list-row .client-deadline span { color: #60758a; }
+html[data-theme='light'] .client-list-row .client-deadline b { color: #182536; }
+html[data-theme='light'] .client-list-row .row-arrow { color: #087cae; }
+html[data-theme='light'] .client-list-row .progress-track, html[data-theme='light'] .client-card .progress-track { background: #d9e6ef; }
+html[data-theme='light'] .client-deadline { border: 1px solid #d2e0ea; background: #edf5fa; color: #60758a; }
+html[data-theme='light'] .client-deadline b { color: #182536; }
+html[data-theme='light'] .client-deadline.overdue { border-color: #e6b7be; background: #fff1f2; color: #a53f4f; }
+html[data-theme='light'] .client-deadline.overdue b { color: #8e2e3e; }
+html[data-theme='light'] .lifecycle { border-color: #bfd0dc; background: #f3f7fa; color: #3d596f; }
+html[data-theme='light'] .lifecycle.ads-live { border-color: #8bd4aa; background: #e9f9f0; color: #176a3d; }
+html[data-theme='light'] .lifecycle.ads-paused { border-color: #bc8ee1; background: #f4eafd; color: #62308c; }
+html[data-theme='light'] .lifecycle.onboarding { border-color: #8dcce4; background: #e8f7fd; color: #075d83; }
+html[data-theme='light'] .lifecycle.a2p-submitted { border-color: #e1c778; background: #fff8df; color: #795b06; }
 html[data-theme='light'] .app-footer { border-color: #d8e2ec; color: #6a7f92; }
 html[data-theme='light'] .app-footer strong { color: #3a536b; }
 html[data-theme='light'] .new-task-alert { border-color: #e5c264; background: #fff8e5; }
