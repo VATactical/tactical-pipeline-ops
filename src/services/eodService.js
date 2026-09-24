@@ -182,6 +182,12 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
     memo: entry.memo.trim(),
   }))
   if (cleanEntries.reduce((sum, entry) => sum + entry.hours, 0) > 24) throw new Error('Las horas del día no pueden superar 24.')
+  const cleanManualTasks = manualTasks
+    .filter((item) => typeof item === 'string' ? item.trim() : item?.title?.trim() || item?.description?.trim() || item?.hours)
+    .map((item) => typeof item === 'string'
+      ? { title: item.trim(), description: '', hours: null }
+      : { title: item.title.trim(), description: item.description.trim(), hours: Number(item.hours) || null })
+  if (cleanManualTasks.some((item) => !item.title || !item.description || !(Number(item.hours) > 0))) throw new Error('Cada sección necesita título, descripción y horas.')
   const { data, error } = await supabase.from('eod_reports').upsert({
     user_id: profileId,
     report_date: reportDate,
@@ -189,7 +195,7 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
     period_end: periodEnd,
     submitted_at: submittedAt,
     completed_tasks: completedTasks,
-    manual_tasks: manualTasks.filter((item) => item.trim()).map((title) => ({ title: title.trim() })),
+    manual_tasks: cleanManualTasks,
     notes: notes.trim(),
     updated_at: submittedAt,
   }, { onConflict: 'user_id,report_date' }).select('*').single()
