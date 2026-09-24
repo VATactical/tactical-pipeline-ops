@@ -1039,3 +1039,24 @@ html[data-theme='light'] .client-detail-tabs button.active { border-color: #159d
   .client-detail-header h2 { font-size: clamp(1.45rem, 7vw, 1.9rem); }
   .dossier-actions > .secondary-button, .dossier-actions > button { padding: .45rem .6rem; font-size: .72rem; }
 }
+
+/* Compact sticky dossier search and setup toggles */
+.client-sticky-shell { gap: .3rem; }
+.compact-sticky-search { gap: .25rem; margin: 0; padding: .32rem .5rem; border-radius: 10px; }
+.compact-sticky-search > label { font-size: .61rem; line-height: 1.1; }
+.compact-sticky-search > div { grid-template-columns: minmax(0, 1fr) auto; gap: .4rem; }
+.compact-sticky-search input { height: 36px; padding: .4rem .65rem; font-size: .82rem; }
+.compact-sticky-search button { padding: .42rem .7rem; font-size: .77rem; }
+.compact-setup-status { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+.compact-setup-status .setup-status-item { flex: 0 0 auto; width: auto; gap: .42rem; padding: .42rem .62rem; border-radius: 9px; }
+.compact-setup-status .setup-status-icon { flex-basis: 1.25rem; width: 1.25rem; height: 1.25rem; font-size: .7rem; }
+.compact-setup-status .setup-status-item > span:last-child { display: flex; align-items: baseline; gap: .35rem; }
+.compact-setup-status .setup-status-item strong { font-size: .78rem; }
+.compact-setup-status .setup-status-item small { font-size: .68rem; }
+.dossier-overview-grid { gap: .7rem; }
+.dossier-overview-grid > .content-card, .dossier-overview-grid > .metric-grid { min-height: 0; }
+.dossier-overview-grid .content-card { padding: 1rem; }
+.dossier-overview-grid .metric-card { min-height: 105px; padding: 1rem; }
+.dossier-overview-grid .metric-card strong { margin-top: .7rem; font-size: 2rem; }
+html[data-theme='light'] .compact-setup-status .setup-status-item.complete { border-color: #9acdb1; background: #eef9f2; color: #174d37; }
+html[data-theme='light'] .compact-setup-status .setup-status-item.pending { border-color: #e1d19a; background: #fffaf0; color: #554416; }
