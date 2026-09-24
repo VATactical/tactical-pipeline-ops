@@ -23,6 +23,12 @@ function reportPreview(value, limit = 200) {
   return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text
 }
 
+function normalizeManualSection(item) {
+  return typeof item === 'string'
+    ? { title: item, description: '', hours: null }
+    : { title: item?.title || '', description: item?.description || '', hours: item?.hours }
+}
+
 function getReviewState(report, reviewerId) {
   const review = (report.reviews || []).find((item) => item.reviewer_id === reviewerId)
   const unread = !review || new Date(review.viewed_at) < new Date(report.updated_at)
@@ -59,8 +65,7 @@ export default function EodReportsPage() {
   const [directory, setDirectory] = useState([])
   const [timeEntries, setTimeEntries] = useState([])
   const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), timeZone))
-  const [manualTasks, setManualTasks] = useState([''])
-  const [manualHours, setManualHours] = useState([{ hours: '', memo: '' }])
+  const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '' }])
   const [notes, setNotes] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
@@ -87,14 +92,18 @@ export default function EodReportsPage() {
       if (existing) {
         const existingIds = new Set((existing.completed_tasks || []).map((item) => item.id))
         setSelectedTaskIds(data.completedTasks.filter((task) => existingIds.has(task.id)).map((task) => task.id))
-        setManualTasks(existing.manual_tasks?.length ? existing.manual_tasks.map((item) => item.title) : [''])
-        setManualHours(existing.time_entries?.length ? existing.time_entries.map((item) => ({ hours: String(item.hours), memo: item.memo })) : [{ hours: '', memo: '' }])
+        const existingEntries = existing.time_entries || []
+        setManualSections(existing.manual_tasks?.length
+          ? existing.manual_tasks.map((item, index) => ({
+            title: typeof item === 'string' ? item : item.title || '',
+            description: typeof item === 'string' ? existingEntries[index]?.memo || '' : item.description || existingEntries[index]?.memo || '',
+            hours: String(typeof item === 'object' && item.hours != null ? item.hours : existingEntries[index]?.hours || ''),
+          }))
+          : [{ title: '', description: '', hours: '' }])
         setNotes(existing.notes || '')
       } else {
         setSelectedTaskIds(data.completedTasks.map((task) => task.id))
-        setManualTasks([''])
-        const ownEntriesForDay = (data.timeEntries || []).filter((entry) => entry.user_id === profile.id && entry.work_date === reportDate)
-        setManualHours(ownEntriesForDay.length ? ownEntriesForDay.map((item) => ({ hours: String(item.hours), memo: item.memo })) : [{ hours: '', memo: '' }])
+        setManualSections([{ title: '', description: '', hours: '' }])
         setNotes('')
       }
     }
@@ -161,8 +170,8 @@ export default function EodReportsPage() {
   }, [canReviewAll, profile.id, reports, reviewFilter, userSearch])
 
   const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
-  const changeManual = (index, value) => setManualTasks((current) => current.map((item, itemIndex) => itemIndex === index ? value : item))
-  const changeHours = (index, key, value) => setManualHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
+  const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
+  const totalManualHours = useMemo(() => manualSections.reduce((sum, section) => sum + Number(section.hours || 0), 0), [manualSections])
 
   const runAction = async (key, action, success) => {
     setActionKey(key); setError(''); setMessage('')
@@ -227,8 +236,11 @@ export default function EodReportsPage() {
         periodStart: cycle.start.toISOString(),
         periodEnd: cycle.end.toISOString(),
         completedTasks: selectedTasks,
-        manualTasks,
-        timeEntries: manualHours,
+        manualTasks: manualSections,
+        timeEntries: manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours).map((section) => ({
+          hours: section.hours,
+          memo: `${section.title.trim()}${section.description.trim() ? `: ${section.description.trim()}` : ''}`,
+        })),
         notes,
       })
       await refresh()
@@ -261,12 +273,11 @@ export default function EodReportsPage() {
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
       <div className="section-heading"><div><p className="eyebrow">{t('Checklist de actividades')}</p><h3>{selectedTaskIds.length} {t('de')} {completedTasks.length} {t('tareas seleccionadas')}</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><label className="eod-report-date">{t('Fecha del reporte')}<input type="date" value={reportDate} min={reportDateMin} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /><small>{t('La hora se registra automáticamente al enviarlo.')}</small></label>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? t('Desmarcar todas') : t('Seleccionar todas')}</button>}</div>
       <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
-      <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Agregar actividad manual')}</h3></div><button className="secondary-button" type="button" onClick={() => setManualTasks((current) => [...current, ''])}>{t('+ Agregar')}</button></div>
-      <div className="manual-task-list">{manualTasks.map((item, index) => <div className="manual-task-row" key={index}><input value={item} onChange={(event) => changeManual(index, event.target.value)} placeholder={t('Ej. Reunión con cliente o revisión manual')} /><button className="text-button" type="button" onClick={() => setManualTasks((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button></div>)}</div>
-      <div className="section-heading"><div><p className="eyebrow">{t('Registro manual diario')}</p><h3>{t('Horas trabajadas')}</h3><p className="muted">{t('Registra las horas y describe el trabajo realizado.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualHours((current) => [...current, { hours: '', memo: '' }])}>+ {t('Agregar tiempo')}</button></div>
-      <div className="manual-hours-list">{manualHours.map((entry, index) => <div className="manual-hours-row" key={index}><label>{t('Horas')}<input type="number" min="0.01" max="24" step="0.01" value={entry.hours} onChange={(event) => changeHours(index, 'hours', event.target.value)} placeholder="0.00" /></label><label>{t('Memo')}<input maxLength="500" value={entry.memo} onChange={(event) => changeHours(index, 'memo', event.target.value)} placeholder={t('Describe el trabajo realizado…')} /></label><button className="text-button" type="button" onClick={() => setManualHours((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button></div>)}</div>
-      <label>{t('Notas del día')}<textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('Resultados, bloqueos o contexto para supervisión…')} /></label>
-      <div className="eod-submit-row"><span>{selectedTaskIds.length + manualTasks.filter((item) => item.trim()).length} {t('actividades serán enviadas.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
+      <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '' }])}>+ {t('Agregar sección')}</button></div>
+      <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas de esta sección')}<input type="number" min="0.01" max="24" step="0.01" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0.00" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
+      <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{totalManualHours.toFixed(2)} h</strong></div>
+      <label>{t('Resumen general del día')}<textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('Resultados generales, bloqueos o contexto para supervisión…')} /></label>
+      <div className="eod-submit-row"><span>{selectedTaskIds.length + manualSections.filter((section) => section.title.trim()).length} {t('actividades serán enviadas.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
     </form>}
 
     {!canSubmit && !canReviewAll && <section className="content-card"><p className="muted">Tu usuario no tiene permiso para generar informes EOD.</p></section>}
@@ -285,7 +296,7 @@ export default function EodReportsPage() {
           <p className="eod-activity-count">{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</p>
           <p className="eod-hours-total">{t('Horas')}: <strong>{(report.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>
           <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>Abrir reporte completo</button>
-          <ul data-no-translate>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>
+          <ul data-no-translate>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => { const section = normalizeManualSection(item); return <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{section.title}</li> })}</ul>
           {report.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.notes)}</p>{report.notes.trim().length > 200 && <button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button>}</div>}
           {canReviewAll && <><div className="eod-review-actions"><button className="secondary-button" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Visto')}>Marcar visto</button><button className="secondary-button review-ok" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Revisado')}>Revisado</button><button className="secondary-button review-follow-up" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Requiere seguimiento')}>Requiere seguimiento</button></div>
             <form className="eod-comment-form" onSubmit={(event) => submitComment(event, report)}><label>Comentario del supervisor<textarea rows="2" maxLength="2000" value={commentDrafts[report.id] || ''} onChange={(event) => setCommentDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Deja una observación o instrucción…"/></label><button className="primary-button compact-button" disabled={actionKey === `comment-${report.id}` || !commentDrafts[report.id]?.trim()}>{actionKey === `comment-${report.id}` ? 'Guardando…' : 'Agregar comentario'}</button></form></>}
@@ -297,7 +308,7 @@ export default function EodReportsPage() {
     {expandedReport && <div className="eod-report-modal" role="dialog" aria-modal="true" aria-labelledby="expanded-report-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setExpandedReport(null) }}>
       <article className="eod-report-modal-card">
         <div className="eod-report-modal-header"><div><p className="eyebrow">Reporte EOD completo</p><h2 id="expanded-report-title">{expandedReport.profiles?.full_name || t('Usuario')} · {expandedReport.report_date}</h2><small>{t('Enviado')} {formatMoment(expandedReport.submitted_at || expandedReport.updated_at, timeZone, locale)}</small></div><button className="secondary-button" type="button" onClick={() => setExpandedReport(null)}>Cerrar</button></div>
-        <div className="eod-report-modal-body"><p className="report-period">{t('Ciclo diario')}: {formatMoment(expandedReport.period_start, expandedReport.profiles?.timezone || timeZone, locale)} — {formatMoment(expandedReport.period_end, expandedReport.profiles?.timezone || timeZone, locale)}</p><h3>Actividades</h3><ul data-no-translate>{[...(expandedReport.completed_tasks || []), ...(expandedReport.manual_tasks || [])].map((item, index) => <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul><p className="eod-hours-total">{t('Horas')}: <strong>{(expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>{expandedReport.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}{(expandedReport.comments || []).length > 0 && <div className="eod-comment-list"><strong>Seguimiento</strong>{expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}><div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div><p className="formatted-text" data-no-translate>{comment.body}</p></article>)}</div>}</div>
+        <div className="eod-report-modal-body"><p className="report-period">{t('Ciclo diario')}: {formatMoment(expandedReport.period_start, expandedReport.profiles?.timezone || timeZone, locale)} — {formatMoment(expandedReport.period_end, expandedReport.profiles?.timezone || timeZone, locale)}</p><h3>{t('Actividades')}</h3><ul data-no-translate>{(expandedReport.completed_tasks || []).map((item) => <li className="formatted-text" key={item.id}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>{(expandedReport.manual_tasks || []).length > 0 && <div className="eod-report-sections"><h3>{t('Secciones del trabajo')}</h3>{expandedReport.manual_tasks.map((item, index) => { const section = normalizeManualSection(item); return <article className="eod-report-section" key={`${section.title}-${index}`}><div><strong data-no-translate>{section.title}</strong>{section.description && <p className="formatted-text" data-no-translate>{section.description}</p>}</div>{section.hours != null && <span>{Number(section.hours).toFixed(2)} h</span>}</article> })}</div>}<p className="eod-hours-total">{t('Total de horas')}: <strong>{(expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>{expandedReport.notes && <div className="eod-notes-block"><strong>{t('Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}{(expandedReport.comments || []).length > 0 && <div className="eod-comment-list"><strong>Seguimiento</strong>{expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}><div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div><p className="formatted-text" data-no-translate>{comment.body}</p></article>)}</div>}</div>
       </article>
     </div>}
   </div>
