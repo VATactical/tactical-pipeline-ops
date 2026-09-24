@@ -1105,3 +1105,5 @@ html[data-theme='light'] .client-sticky-shell { border-color: #e5f1f8; backgroun
 .calendar-owner-filter select { width: 100%; margin: 0; padding: .55rem .7rem; border: 1px solid #294158; border-radius: 10px; background: #0d1c2b; color: #dbe8f6; }
 .calendar-owner-filter select:focus-visible { outline: 2px solid #38c8ff; outline-offset: 2px; }
 @media (max-width: 680px) { .calendar-owner-filter { min-width: 140px; flex: 1 1 100%; } }
+
+.calendar-form-actions { display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
