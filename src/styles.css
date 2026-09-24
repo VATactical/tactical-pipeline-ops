@@ -998,3 +998,21 @@ html[data-theme='light'] .client-sticky-shell { border-color: #c8d8e5; backgroun
 html[data-theme='light'] .client-task-row { border-color: #d5e2eb; }
 html[data-theme='light'] .client-task-row small { color: #526b80; }
 html[data-theme='light'] .client-note-form { border-color: #c8d8e5; background: #f8fbfd; }
+
+
+/* Client tab navigation and content visibility */
+.client-detail-tabs { display: flex; gap: .45rem; padding: .55rem; border: 1px solid #1c3043; border-radius: 14px; background: #0a1724ee; }
+.client-detail-tabs button { appearance: none; flex: 1; min-width: 0; padding: .72rem .9rem; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #91a8bf; font: inherit; font-size: .8rem; font-weight: 850; cursor: pointer; transition: .18s ease; }
+.client-detail-tabs button:hover { color: #dbeeff; background: #10263a; }
+.client-detail-tabs button.active { border-color: #2fbce9; background: #123650; color: #8ee4ff; box-shadow: 0 4px 16px #159bd133; }
+.client-dossier-page[data-client-tab] .client-tab-section { display: none; }
+.client-dossier-page[data-client-tab="dossier"] .client-tab-section.tab-dossier,
+.client-dossier-page[data-client-tab="ads"] .client-tab-section.tab-ads,
+.client-dossier-page[data-client-tab="notes"] .client-tab-section.tab-notes,
+.client-dossier-page[data-client-tab="tasks"] .client-tab-section.tab-tasks,
+.client-dossier-page[data-client-tab="audit"] .client-tab-section.tab-audit { display: block; }
+.client-dossier-page[data-client-tab="dossier"] .print-dossier { display: grid; }
+html[data-theme='light'] .client-detail-tabs { border-color: #c8d8e5; background: #ffffffee; box-shadow: 0 5px 18px #24435b12; }
+html[data-theme='light'] .client-detail-tabs button { color: #526b80; }
+html[data-theme='light'] .client-detail-tabs button:hover { color: #183247; background: #edf6fa; }
+html[data-theme='light'] .client-detail-tabs button.active { border-color: #159dcc; background: #e4f5fb; color: #075d83; }
