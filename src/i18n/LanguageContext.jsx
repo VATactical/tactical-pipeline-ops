@@ -133,6 +133,7 @@ const translations = {
   'Contexto, instrucciones o información adicional…': 'Context, instructions, or additional information…', 'Ej. EIN, presupuesto, pixel, dominio…': 'E.g. EIN, budget, pixel, domain…',
   'Ej. Reunión con cliente o revisión manual': 'E.g. Client meeting or manual review', 'Escribe una ciudad o zona…': 'Type a city or time zone…', 'Resultados, bloqueos o contexto para Kevin…': 'Results, blockers, or context for Kevin…',
   'Título de la nota': 'Note title', 'PNG, JPG o WebP · máximo 5 MB': 'PNG, JPG, or WebP · 5 MB maximum', 'Tu agenda se muestra en': 'Your calendar is shown in',
+  'Ver agenda': 'Calendar view', 'Mi calendario': 'My calendar', 'Asignar a': 'Assign to', 'Asignado a': 'Assigned to', 'Mi usuario': 'Me', 'Todo el equipo': 'Entire team',
   'Responsable:': 'Internal assignee:', 'Propietario del cliente:': 'Client owner:', 'Responsable interno:': 'Internal assignee:', 'Seleccionado:': 'Selected:', 'Zona del evento:': 'Event timezone:', 'Hecho por Diego Romario · Nicaragua': 'Built by Diego Romario · Nicaragua',
   'abiertos': 'open', 'actividades': 'activities', 'actividades reportadas': 'reported activities', 'activos': 'active', 'agendadas': 'scheduled', 'bloqueo': 'blocker',
   'campañas activas': 'active campaigns', 'campañas sin lanzar': 'campaigns not launched', 'clientes': 'clients', 'clientes bloqueados': 'blocked clients', 'clientes sin actualización': 'clients without updates',
