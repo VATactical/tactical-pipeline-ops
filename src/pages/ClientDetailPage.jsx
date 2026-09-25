@@ -253,7 +253,7 @@ export default function ClientDetailPage() {
   const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
-  const canManageNotes = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
+  const canManageNotes = canCreateNotes
   const canManageTasks = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin))
   const canCreateTasks = !client.archived && (canManageTasks || Boolean(profile?.permissions?.tasks_create))
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
