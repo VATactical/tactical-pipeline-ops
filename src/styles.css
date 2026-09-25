@@ -1107,3 +1107,22 @@ html[data-theme='light'] .client-sticky-shell { border-color: #e5f1f8; backgroun
 @media (max-width: 680px) { .calendar-owner-filter { min-width: 140px; flex: 1 1 100%; } }
 
 .calendar-form-actions { display: flex; justify-content: flex-end; gap: .6rem; flex-wrap: wrap; }
+
+
+.google-ads-status-card .section-heading { align-items: center; gap: 1rem; }
+.google-ads-status-control { display: grid; gap: .45rem; max-width: 320px; color: #9bb0c5; font-size: .82rem; font-weight: 700; }
+.google-ads-status-control select { width: 100%; }
+.google-ads-status-badge { display: inline-flex; align-items: center; border: 1px solid #2b5d7c; border-radius: 999px; padding: .4rem .7rem; background: #102c40; color: #72d6ff; font-size: .78rem; font-weight: 800; }
+.google-ads-status-badge.activa { border-color: #236441; background: #102f23; color: #71eba5; }
+.google-ads-status-badge.pausada { border-color: #735b22; background: #332b14; color: #f4c75a; }
+.google-ads-status-badge.requiere-atención { border-color: #8a4b4b; background: #3a1e23; color: #ff9b9b; }
+.ads-metrics-grid { margin-block: .75rem 1rem; }
+html[data-theme='light'] .google-ads-status-control { color: #4c6275; }
+html[data-theme='light'] .google-ads-status-badge { border-color: #9fc8dc; background: #e8f6fb; color: #176b8b; }
+html[data-theme='light'] .google-ads-status-badge.activa { border-color: #9bd4b1; background: #edf9f1; color: #176a3a; }
+html[data-theme='light'] .google-ads-status-badge.pausada { border-color: #e7cb7d; background: #fff8df; color: #775600; }
+html[data-theme='light'] .google-ads-status-badge.requiere-atención { border-color: #e9b4b4; background: #fff0f0; color: #8d3434; }
+@media (max-width: 560px) {
+  .google-ads-status-card .section-heading { align-items: flex-start; }
+  .google-ads-status-control { max-width: none; }
+}
