@@ -147,7 +147,7 @@ export default function ClientDetailPage() {
   const latestDossierAudit = auditLog.find((entry) => entry.changed_fields?.some((field) => dossierFieldKeys.has(field)))
   const dossierUpdatedAt = latestDossierAudit?.created_at || client.updated_at
   const dossierUpdatedBy = latestDossierAudit?.actor_name || profile?.full_name || 'Pending'
-  const formatDossierDateTime = (value) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : t('Pendiente')
+  const formatDossierDateTime = (value) => value ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : t('Pendiente')
   const stageStepKeys = {
     onboarding: ['sale_closed', 'onboarding_call'],
     data_access: ['assets_ingested', 'request_ein', 'verify_dossier', 'google_business_profile'],
@@ -480,7 +480,7 @@ export default function ClientDetailPage() {
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
-          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
+          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
     </div>
