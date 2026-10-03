@@ -98,7 +98,7 @@ create or replace function private.validate_client_field_verification()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_value text;
 begin
@@ -111,7 +111,26 @@ begin
   where c.id = new.client_id;
 
   if v_value is null or btrim(v_value) = ''
-     or v_value ~* '^(pending|pendiente|confirm|verificar|n/?a|none|null)
+     or v_value ~* '^(pending|pendiente|confirm|verificar|n/?a|none|null)$' then
+    raise exception 'A field needs a value before it can be marked complete';
+  end if;
+
+  if new.field_key in ('payment_method_confirmed','facebook_access_confirmed','meta_campaign_live','onboarding_completed')
+     and v_value <> 'true' then
+    raise exception 'Confirm the access or completion before marking this field complete';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists client_field_verifications_validate on public.client_field_verifications;
+create trigger client_field_verifications_validate
+before insert or update of status, field_key, client_id
+on public.client_field_verifications
+for each row execute function private.validate_client_field_verification();
+revoke all on function private.validate_client_field_verification() from public, anon, authenticated;
+
 create table if not exists public.client_interactions (
   id bigint generated always as identity primary key,
   client_id text not null references public.clients(id) on delete cascade,
