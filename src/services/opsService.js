@@ -319,12 +319,12 @@ export async function saveClientMetaToken(clientId, token) {
   if (error) throw error
 }
 
-export async function recordDossierEvent(clientId, action, profileId) {
+export async function recordDossierEvent(clientId, action, profileId, occurredAt = new Date().toISOString()) {
   const { error } = await supabase.from('client_dossier_events').insert({ client_id: clientId, action })
   if (error) throw error
   if (action === 'copied_google_docs') {
     const { error: updateError } = await supabase.from('clients').update({
-      dossier_copied_at: new Date().toISOString(),
+      dossier_copied_at: occurredAt,
       dossier_copied_by: profileId,
     }).eq('id', clientId)
     if (updateError) throw updateError
