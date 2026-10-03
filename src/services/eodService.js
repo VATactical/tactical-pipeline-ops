@@ -186,6 +186,7 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
     memo: entry.memo.trim(),
   }))
   if (cleanEntries.reduce((sum, entry) => sum + entry.hours, 0) > 24) throw new Error('Las horas del día no pueden superar 24.')
+  if (cleanEntries.some((entry) => entry.memo.length > 500)) throw new Error('El título y la descripción de cada sección no pueden superar 500 caracteres en total.')
   const cleanManualTasks = manualTasks
     .filter((item) => typeof item === 'string' ? item.trim() : item?.title?.trim() || item?.description?.trim() || item?.hours)
     .map((item) => typeof item === 'string'
