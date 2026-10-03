@@ -45,7 +45,8 @@ function fieldHasValue(value) {
 }
 
 export default function ClientOpsPanel({ client, directory = [], canEdit, onRefresh }) {
-  const { profile } = useAuth()\n  const canViewSyncLog = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
+  const { profile } = useAuth()
+  const canViewSyncLog = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const { t, locale } = useLanguage()
   const [verifications, setVerifications] = useState({})
   const [interactions, setInteractions] = useState([])
@@ -59,7 +60,8 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   const reload = async () => {
     const [verificationResult, interactionResult, syncResult] = await Promise.all([
       supabase.from('client_field_verifications').select('*').eq('client_id', client.id),
-      supabase.from('client_interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(50),\n      canViewSyncLog ? supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [], error: null }),
+      supabase.from('client_interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(50),
+      canViewSyncLog ? supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [], error: null }),
     ])
     if (verificationResult.error) throw verificationResult.error
     if (interactionResult.error) throw interactionResult.error
