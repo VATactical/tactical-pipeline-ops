@@ -9,7 +9,7 @@ import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTas
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Correo de negocio · formulario', 'email', 'email'],
+    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de negocio · formulario', 'email', 'email'],
     ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Notas adicionales del formulario', 'onboarding_form_notes'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
@@ -22,7 +22,7 @@ const sections = [
   ] },
   { title: 'Infraestructura', fields: [
     ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
-    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Enlace GBP existente', 'gbp_link', 'url'],
+    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Correo de Google Business Profile · formulario', 'gbp_email', 'email'], ['Enlace GBP existente', 'gbp_link', 'url'],
     ['Activos de marca / Drive · formulario', 'available_assets'],
   ] },
   { title: 'Cuándo · Cronología', fields: [
