@@ -6,7 +6,7 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
-  "Escribe las notas, ofertas y descripciones de campaña del dossier en inglés para que todo el equipo pueda usarlas. Conserva nombres legales, direcciones y valores oficiales tal como fueron proporcionados.": "Write dossier notes, offers, and campaign descriptions in English so the whole team can use them. Keep legal names, addresses, and official values as provided.",
+  "Escribe en inglés todos los datos descriptivos del dossier, incluidas notas, servicios, ofertas, público objetivo y estrategia de campaña. Conserva nombres oficiales, direcciones, códigos ZIP, enlaces e identificadores tal como fueron proporcionados.": "Write all descriptive dossier information in English, including notes, services, offers, target audience, and campaign strategy. Keep official names, addresses, ZIP codes, links, and IDs as provided.",
   'Acceso del equipo': 'Team access', 'Iniciar sesión': 'Sign in', 'Usa las credenciales asignadas por el administrador.': 'Use the credentials assigned by the administrator.',
   'Correo': 'Email', 'Contraseña': 'Password', 'Ingresar': 'Sign in', 'Ingresando…': 'Signing in…', 'Mostrar contraseña': 'Show password', 'Ocultar contraseña': 'Hide password',
   'Una operación clara para cada cliente.': 'Clear operations for every client.', 'Onboarding, A2P y campañas en un solo panel de trabajo.': 'Onboarding, A2P, and campaigns in one workspace.',
