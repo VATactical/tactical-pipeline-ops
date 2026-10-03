@@ -89,7 +89,7 @@ const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.t
 const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('client_ops_lifecycle_followups')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
 if (!clientOpsSource.includes('client_field_verifications') || !clientOpsSource.includes('verified_by')) violations.push('Client dossier verification must save status, actor, and time.')
 if (!clientOpsSource.includes('client_interactions') || !clientOpsSource.includes('next_follow_up_at')) violations.push('Client contact logs must support an owner and next follow-up.')
-if (!onboardingSource.includes('target_zip_codes: payloadValue(payload, "target_zip_codes"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
+if (!onboardingSource.includes('target_zip_codes: value(payload, "target_zip_codes"') || !onboardingSource.includes('markets: value(payload, "service_areas"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
 if (!onboardingSource.includes('attempt_count') || !onboardingSource.includes('sync_stage')) violations.push('Onboarding sync must keep retry and stage details.')
 if (!lifecycleMigration.includes('reassign_client_code') || !lifecycleMigration.includes('client_code_history')) violations.push('Visible client-code changes must keep a history and stable client IDs.')
 if (!lifecycleMigration.includes('require_eod_late_reason')) violations.push('Database must require a reason for a late EOD.')
