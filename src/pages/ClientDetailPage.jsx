@@ -290,7 +290,6 @@ export default function ClientDetailPage() {
     finally { setSaving(false) }
   }
 
-  const updatedBy = dossierUpdatedBy
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
   const canManageNotes = canCreateNotes
