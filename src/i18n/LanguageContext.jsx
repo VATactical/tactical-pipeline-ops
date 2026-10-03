@@ -6,6 +6,14 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  "Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.": "Offer history: previous offers and their dates are kept here. The copied or downloaded dossier shows only the current offer.",
+  "Historial de ofertas": "Offer history",
+  "Oferta actual": "Current offer",
+  "Sin cambios de oferta registrados.": "No offer changes recorded.",
+  "Oferta anterior:": "Previous offer:",
+  "Seguimiento inicial": "Tracking started",
+  "Sistema / integración": "System / integration",
+  "Oferta retirada": "Offer removed",
   "Escribe en inglés todos los datos descriptivos del dossier, incluidas notas, servicios, ofertas, público objetivo y estrategia de campaña. Conserva nombres oficiales, direcciones, códigos ZIP, enlaces e identificadores tal como fueron proporcionados.": "Write all descriptive dossier information in English, including notes, services, offers, target audience, and campaign strategy. Keep official names, addresses, ZIP codes, links, and IDs as provided.",
   'Acceso del equipo': 'Team access', 'Iniciar sesión': 'Sign in', 'Usa las credenciales asignadas por el administrador.': 'Use the credentials assigned by the administrator.',
   'Correo': 'Email', 'Contraseña': 'Password', 'Ingresar': 'Sign in', 'Ingresando…': 'Signing in…', 'Mostrar contraseña': 'Show password', 'Ocultar contraseña': 'Hide password',
