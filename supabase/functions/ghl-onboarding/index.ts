@@ -145,6 +145,7 @@ function clientChanges(payload: Payload) {
   const businessName = payloadValue(payload, "business_name", "businessName", "company_name", "companyName");
 
   const uniqueMatch = async (column: string, value: string) => {
+    if (!value) return null;
     const { data, error } = await supabase.from("clients").select("*").ilike(column, value).limit(2);
     if (error) throw error;
     if ((data || []).length > 1) throw new Error(`Ambiguous onboarding match for ${column}; manual review required`);
