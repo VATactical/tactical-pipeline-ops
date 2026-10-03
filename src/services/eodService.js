@@ -33,8 +33,8 @@ export function isPastKevinCutoff(timeZone, date = new Date()) {
   return getTimeInTimeZone(date, timeZone).hour >= 20
 }
 
-function resolveKevinTimeZone(members) {
-  return members.find((member) => member.role === 'superadmin')?.timezone || DEFAULT_KEVIN_TIME_ZONE
+function resolveKevinTimeZone() {
+  return DEFAULT_KEVIN_TIME_ZONE
 }
 
 export async function loadEodData(profile, { windowStart, windowEnd }) {
@@ -171,7 +171,8 @@ export async function loadUnreadEodCount(profile) {
   }).length
 }
 
-export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes, lateReason = '' }) {\n  const cleanLateReason = lateReason.trim()\n  if (reportDate < getDateInTimeZone(new Date(), DEFAULT_KEVIN_TIME_ZONE) && !cleanLateReason) {\n    throw new Error('Explica por qué estás enviando este EOD atrasado.')\n  }
+export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes, lateReason = '' }) {
+  const cleanLateReason = lateReason.trim()\n  if (reportDate < getDateInTimeZone(new Date(), DEFAULT_KEVIN_TIME_ZONE) && !cleanLateReason) {\n    throw new Error('Explica por qué estás enviando este EOD atrasado.')\n  }
   const submittedAt = new Date().toISOString()
   const startedEntries = timeEntries.filter((entry) => entry.hours || entry.memo.trim())
   if (startedEntries.some((entry) => !(Number(entry.hours) > 0) || !entry.memo.trim())) throw new Error('Cada registro de tiempo necesita horas y memo.')
@@ -197,6 +198,7 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
     completed_tasks: completedTasks,
     manual_tasks: cleanManualTasks,
     notes: notes.trim(),
+    late_reason: cleanLateReason,
     updated_at: submittedAt,
   }, { onConflict: 'user_id,report_date' }).select('*').single()
   if (error) throw error
