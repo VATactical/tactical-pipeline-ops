@@ -19,6 +19,7 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Legal Business Name: ${pending(client.legal_name)}
 • Owner Name: ${pending(client.owner_name)}
 • Business Phone: ${pending(client.phone)}
+• Contact Phone: ${pending(client.contact_phone)}
 • Business Email: ${pending(client.email)}
 • Physical Business Address: ${pending(client.address)}
 • Primary Market: ${pending(client.markets)}
@@ -43,6 +44,7 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Existing Domain: ${pending(client.domain)}
 • Website / Funnel URL: ${pending(client.website_url)}
 • Google Business Profile Status: ${pending(client.gbp_status)}
+• Google Business Profile Email: ${pending(client.gbp_email)}
 • Google Business Profile Link: ${pending(client.gbp_link)}
 • Google Drive Folder: ${pending(client.drive_folder_link)}
 • Available Assets: ${pending(client.available_assets)}
