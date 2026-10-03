@@ -5,7 +5,7 @@ import { createAssignedTask, updateTaskDetails, updateTaskProgress } from '../se
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
-const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', assignedTo: '', priority: 'Media', dueAt: '' }
+const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', nextStep: '', assignedTo: '', priority: 'Media', dueAt: '' }
 const priorities = ['Baja', 'Media', 'Alta', 'Urgente']
 const statuses = ['Pendiente', 'En progreso', 'Bloqueada', 'Completada']
 const roleOptions = [
@@ -80,6 +80,7 @@ function TaskComposer({ clients, members, onCreated, profile }) {
         <label>{t('Fecha límite')}<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
         <label className="wide">{t('Título')}<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder={t('Qué debe realizarse')} /></label>
         <label className="wide">{t('Detalle')}<textarea rows="3" value={form.body} onChange={(event) => setField('body', event.target.value)} placeholder={t('Contexto e instrucciones…')} /></label>
+        <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={form.nextStep} onChange={(event) => setField('nextStep', event.target.value)} /></label>
       </div>
       {error && <p className="form-error">{error}</p>}
       <button className="primary-button compact-button" disabled={saving}>{t(saving ? 'Creando…' : 'Crear tarea')}</button>
@@ -122,6 +123,7 @@ function TaskEditor({ task, clients, members, onCancel, onSaved }) {
       <label>{t('Fecha límite')}<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
       <label className="wide">{t('Título')}<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required /></label>
       <label className="wide">{t('Detalle')}<textarea rows="4" value={form.details} onChange={(event) => setField('details', event.target.value)} /></label>
+      <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={form.nextStep} onChange={(event) => setField('nextStep', event.target.value)} /></label>
       {error && <p className="form-error wide">{error}</p>}
       <div className="section-actions wide"><button className="primary-button compact-button" disabled={saving}>{t(saving ? 'Guardando…' : 'Guardar cambios')}</button></div>
     </form>
