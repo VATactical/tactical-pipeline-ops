@@ -234,6 +234,7 @@ export default function ClientDetailPage() {
     setTaskDraft({
       title: task.title || '',
       details: task.comments || task.evidence || '',
+      nextStep: task.next_step || '',
       assignedTo: task.assigned_to || (task.owner_role ? `role:${task.owner_role}` : ''),
       priority: task.priority || 'Media',
       dueAt: task.due_at || '',
@@ -512,7 +513,7 @@ export default function ClientDetailPage() {
           </div>
         </form></section>}
         {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').length === 0 && <p className="muted">{t('No hay tareas pendientes.')}</p>}
-        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
+        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}{task.next_step && <p className="task-detail"><strong>{t('Próximo paso')}:</strong> {task.next_step}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
       <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Historial')}</p><h3>{t('Completadas')} · {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length}</h3></div></div>
         {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length === 0 && <p className="muted">{t('No hay tareas completadas.')}</p>}
