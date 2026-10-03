@@ -50,7 +50,7 @@ function startOfWeek(dateString) {
 export default function EodReportsPage() {
   const { profile } = useAuth()
   const { locale, t } = useLanguage()
-  const timeZone = profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Managua'
+  const timeZone = 'America/New_York'
   const isSuperadmin = profile?.role === 'superadmin'
   const canReviewAll = isSuperadmin || Boolean(profile?.permissions?.operations_admin)
   const canSubmit = !isSuperadmin && Boolean(profile?.permissions?.eod_reports)
@@ -67,6 +67,7 @@ export default function EodReportsPage() {
   const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), timeZone))
   const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '' }])
   const [notes, setNotes] = useState('')
+  const [lateReason, setLateReason] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [reviewFilter, setReviewFilter] = useState('Todos')
@@ -105,12 +106,14 @@ export default function EodReportsPage() {
           }))
           : [{ title: '', description: '', hours: '' }])
         setNotes(existing.notes || '')
+        setLateReason(existing.late_reason || '')
       } else {
         let savedDraft = null
         try { savedDraft = draftKey ? JSON.parse(window.localStorage.getItem(draftKey) || 'null') : null } catch { savedDraft = null }
         setSelectedTaskIds(savedDraft?.selectedTaskIds?.filter((id) => data.completedTasks.some((task) => task.id === id)) || data.completedTasks.map((task) => task.id))
         setManualSections(savedDraft?.manualSections?.length ? savedDraft.manualSections : [{ title: '', description: '', hours: '' }])
         setNotes(savedDraft?.notes || '')
+        setLateReason(savedDraft?.lateReason || '')
       }
       setDraftHydrated(true)
     }
@@ -124,8 +127,8 @@ export default function EodReportsPage() {
 
   useEffect(() => {
     if (!draftHydrated || !composerOpen || !draftKey || isSuperadmin) return
-    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, notes, savedAt: new Date().toISOString() }))
-  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, notes, selectedTaskIds])
+    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, notes, lateReason, savedAt: new Date().toISOString() }))
+  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, notes, lateReason, selectedTaskIds])
 
   useEffect(() => {
     if (!expandedReport) return undefined
@@ -260,6 +263,7 @@ export default function EodReportsPage() {
           memo: `${section.title.trim()}${section.description.trim() ? `: ${section.description.trim()}` : ''}`,
         })),
         notes,
+        lateReason,
       })
       await refresh()
       setComposerOpen(false)
@@ -290,7 +294,7 @@ export default function EodReportsPage() {
 
     */}
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
-      <div className="section-heading"><div><p className="eyebrow">{t('Checklist de actividades')}</p><h3>{selectedTaskIds.length} {t('de')} {completedTasks.length} {t('tareas seleccionadas')}</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><label className="eod-report-date">{t('Fecha del reporte')}<input type="date" value={reportDate} min={reportDateMin} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /><small>{t('La hora se registra automáticamente al enviarlo.')}</small></label>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? t('Desmarcar todas') : t('Seleccionar todas')}</button>}</div>
+      <div className="section-heading"><div><p className="eyebrow">{t('Checklist de actividades')}</p><h3>{selectedTaskIds.length} {t('de')} {completedTasks.length} {t('tareas seleccionadas')}</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><label className="eod-report-date">{t('Fecha del reporte')}<input type="date" value={reportDate} min={reportDateMin} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength={1000} rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</label>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? t('Desmarcar todas') : t('Seleccionar todas')}</button>}</div>
       <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
       <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '' }])}>+ {t('Agregar sección')}</button></div>
       <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas de esta sección')}<input type="number" min="0.01" max="24" step="0.01" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0.00" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
@@ -316,7 +320,7 @@ export default function EodReportsPage() {
           <p className="eod-hours-total">{t('Horas')}: <strong>{(report.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0).toFixed(2)} h</strong></p>
           <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>Abrir reporte completo</button>
           <ul data-no-translate>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => { const section = normalizeManualSection(item); return <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{section.title}</li> })}</ul>
-          {report.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.notes)}</p>{report.notes.trim().length > 200 && <button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button>}</div>}
+          {report.late_reason && <div className="eod-notes-block"><strong>{t('Motivo del envío atrasado')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.late_reason)}</p></div>}{report.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.notes)}</p>{report.notes.trim().length > 200 && <button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button>}</div>}
           {canReviewAll && <><div className="eod-review-actions"><button className="secondary-button" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Visto')}>Marcar visto</button><button className="secondary-button review-ok" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Revisado')}>Revisado</button><button className="secondary-button review-follow-up" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Requiere seguimiento')}>Requiere seguimiento</button></div>
             <form className="eod-comment-form" onSubmit={(event) => submitComment(event, report)}><label>Comentario del supervisor<textarea rows="2" maxLength="2000" value={commentDrafts[report.id] || ''} onChange={(event) => setCommentDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Deja una observación o instrucción…"/></label><button className="primary-button compact-button" disabled={actionKey === `comment-${report.id}` || !commentDrafts[report.id]?.trim()}>{actionKey === `comment-${report.id}` ? 'Guardando…' : 'Agregar comentario'}</button></form></>}
           {(report.comments || []).length > 0 && <div className="eod-follow-up-summary"><strong>Seguimiento</strong><span>{report.comments.length} {report.comments.length === 1 ? 'seguimiento' : 'seguimientos'}</span><small>{[...new Set(report.comments.map((comment) => comment.author?.full_name || 'Supervisor'))].join(' · ')}</small><button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button></div>}
