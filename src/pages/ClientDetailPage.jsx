@@ -76,7 +76,7 @@ const taskRoles = [
   ['user_admin', 'User Admin'],
   ['superadmin', 'Superadmin'],
 ]
-const emptyTaskDraft = { title: '', details: '', assignedTo: '', priority: 'Media', dueAt: '', status: 'Pendiente' }
+const emptyTaskDraft = { title: '', details: '', nextStep: '', assignedTo: '', priority: 'Media', dueAt: '', status: 'Pendiente' }
 
 
 export default function ClientDetailPage() {
@@ -264,7 +264,7 @@ export default function ClientDetailPage() {
       } else {
         await createAssignedTask({
           clientId, title: taskDraft.title, details: taskDraft.details,
-          priority: taskDraft.priority, dueAt: taskDraft.dueAt, ...assignee,
+          priority: taskDraft.priority, dueAt: taskDraft.dueAt, nextStep: taskDraft.nextStep, ...assignee,
         })
         setMessage(t('Tarea agregada al cliente.'))
       }
@@ -503,6 +503,7 @@ export default function ClientDetailPage() {
           <div className="composer-grid">
             <label className="wide">{t('Título')}<input value={taskDraft.title} onChange={(event) => setTaskDraft((current) => ({ ...current, title: event.target.value }))} maxLength="160" required /></label>
             <label className="wide">{t('Detalle')}<textarea rows="3" value={taskDraft.details} onChange={(event) => setTaskDraft((current) => ({ ...current, details: event.target.value }))} /></label>
+            <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={taskDraft.nextStep} onChange={(event) => setTaskDraft((current) => ({ ...current, nextStep: event.target.value }))} /></label>
             {canManageTasks && <label>{t('Asignar a usuario o rol')}<select value={taskDraft.assignedTo} onChange={(event) => setTaskDraft((current) => ({ ...current, assignedTo: event.target.value }))}><option value="">{t('Todos / tarea compartida')}</option><optgroup label={t('Usuarios')}>{directory.filter((member) => member.active !== false).map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</optgroup><optgroup label={t('Roles')}>{taskRoles.map(([role, label]) => <option value={`role:${role}`} key={role}>{t(label)}</option>)}</optgroup></select></label>}
             <label>{t('Prioridad')}<select value={taskDraft.priority} onChange={(event) => setTaskDraft((current) => ({ ...current, priority: event.target.value }))}>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>
             {editingTaskId && canManageTasks && <label>{t('Estado')}<select value={taskDraft.status} onChange={(event) => setTaskDraft((current) => ({ ...current, status: event.target.value }))}>{['Pendiente', 'En progreso', 'Bloqueada', 'Completada'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>}
