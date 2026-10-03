@@ -143,6 +143,11 @@ export default function ClientDetailPage() {
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
   const { client, tasks, blockers, workflowSteps, auditLog, notes, adStatusEvents, directory = [] } = data
+  const dossierFieldKeys = new Set(sections.flatMap((section) => section.fields.map(([, key]) => key)))
+  const latestDossierAudit = auditLog.find((entry) => entry.changed_fields?.some((field) => dossierFieldKeys.has(field)))
+  const dossierUpdatedAt = latestDossierAudit?.created_at || client.updated_at
+  const dossierUpdatedBy = latestDossierAudit?.actor_name || profile?.full_name || 'Pending'
+  const formatDossierDateTime = (value) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : t('Pendiente')
   const stageStepKeys = {
     onboarding: ['sale_closed', 'onboarding_call'],
     data_access: ['assets_ingested', 'request_ein', 'verify_dossier', 'google_business_profile'],
@@ -285,7 +290,7 @@ export default function ClientDetailPage() {
     finally { setSaving(false) }
   }
 
-  const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
+  const updatedBy = dossierUpdatedBy
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
   const canManageNotes = canCreateNotes
@@ -294,11 +299,13 @@ export default function ClientDetailPage() {
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
   const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
-  const dossierText = buildDossierText(client, updatedBy)
+  const dossierText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt })
   const copyForGoogleDocs = async () => {
     try {
-      await copyDossier(dossierText)
-      await recordDossierEvent(clientId, 'copied_google_docs', profile.id)
+      const copiedAt = new Date().toISOString()
+      const copyText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt, copiedAt })
+      await copyDossier(copyText)
+      await recordDossierEvent(clientId, 'copied_google_docs', profile.id, copiedAt)
       setMessage('Dossier copied successfully')
       await refresh()
     } catch (copyError) { setError(t(copyError.message)) }
@@ -448,7 +455,7 @@ export default function ClientDetailPage() {
     <div className="client-ops-summary-grid client-tab-section tab-dossier">
       <section className="content-card compact-summary-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action || 'Sin acción'}</h3></section>
       <section className={`content-card launch-deadline compact-summary-card ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'ADS LIVE' ? 'Campaña activa' : client.status === 'ADS PAUSED' ? 'Campaña pausada' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
-      <section className="content-card docs-sync-status compact-summary-card compact-last-copy-card"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
+      <section className="content-card docs-sync-status compact-summary-card compact-last-copy-card"><div><span>{t('Última actualización del dossier')}</span><strong>{formatDossierDateTime(dossierUpdatedAt)}</strong><small>{dossierUpdatedBy}</small></div><div><span>Última copia</span><strong>{client.dossier_copied_at ? formatDossierDateTime(client.dossier_copied_at) : t('Todavía no se ha copiado')}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? formatDossierDateTime(client.google_docs_updated_at) : t('Pendiente')}</strong></div></section>
     </div>
     <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
     {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary client-tab-section tab-ads"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p data-no-translate>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? t(`Pausada el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}`) : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
@@ -473,7 +480,7 @@ export default function ClientDetailPage() {
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
-          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
+          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
     </div>
