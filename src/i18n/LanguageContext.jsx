@@ -8,6 +8,7 @@ const validLanguages = new Set(['es', 'en'])
 const translations = {
   "Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.": "Offer history: previous offers and their dates are kept here. The copied or downloaded dossier shows only the current offer.",
   "Historial de ofertas": "Offer history",
+  "Última actualización del dossier": "Last dossier update",
   "Oferta actual": "Current offer",
   "Sin cambios de oferta registrados.": "No offer changes recorded.",
   "Oferta anterior:": "Previous offer:",
