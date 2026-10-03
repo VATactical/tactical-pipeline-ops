@@ -38,6 +38,15 @@ const criticalPhrases = [
   '¿Eliminar este módulo y sus lecciones?',
   'Todos los usuarios',
   'Título (ES)',
+  'Control del cliente',
+  'Verificación del dossier',
+  'Sincronización de onboarding',
+  'Motivo del envío atrasado',
+  'No puedes completar un campo vacío.',
+  'Datos y accesos',
+  'Configuración técnica',
+  'Campaña lista',
+  'Próximo paso',
 ]
 for (const phrase of criticalPhrases) {
   if (!languageSource.includes(`'${phrase}':`)) violations.push(`Missing critical English translation: ${phrase}`)
@@ -73,6 +82,21 @@ const adsSource = readFileSync('src/services/adsReportService.js', 'utf8')
 if (!eodSource.includes('replace_eod_time_entries')) violations.push('EOD must persist weekly manual time atomically.')
 if (!dashboardSource.includes('markGeneralNoteSeen') || !dashboardSource.includes('convertGeneralNoteToTask')) violations.push('Communications must support seen receipts and task conversion.')
 if (!adsSource.includes('ad_performance_reports')) violations.push('Client follow-up must persist dated ADS reports.')
+
+
+const clientOpsSource = readFileSync('src/components/ClientOpsPanel.jsx', 'utf8')
+const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.ts', 'utf8')
+const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('client_ops_lifecycle_followups')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
+if (!clientOpsSource.includes('client_field_verifications') || !clientOpsSource.includes('verified_by')) violations.push('Client dossier verification must save status, actor, and time.')
+if (!clientOpsSource.includes('client_interactions') || !clientOpsSource.includes('next_follow_up_at')) violations.push('Client contact logs must support an owner and next follow-up.')
+if (!onboardingSource.includes('target_zip_codes: payloadValue(payload, "target_zip_codes"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
+if (!onboardingSource.includes('attempt_count') || !onboardingSource.includes('sync_stage')) violations.push('Onboarding sync must keep retry and stage details.')
+if (!lifecycleMigration.includes('reassign_client_code') || !lifecycleMigration.includes('client_code_history')) violations.push('Visible client-code changes must keep a history and stable client IDs.')
+if (!lifecycleMigration.includes('require_eod_late_reason')) violations.push('Database must require a reason for a late EOD.')
+if (!eodSource.includes("DEFAULT_KEVIN_TIME_ZONE = 'America/New_York'") || !eodSource.includes('late_reason: cleanLateReason')) violations.push('EOD must use New York time and persist late reasons.')
+if (!taskProgressServiceSource.includes('next_step: nextStep.trim()')) violations.push('Tasks must persist a next step.')
+const clientDetailSource = readFileSync('src/pages/ClientDetailPage.jsx', 'utf8')
+if (!clientDetailSource.includes('showAllWorkflowSteps') || !clientDetailSource.includes('visibleWorkflowSteps')) violations.push('Client workflow must focus on the current stage and allow opening the full checklist.')
 
 if (violations.length) {
   console.error('Bilingual QA failed:\n' + violations.map((item) => `- ${item}`).join('\n'))
