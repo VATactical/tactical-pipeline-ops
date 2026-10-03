@@ -274,6 +274,7 @@ const translations = {
   'notified': 'Operations notified',
   'created': 'Created',
   'updated': 'Updated',
+  'Puedes completar reportes atrasados; explica el motivo si su fecha ya pasó.': 'Late reports are allowed; explain the reason if the work date has passed.',
 }
 
 const patterns = [
