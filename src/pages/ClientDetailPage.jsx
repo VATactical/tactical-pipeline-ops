@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import AdsReportsPanel from '../components/AdsReportsPanel'
+import ClientOpsPanel from '../components/ClientOpsPanel'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
-import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTask, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, updateClientNote, updateTaskDetails, updateWorkflowStep } from '../services/opsService'
+import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTask, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateTaskDetails, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Correo de negocio · formulario', 'email', 'email'],
+    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de negocio · formulario', 'email', 'email'],
     ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Notas adicionales del formulario', 'onboarding_form_notes'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
@@ -22,7 +23,7 @@ const sections = [
   ] },
   { title: 'Infraestructura', fields: [
     ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
-    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Enlace GBP existente', 'gbp_link', 'url'],
+    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Correo de Google Business Profile · formulario', 'gbp_email', 'email'], ['Enlace GBP existente', 'gbp_link', 'url'],
     ['Activos de marca / Drive · formulario', 'available_assets'],
   ] },
   { title: 'Cuándo · Cronología', fields: [
@@ -75,7 +76,7 @@ const taskRoles = [
   ['user_admin', 'User Admin'],
   ['superadmin', 'Superadmin'],
 ]
-const emptyTaskDraft = { title: '', details: '', assignedTo: '', priority: 'Media', dueAt: '', status: 'Pendiente' }
+const emptyTaskDraft = { title: '', details: '', nextStep: '', assignedTo: '', priority: 'Media', dueAt: '', status: 'Pendiente' }
 
 
 export default function ClientDetailPage() {
@@ -89,6 +90,7 @@ export default function ClientDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showAllWorkflowSteps, setShowAllWorkflowSteps] = useState(false)
   const [codeEditing, setCodeEditing] = useState(false)
   const [codeDraft, setCodeDraft] = useState('')
   const [dossierSearch, setDossierSearch] = useState('')
@@ -141,6 +143,24 @@ export default function ClientDetailPage() {
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
   const { client, tasks, blockers, workflowSteps, auditLog, notes, adStatusEvents, directory = [] } = data
+  const dossierFieldKeys = new Set(sections.flatMap((section) => section.fields.map(([, key]) => key)))
+  const latestDossierAudit = auditLog.find((entry) => entry.changed_fields?.some((field) => dossierFieldKeys.has(field)))
+  const dossierUpdatedAt = latestDossierAudit?.created_at || client.updated_at
+  const dossierUpdatedBy = latestDossierAudit?.actor_name || profile?.full_name || 'Pending'
+  const formatDossierDateTime = (value) => value ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : t('Pendiente')
+  const stageStepKeys = {
+    onboarding: ['sale_closed', 'onboarding_call'],
+    data_access: ['assets_ingested', 'request_ein', 'verify_dossier', 'google_business_profile'],
+    technical_setup: ['a2p_submitted', 'domain_ssl', 'integrations', 'ghl_subaccount', 'buy_phone_number', 'leadconnector', 'facebook_portfolio_partner', 'ads_ghl_payment_method', 'domain_setup'],
+    campaign_ready: ['creatives_ready', 'client_approval'],
+    campaign_active: ['funnel_live', 'campaign_launched'],
+    training: ['slack_updates'],
+    cruise_control: ['daily_audit'],
+  }
+  const stageIndex = Math.max(0, ['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'].indexOf(client.lifecycle_stage || 'onboarding'))
+  const stageKeys = stageStepKeys[['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'][stageIndex]] || []
+  const visibleWorkflowSteps = showAllWorkflowSteps ? workflowSteps : workflowSteps.filter((step) => stageKeys.includes(step.step_key))
+
   const missingFields = dossierFields.filter(([, key, type]) => isMissing(client[key], type)).map(([label]) => label)
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
   const startEditing = (index) => { setDraft(client); setEditingSection(index); setMessage(''); setError('') }
@@ -162,7 +182,7 @@ export default function ClientDetailPage() {
     if (code === client.code) { setCodeEditing(false); return }
     setSaving(true); setError(''); setMessage('')
     try {
-      await updateClient(clientId, { code })
+      await reassignClientCode(clientId, code)
       await refresh()
       setCodeEditing(false)
       setMessage(t('Código de cliente actualizado correctamente.'))
@@ -219,6 +239,7 @@ export default function ClientDetailPage() {
     setTaskDraft({
       title: task.title || '',
       details: task.comments || task.evidence || '',
+      nextStep: task.next_step || '',
       assignedTo: task.assigned_to || (task.owner_role ? `role:${task.owner_role}` : ''),
       priority: task.priority || 'Media',
       dueAt: task.due_at || '',
@@ -249,7 +270,7 @@ export default function ClientDetailPage() {
       } else {
         await createAssignedTask({
           clientId, title: taskDraft.title, details: taskDraft.details,
-          priority: taskDraft.priority, dueAt: taskDraft.dueAt, ...assignee,
+          priority: taskDraft.priority, dueAt: taskDraft.dueAt, nextStep: taskDraft.nextStep, ...assignee,
         })
         setMessage(t('Tarea agregada al cliente.'))
       }
@@ -269,7 +290,6 @@ export default function ClientDetailPage() {
     finally { setSaving(false) }
   }
 
-  const updatedBy = auditLog[0]?.actor_name || profile?.full_name || 'Pending'
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
   const canManageNotes = canCreateNotes
@@ -278,11 +298,13 @@ export default function ClientDetailPage() {
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
   const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
-  const dossierText = buildDossierText(client, updatedBy)
+  const dossierText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt })
   const copyForGoogleDocs = async () => {
     try {
-      await copyDossier(dossierText)
-      await recordDossierEvent(clientId, 'copied_google_docs', profile.id)
+      const copiedAt = new Date().toISOString()
+      const copyText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt, copiedAt })
+      await copyDossier(copyText)
+      await recordDossierEvent(clientId, 'copied_google_docs', profile.id, copiedAt)
       setMessage('Dossier copied successfully')
       await refresh()
     } catch (copyError) { setError(t(copyError.message)) }
@@ -432,8 +454,9 @@ export default function ClientDetailPage() {
     <div className="client-ops-summary-grid client-tab-section tab-dossier">
       <section className="content-card compact-summary-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action || 'Sin acción'}</h3></section>
       <section className={`content-card launch-deadline compact-summary-card ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'ADS LIVE' ? 'Campaña activa' : client.status === 'ADS PAUSED' ? 'Campaña pausada' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
-      <section className="content-card docs-sync-status compact-summary-card compact-last-copy-card"><div><span>Última copia</span><strong>{client.dossier_copied_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.dossier_copied_at)) : 'Todavía no se ha copiado'}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.google_docs_updated_at)) : 'Pendiente'}</strong></div></section>
+      <section className="content-card docs-sync-status compact-summary-card compact-last-copy-card"><div><span>{t('Última actualización del dossier')}</span><strong>{formatDossierDateTime(dossierUpdatedAt)}</strong><small>{dossierUpdatedBy}</small></div><div><span>Última copia</span><strong>{client.dossier_copied_at ? formatDossierDateTime(client.dossier_copied_at) : t('Todavía no se ha copiado')}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? formatDossierDateTime(client.google_docs_updated_at) : t('Pendiente')}</strong></div></section>
     </div>
+    <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
     {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary client-tab-section tab-ads"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p data-no-translate>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? t(`Pausada el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}`) : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
     {adStatusEvents.length > 0 && <section className="content-card client-tab-section tab-ads"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p data-no-translate>{event.note}</p><small><span data-no-translate>{event.actor_name}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
     <div className="client-tab-section tab-ads">
@@ -446,6 +469,7 @@ export default function ClientDetailPage() {
     </div>
     <section className="content-card credential-vault client-tab-section tab-dossier"><div className="section-heading"><div><p className="eyebrow">Bóveda de credenciales</p><h3>Meta Access Token</h3><p className="muted">No se incluye en el dossier, PDF, Google Docs ni búsquedas.</p></div><span className="credential-state">Protegido</span></div>{!canViewSensitive ? <p className="credential-restricted">Acceso restringido. Kevin puede habilitar el permiso individual desde Usuarios.</p> : <div className="credential-controls">{!secretVisible ? <button className="secondary-button" type="button" disabled={secretLoading} onClick={revealMetaToken}>{secretLoading ? 'Verificando permiso…' : 'Mostrar token'}</button> : <><div className="credential-value"><span>Access Token</span><code>{secretValue || 'No hay token configurado'}</code></div><div className="section-actions"><button className="secondary-button" type="button" onClick={copyMetaToken} disabled={!secretValue}>Copiar</button><button className="text-button" type="button" onClick={hideMetaToken}>Ocultar</button></div></>}{canManageSensitive && !secretEditing && <button className="text-button" type="button" onClick={() => { hideMetaToken(); setSecretEditing(true); setSecretDraft('') }}>Actualizar token</button>}{canManageSensitive && secretEditing && <form className="credential-editor" onSubmit={saveMetaToken}><label>Nuevo Access Token<textarea rows="4" value={secretDraft} autoComplete="off" spellCheck="false" onChange={(event) => setSecretDraft(event.target.value)} placeholder="Pega aquí el token nuevo" required /></label><div className="section-actions"><button className="text-button" type="button" onClick={() => { setSecretEditing(false); setSecretDraft('') }}>Cancelar</button><button className="primary-button compact-button" disabled={secretLoading}>{secretLoading ? 'Guardando…' : 'Guardar protegido'}</button></div></form>}</div>}</section>
     <section className="content-card missing-dossier-card client-tab-section tab-dossier"><p className="eyebrow">Falta en el dossier</p>{missingFields.length ? <div className="missing-chips">{missingFields.map((label) => <span key={label}>{label}</span>)}</div> : <p className="complete-note">Dossier WWWW completo</p>}</section>
+    <p className="muted dossier-language-note">{t('Escribe en inglés todos los datos descriptivos del dossier, incluidas notas, servicios, ofertas, público objetivo y estrategia de campaña. Conserva nombres oficiales, direcciones, códigos ZIP, enlaces e identificadores tal como fueron proporcionados.')}</p>
     <div className="print-dossier client-tab-section tab-dossier">
       <header className="print-only print-title"><p>{client.code} · TACTICAL PIPELINE</p><h1>{client.business_name}</h1><span>{client.status} · {client.phase}</span></header>
       {sections.map((section, index) => {
@@ -455,7 +479,7 @@ export default function ClientDetailPage() {
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
           <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
-          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
+          <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
     </div>
@@ -487,6 +511,7 @@ export default function ClientDetailPage() {
           <div className="composer-grid">
             <label className="wide">{t('Título')}<input value={taskDraft.title} onChange={(event) => setTaskDraft((current) => ({ ...current, title: event.target.value }))} maxLength="160" required /></label>
             <label className="wide">{t('Detalle')}<textarea rows="3" value={taskDraft.details} onChange={(event) => setTaskDraft((current) => ({ ...current, details: event.target.value }))} /></label>
+            <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={taskDraft.nextStep} onChange={(event) => setTaskDraft((current) => ({ ...current, nextStep: event.target.value }))} /></label>
             {canManageTasks && <label>{t('Asignar a usuario o rol')}<select value={taskDraft.assignedTo} onChange={(event) => setTaskDraft((current) => ({ ...current, assignedTo: event.target.value }))}><option value="">{t('Todos / tarea compartida')}</option><optgroup label={t('Usuarios')}>{directory.filter((member) => member.active !== false).map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</optgroup><optgroup label={t('Roles')}>{taskRoles.map(([role, label]) => <option value={`role:${role}`} key={role}>{t(label)}</option>)}</optgroup></select></label>}
             <label>{t('Prioridad')}<select value={taskDraft.priority} onChange={(event) => setTaskDraft((current) => ({ ...current, priority: event.target.value }))}>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>
             {editingTaskId && canManageTasks && <label>{t('Estado')}<select value={taskDraft.status} onChange={(event) => setTaskDraft((current) => ({ ...current, status: event.target.value }))}>{['Pendiente', 'En progreso', 'Bloqueada', 'Completada'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select></label>}
@@ -495,13 +520,13 @@ export default function ClientDetailPage() {
           </div>
         </form></section>}
         {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').length === 0 && <p className="muted">{t('No hay tareas pendientes.')}</p>}
-        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
+        {tasks.filter((task) => task.status !== 'Completada' && task.status !== 'Completed').map((task) => <article className="client-task-row" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}{task.next_step && <p className="task-detail"><strong>{t('Próximo paso')}:</strong> {task.next_step}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
       <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Historial')}</p><h3>{t('Completadas')} · {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length}</h3></div></div>
         {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length === 0 && <p className="muted">{t('No hay tareas completadas.')}</p>}
         {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').map((task) => <article className="client-task-row completed" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{workflowSteps.filter((item) => item.completed).length} {t('de')} {workflowSteps.length} {t('completadas')}</h3></div></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageTasks && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{visibleWorkflowSteps.filter((item) => item.completed).length} {t('de')} {visibleWorkflowSteps.length} {t('completadas')}</h3><p className="muted">{t(['Onboarding', 'Datos y accesos', 'Configuración técnica', 'Campaña lista', 'Campaña activa', 'Capacitación', 'Cruise control'][stageIndex])}</p></div><button className="text-button" type="button" onClick={() => setShowAllWorkflowSteps((value) => !value)}>{showAllWorkflowSteps ? t('Ver solo la etapa actual') : t('Ver checklist completo')}</button></div><div className="workflow-list">{visibleWorkflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageTasks && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
       <section className="content-card"><p className="eyebrow">{t('Bloqueos')}</p><h3>{blockers.filter((item) => !item.resolved).length} {t('abiertos')}</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section>
     </div>
   </div>

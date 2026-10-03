@@ -5,7 +5,7 @@ import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { createClient } from '../services/opsService'
 
-const requiredFields = ['legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info', 'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date', 'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info', 'retell_agent_id', 'make_scenario_link', 'slack_channel_link']
+const requiredFields = ['legal_name', 'owner_name', 'phone', 'contact_phone', 'email', 'address', 'target_zip_codes', 'legal_business_info', 'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date', 'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info', 'retell_agent_id', 'make_scenario_link', 'slack_channel_link']
 const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE', 'ADS PAUSED']
 const naturalCode = (value) => Number(String(value).match(/\d+/)?.[0] || 0)
 const dossierComplete = (client) => requiredFields.every((key) => client[key] && !/pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(client[key])))

@@ -165,7 +165,7 @@ export async function updateTaskManagement(taskId, { assignedTo, assigneeName, a
   if (error) throw error
 }
 
-export async function updateTaskDetails(taskId, { clientId, title, details = '', assignedTo, assigneeName, assigneeRole, priority, dueAt, status }) {
+export async function updateTaskDetails(taskId, { clientId, title, details = '', assignedTo, assigneeName, assigneeRole, priority, dueAt, status, nextStep = '' }) {
   const changes = {
     client_id: clientId || null,
     title: title.trim(),
@@ -178,6 +178,7 @@ export async function updateTaskDetails(taskId, { clientId, title, details = '',
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     status: normalizeStatus(status),
+    next_step: nextStep.trim(),
     updated_at: new Date().toISOString(),
   }
   const { data, error } = await supabase.from('tasks').update(changes).eq('id', taskId).select('*, clients(code, business_name)').single()
@@ -185,7 +186,7 @@ export async function updateTaskDetails(taskId, { clientId, title, details = '',
   return data
 }
 
-export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt }) {
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt, nextStep = '' }) {
   const resolvedRole = assigneeRole || ownerRole || null
   const resolvedName = assigneeName || ownerName || (resolvedRole ? ownerNames[resolvedRole] : 'Todos')
   const payload = {
@@ -199,6 +200,7 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     owner_name: resolvedName,
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
+    next_step: nextStep.trim(),
     comments: (details || body).trim(),
     phase: 'Asignada por administración',
     status: 'Pendiente',
@@ -300,6 +302,12 @@ export async function updateClient(clientId, changes) {
   return data
 }
 
+export async function reassignClientCode(clientId, code) {
+  const { data, error } = await supabase.rpc('reassign_client_code', { p_client_id: clientId, p_new_code: code })
+  if (error) throw error
+  return data
+}
+
 export async function revealClientMetaToken(clientId) {
   const { data, error } = await supabase.rpc('reveal_client_meta_token', { p_client_id: clientId })
   if (error) throw error
@@ -311,12 +319,12 @@ export async function saveClientMetaToken(clientId, token) {
   if (error) throw error
 }
 
-export async function recordDossierEvent(clientId, action, profileId) {
+export async function recordDossierEvent(clientId, action, profileId, occurredAt = new Date().toISOString()) {
   const { error } = await supabase.from('client_dossier_events').insert({ client_id: clientId, action })
   if (error) throw error
   if (action === 'copied_google_docs') {
     const { error: updateError } = await supabase.from('clients').update({
-      dossier_copied_at: new Date().toISOString(),
+      dossier_copied_at: occurredAt,
       dossier_copied_by: profileId,
     }).eq('id', clientId)
     if (updateError) throw updateError

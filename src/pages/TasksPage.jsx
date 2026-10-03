@@ -5,7 +5,7 @@ import { createAssignedTask, updateTaskDetails, updateTaskProgress } from '../se
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 
-const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', assignedTo: '', priority: 'Media', dueAt: '' }
+const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', nextStep: '', assignedTo: '', priority: 'Media', dueAt: '' }
 const priorities = ['Baja', 'Media', 'Alta', 'Urgente']
 const statuses = ['Pendiente', 'En progreso', 'Bloqueada', 'Completada']
 const roleOptions = [
@@ -80,6 +80,7 @@ function TaskComposer({ clients, members, onCreated, profile }) {
         <label>{t('Fecha límite')}<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
         <label className="wide">{t('Título')}<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required placeholder={t('Qué debe realizarse')} /></label>
         <label className="wide">{t('Detalle')}<textarea rows="3" value={form.body} onChange={(event) => setField('body', event.target.value)} placeholder={t('Contexto e instrucciones…')} /></label>
+        <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={form.nextStep} onChange={(event) => setField('nextStep', event.target.value)} /></label>
       </div>
       {error && <p className="form-error">{error}</p>}
       <button className="primary-button compact-button" disabled={saving}>{t(saving ? 'Creando…' : 'Crear tarea')}</button>
@@ -93,6 +94,7 @@ function TaskEditor({ task, clients, members, onCancel, onSaved }) {
     clientId: task.client_id || '',
     title: task.title || '',
     details: task.comments || task.evidence || '',
+    nextStep: task.next_step || '',
     assignedTo: task.assigned_to || '',
     priority: task.priority || 'Media',
     dueAt: task.due_at || '',
@@ -122,6 +124,7 @@ function TaskEditor({ task, clients, members, onCancel, onSaved }) {
       <label>{t('Fecha límite')}<input type="date" value={form.dueAt} onChange={(event) => setField('dueAt', event.target.value)} /></label>
       <label className="wide">{t('Título')}<input value={form.title} onChange={(event) => setField('title', event.target.value)} maxLength="160" required /></label>
       <label className="wide">{t('Detalle')}<textarea rows="4" value={form.details} onChange={(event) => setField('details', event.target.value)} /></label>
+      <label className="wide">{t('Próximo paso')}<input maxLength="1000" value={form.nextStep} onChange={(event) => setField('nextStep', event.target.value)} /></label>
       {error && <p className="form-error wide">{error}</p>}
       <div className="section-actions wide"><button className="primary-button compact-button" disabled={saving}>{t(saving ? 'Guardando…' : 'Guardar cambios')}</button></div>
     </form>
@@ -215,7 +218,7 @@ export default function TasksPage() {
     {editingTask && <TaskEditor task={editingTask} clients={clients} members={members} onCancel={() => setEditingTask(null)} onSaved={(updated) => { setTasks((current) => current.map((task) => task.id === updated.id ? updated : task)); setEditingTask(null); setMessage(t('Tarea actualizada correctamente.')) }} />}
     <section className="filter-bar"><input type="search" placeholder={t('Buscar tarea o cliente…')} value={search} onChange={(event) => setSearch(event.target.value)} /><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="Abiertas">{t('Abiertas')}</option><option value="Historial completadas">{t('Historial completadas')}</option><option value="Todas">{t('Todas')}</option></select><select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="Todas">{t('Todas')}</option>{['Urgente', 'Alta', 'Media', 'Baja'].map((value) => <option value={value} key={value}>{t(value)}</option>)}</select><div className="task-view-toggle" role="group" aria-label="Vista de tareas"><button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Tablero</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button></div></section>
     {viewMode === 'board' ? <section className="task-board" aria-label="Tablero de tareas">
-      {statuses.map((status) => <div className="task-column" key={status} onDragOver={(event) => event.preventDefault()} onDrop={() => moveTask(tasks.find((task) => task.id === draggedTaskId), status)}><div className="task-column-header"><h3>{t(status)}</h3><span>{visible.filter((task) => task.status === status).length}</span></div>{visible.filter((task) => task.status === status).map((task) => { const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date(); const sender = memberById.get(task.created_by)?.full_name || task.created_by_name || 'Equipo'; return <article className={`task-board-card ${overdue ? 'overdue' : ''}`} draggable onDragStart={() => setDraggedTaskId(task.id)} key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{t(task.priority)}</span><strong data-no-translate>{task.title}</strong><small>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</small><small>Creada {task.created_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(task.created_at)) : '—'} · Por {sender}</small>{task.due_at && <small>{t(overdue ? 'Atrasada' : 'Vence')} {task.due_at}</small>}<button className="text-button" type="button" onClick={() => setEditingTask(task)}>{t('Editar tarea')}</button></article>})}</div>)}
+      {statuses.map((status) => <div className="task-column" key={status} onDragOver={(event) => event.preventDefault()} onDrop={() => moveTask(tasks.find((task) => task.id === draggedTaskId), status)}><div className="task-column-header"><h3>{t(status)}</h3><span>{visible.filter((task) => task.status === status).length}</span></div>{visible.filter((task) => task.status === status).map((task) => { const overdue = task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date(); const sender = memberById.get(task.created_by)?.full_name || task.created_by_name || 'Equipo'; return <article className={`task-board-card ${overdue ? 'overdue' : ''}`} draggable onDragStart={() => setDraggedTaskId(task.id)} key={task.id}><span className={`priority ${task.priority.toLowerCase()}`}>{t(task.priority)}</span><strong data-no-translate>{task.title}</strong><small>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</small>{task.next_step && <small>{t('Próximo paso')}: {task.next_step}</small>}<small>Creada {task.created_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(new Date(task.created_at)) : '—'} · Por {sender}</small>{task.due_at && <small>{t(overdue ? 'Atrasada' : 'Vence')} {task.due_at}</small>}<button className="text-button" type="button" onClick={() => setEditingTask(task)}>{t('Editar tarea')}</button></article>})}</div>)}
     </section> : <section className="content-card task-table">
       {visible.length === 0 && <p className="muted">{t('No hay tareas en esta vista.')}</p>}
       {visible.map((task) => {
@@ -225,7 +228,7 @@ export default function TasksPage() {
           <div>
             <strong data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</strong>
             <p data-no-translate>{task.title}</p>
-            {task.comments && <p className="task-detail" data-no-translate>{task.comments}</p>}
+            {task.comments && <p className="task-detail" data-no-translate>{task.comments}</p>}{task.next_step && <p className="task-detail"><strong>{t('Próximo paso')}:</strong> <span data-no-translate>{task.next_step}</span></p>}
             <small><span>{t('Asignada a')} </span><span data-no-translate>{task.owner_name || t('Todos')}</span>{task.due_at ? ` · ${t(overdue ? 'Atrasada' : 'Vence')} ${task.due_at}` : ''}</small><small>Creada {task.created_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(task.created_at)) : '—'} · Por {memberById.get(task.created_by)?.full_name || task.created_by_name || 'Equipo'}</small>
             {canManage && <button className="text-button task-edit-button" type="button" onClick={() => { setEditingTask(task); setMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{t('Editar tarea')}</button>}
           </div>

@@ -5,9 +5,9 @@ const pending = (value) => {
 const yesNo = (value) => value ? 'YES' : 'NO'
 const money = (value) => value == null || value === '' ? 'Pending' : `$${Number(value).toLocaleString('en-US')}`
 const date = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : 'Pending'
-const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Pending'
+const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : 'Pending'
 
-export function buildDossierText(client, updatedBy = 'Pending') {
+export function buildDossierText(client, updatedBy = 'Pending', { lastUpdatedAt = client.updated_at, copiedAt = null } = {}) {
   return `==================================================
 TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 ==================================================
@@ -19,6 +19,7 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Legal Business Name: ${pending(client.legal_name)}
 • Owner Name: ${pending(client.owner_name)}
 • Business Phone: ${pending(client.phone)}
+• Contact Phone: ${pending(client.contact_phone)}
 • Business Email: ${pending(client.email)}
 • Physical Business Address: ${pending(client.address)}
 • Primary Market: ${pending(client.markets)}
@@ -43,6 +44,7 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Existing Domain: ${pending(client.domain)}
 • Website / Funnel URL: ${pending(client.website_url)}
 • Google Business Profile Status: ${pending(client.gbp_status)}
+• Google Business Profile Email: ${pending(client.gbp_email)}
 • Google Business Profile Link: ${pending(client.gbp_link)}
 • Google Drive Folder: ${pending(client.drive_folder_link)}
 • Available Assets: ${pending(client.available_assets)}
@@ -54,8 +56,8 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Current Lifecycle Status: ${pending(client.status)}
 • A2P Status: ${pending(client.a2p_status)}
 • Meta Ads Status: ${pending(client.meta_status)}
-• Last Dossier Update: ${dateTime(client.updated_at)}
-• Updated By: ${pending(updatedBy)}
+• Last Dossier Update: ${dateTime(lastUpdatedAt)}
+• Updated By: ${pending(updatedBy)}${copiedAt ? '\n• Dossier Copied for Google Docs At: ' + dateTime(copiedAt) : ''}
 
 [WHERE — SYSTEM LINKS & ACCESS]
 
