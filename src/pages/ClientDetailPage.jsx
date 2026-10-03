@@ -90,6 +90,7 @@ export default function ClientDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showAllWorkflowSteps, setShowAllWorkflowSteps] = useState(false)
   const [codeEditing, setCodeEditing] = useState(false)
   const [codeDraft, setCodeDraft] = useState('')
   const [dossierSearch, setDossierSearch] = useState('')
@@ -142,6 +143,19 @@ export default function ClientDetailPage() {
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
   const { client, tasks, blockers, workflowSteps, auditLog, notes, adStatusEvents, directory = [] } = data
+  const stageStepKeys = {
+    onboarding: ['sale_closed', 'onboarding_call'],
+    data_access: ['assets_ingested', 'request_ein', 'verify_dossier', 'google_business_profile'],
+    technical_setup: ['a2p_submitted', 'domain_ssl', 'integrations', 'ghl_subaccount', 'buy_phone_number', 'leadconnector', 'facebook_portfolio_partner', 'ads_ghl_payment_method', 'domain_setup'],
+    campaign_ready: ['creatives_ready', 'client_approval'],
+    campaign_active: ['funnel_live', 'campaign_launched'],
+    training: ['slack_updates'],
+    cruise_control: ['daily_audit'],
+  }
+  const stageIndex = Math.max(0, ['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'].indexOf(client.lifecycle_stage || 'onboarding'))
+  const stageKeys = stageStepKeys[['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'][stageIndex]] || []
+  const visibleWorkflowSteps = showAllWorkflowSteps ? workflowSteps : workflowSteps.filter((step) => stageKeys.includes(step.step_key))
+
   const missingFields = dossierFields.filter(([, key, type]) => isMissing(client[key], type)).map(([label]) => label)
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
   const startEditing = (index) => { setDraft(client); setEditingSection(index); setMessage(''); setError('') }
@@ -503,7 +517,7 @@ export default function ClientDetailPage() {
         {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').length === 0 && <p className="muted">{t('No hay tareas completadas.')}</p>}
         {tasks.filter((task) => task.status === 'Completada' || task.status === 'Completed').map((task) => <article className="client-task-row completed" key={task.id}><span className={`priority ${(task.priority || 'Media').toLowerCase()}`}>{t(task.priority || 'Media')}</span><div><strong>{task.title}</strong>{task.evidence && <p className="task-detail">{task.evidence}</p>}<small>{t(task.status)} · {task.owner_name || t('Sin responsable')} · {t('Fecha límite')}: {task.due_at || t('Sin fecha')}</small>{canManageTasks && <div className="section-actions"><button className="text-button" type="button" disabled={saving} onClick={() => openTaskEditor(task)}>{t('Editar tarea')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientTask(task.id)}>{t('Eliminar tarea')}</button></div>}</div></article>)}
       </section>
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{workflowSteps.filter((item) => item.completed).length} {t('de')} {workflowSteps.length} {t('completadas')}</h3></div></div><div className="workflow-list">{workflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageTasks && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
+      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{visibleWorkflowSteps.filter((item) => item.completed).length} {t('de')} {visibleWorkflowSteps.length} {t('completadas')}</h3><p className="muted">{t(['Onboarding', 'Datos y accesos', 'Configuración técnica', 'Campaña lista', 'Campaña activa', 'Capacitación', 'Cruise control'][stageIndex])}</p></div><button className="text-button" type="button" onClick={() => setShowAllWorkflowSteps((value) => !value)}>{showAllWorkflowSteps ? t('Ver solo la etapa actual') : t('Ver checklist completo')}</button></div><div className="workflow-list">{visibleWorkflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageTasks && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
       <section className="content-card"><p className="eyebrow">{t('Bloqueos')}</p><h3>{blockers.filter((item) => !item.resolved).length} {t('abiertos')}</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section>
     </div>
   </div>
