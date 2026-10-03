@@ -51,6 +51,7 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   const [verifications, setVerifications] = useState({})
   const [interactions, setInteractions] = useState([])
   const [syncEvents, setSyncEvents] = useState([])
+  const [offerHistory, setOfferHistory] = useState([])
   const [interaction, setInteraction] = useState(emptyInteraction)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -58,17 +59,20 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   const [showAllFields, setShowAllFields] = useState(false)
 
   const reload = async () => {
-    const [verificationResult, interactionResult, syncResult] = await Promise.all([
+    const [verificationResult, interactionResult, offerHistoryResult, syncResult] = await Promise.all([
       supabase.from('client_field_verifications').select('*').eq('client_id', client.id),
       supabase.from('client_interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('client_offer_history').select('*').eq('client_id', client.id).order('changed_at', { ascending: false }).limit(50),
       canViewSyncLog ? supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [], error: null }),
     ])
     if (verificationResult.error) throw verificationResult.error
     if (interactionResult.error) throw interactionResult.error
+    if (offerHistoryResult.error) throw offerHistoryResult.error
     if (syncResult.error) throw syncResult.error
     setSyncEvents(syncResult.data || [])
     setVerifications(Object.fromEntries((verificationResult.data || []).map((row) => [row.field_key, row])))
     setInteractions(interactionResult.data || [])
+    setOfferHistory(offerHistoryResult.data || [])
   }
 
   useEffect(() => { reload().catch((loadError) => setError(loadError.message)) }, [client.id])
@@ -153,6 +157,7 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
       const row = verifications[key] || { status: fieldHasValue(client[key]) ? 'verify' : 'pending', note: '' }
       return <article className="dossier-verification-row" key={key}><div><strong>{t(label)}</strong><small>{fieldHasValue(client[key]) ? t('Dato recibido') : t('Sin dato')}{row.verified_by ? ' · ' + memberName(row.verified_by) + ' · ' + formatDate(row.verified_at) : ''}</small><input aria-label={t('Nota de verificación') + ' ' + t(label)} maxLength={1000} placeholder={t('Nota de verificación')} value={row.note || ''} disabled={!canEdit || client.archived} onChange={(event) => setVerifications((current) => ({ ...current, [key]: { ...row, note: event.target.value } }))} onBlur={(event) => canEdit && !client.archived && event.target.value !== (verifications[key]?.note || '') && saveVerification(key, row.status, event.target.value)} /></div><select aria-label={t('Estado de verificación') + ' ' + t(label)} value={row.status} disabled={!canEdit || saving || client.archived} onChange={(event) => saveVerification(key, event.target.value, row.note || '')}>{verificationStatuses.map((status) => <option key={status} value={status}>{t(status)}</option>)}</select></article>
     })}</div>
+    <div className="client-sync-log client-offer-history"><div className="section-heading"><div><h4>{t('Historial de ofertas')}</h4><p className="muted">{t('Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.')}</p></div></div><p><strong>{t('Oferta actual')}:</strong> {client.offer || t('pending')}</p>{offerHistory.length === 0 ? <p className="muted">{t('Sin cambios de oferta registrados.')}</p> : offerHistory.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{entry.new_offer || t('Oferta retirada')}</strong>{entry.previous_offer && <p>{t('Oferta anterior:')} {entry.previous_offer}</p>}<small>{entry.source === 'baseline' ? t('Seguimiento inicial') : entry.changed_by ? memberName(entry.changed_by) : t('Sistema / integración')} · {formatDate(entry.changed_at)}</small></article>)}</div>
     {canViewSyncLog && <div className="client-sync-log"><div className="section-heading"><div><h4>{t('Sincronización de onboarding')}</h4><p className="muted">{t('Últimos intentos del formulario de GHL y etapa alcanzada.')}</p></div></div>{syncEvents.length === 0 ? <p className="muted">{t('No hay sincronizaciones registradas para este cliente.')}</p> : syncEvents.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{t(entry.status)} · {t(entry.sync_stage)}</strong><small>{t('Intento')}: {entry.attempt_count} · {formatDate(entry.last_attempt_at || entry.created_at)}{entry.action ? ' · ' + t(entry.action) : ''}</small>{entry.error_message && <p className="form-error">{entry.error_message}</p>}</article>)}</div>}
     <div className="client-contact-summary"><div className="section-heading"><div><h4>{t('Seguimiento del cliente')}</h4><p className="muted">{latestContact ? t('Último contacto') + ': ' + formatDate(latestContact.created_at) + ' · ' + t(latestContact.channel) + ' · ' + memberName(latestContact.responder_id || latestContact.created_by) : t('Aún no hay contactos registrados.')}</p></div></div>{unclaimedInbound && <p className="form-error">{t('Respuesta del cliente sin responsable')}: {unclaimedInbound.summary}</p>}
       <div className="client-contact-list">{interactions.slice(0, 5).map((item) => <article className="client-contact-row" key={item.id}><strong>{t(item.direction)} · {t(item.channel)}</strong><p>{item.summary}</p><small>{memberName(item.responder_id || item.created_by)} · {formatDate(item.created_at)}{item.next_follow_up_at ? ' · ' + t('Próximo seguimiento') + ': ' + formatDate(item.next_follow_up_at) : ''}{item.next_step ? ' · ' + item.next_step : ''}</small></article>)}</div>
