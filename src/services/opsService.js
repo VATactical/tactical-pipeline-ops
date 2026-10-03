@@ -300,6 +300,12 @@ export async function updateClient(clientId, changes) {
   return data
 }
 
+export async function reassignClientCode(clientId, code) {
+  const { data, error } = await supabase.rpc('reassign_client_code', { p_client_id: clientId, p_new_code: code })
+  if (error) throw error
+  return data
+}
+
 export async function revealClientMetaToken(clientId) {
   const { data, error } = await supabase.rpc('reveal_client_meta_token', { p_client_id: clientId })
   if (error) throw error
