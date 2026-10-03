@@ -165,7 +165,7 @@ export async function updateTaskManagement(taskId, { assignedTo, assigneeName, a
   if (error) throw error
 }
 
-export async function updateTaskDetails(taskId, { clientId, title, details = '', assignedTo, assigneeName, assigneeRole, priority, dueAt, status }) {
+export async function updateTaskDetails(taskId, { clientId, title, details = '', assignedTo, assigneeName, assigneeRole, priority, dueAt, status, nextStep = '' }) {
   const changes = {
     client_id: clientId || null,
     title: title.trim(),
@@ -185,7 +185,7 @@ export async function updateTaskDetails(taskId, { clientId, title, details = '',
   return data
 }
 
-export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt }) {
+export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt, nextStep = '' }) {
   const resolvedRole = assigneeRole || ownerRole || null
   const resolvedName = assigneeName || ownerName || (resolvedRole ? ownerNames[resolvedRole] : 'Todos')
   const payload = {
