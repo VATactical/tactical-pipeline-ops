@@ -136,4 +136,38 @@ function clientChanges(payload: Payload) {
     updated_at: new Date().toISOString(),
   };
   return Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== "" && value !== undefined && value !== null));
+}async function findClient(supabase: ReturnType<typeof adminClient>, payload: Payload) {
+  const locationId = payloadValue(payload, "location_id", "locationId");
+  const contactId = payloadValue(payload, "contact_id", "contactId");
+  const businessEmail = payloadValue(payload, "business_email", "businessEmail", "email");
+  const personalEmail = payloadValue(payload, "personal_email", "personalEmail");
+  const legalName = payloadValue(payload, "registered_business_name", "legal_name", "legalName", "registeredBusinessName");
+  const businessName = payloadValue(payload, "business_name", "businessName", "company_name", "companyName");
+
+  const uniqueMatch = async (column: string, value: string) => {
+    const { data, error } = await supabase.from("clients").select("*").ilike(column, value).limit(2);
+    if (error) throw error;
+    if ((data || []).length > 1) throw new Error(`Ambiguous onboarding match for ${column}; manual review required`);
+    return data?.[0] || null;
+  };
+
+  if (locationId && contactId) {
+    const { data, error } = await supabase.from("clients").select("*")
+      .eq("ghl_location_id", locationId).eq("ghl_contact_id", contactId).limit(2);
+    if (error) throw error;
+    if ((data || []).length > 1) throw new Error("Ambiguous GHL contact identifiers; manual review required");
+    if (data?.[0]) return data[0];
+  }
+
+  const emailMatch = await uniqueMatch("email", businessEmail || personalEmail);
+  if (emailMatch) return emailMatch;
+
+  if (legalName) {
+    const legalMatch = await uniqueMatch("legal_name", legalName);
+    if (legalMatch) return legalMatch;
+    const registeredNameMatch = await uniqueMatch("business_name", legalName);
+    if (registeredNameMatch) return registeredNameMatch;
+  }
+  return businessName ? await uniqueMatch("business_name", businessName) : null;
 }
+
