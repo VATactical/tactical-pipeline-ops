@@ -94,6 +94,7 @@ function TaskEditor({ task, clients, members, onCancel, onSaved }) {
     clientId: task.client_id || '',
     title: task.title || '',
     details: task.comments || task.evidence || '',
+    nextStep: task.next_step || '',
     assignedTo: task.assigned_to || '',
     priority: task.priority || 'Media',
     dueAt: task.due_at || '',
