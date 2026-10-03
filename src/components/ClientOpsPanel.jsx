@@ -83,7 +83,11 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   const formatDate = (value) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : ''
 
   const saveVerification = async (fieldKey, status, note = '') => {
-    if (status === 'complete' && !fieldHasValue(client[fieldKey])) {\n      setError(t('No puedes completar un campo vacío.'))\n      return\n    }\n    setSaving(true); setError(''); setNotice('')
+    if (status === 'complete' && !fieldHasValue(client[fieldKey])) {
+      setError(t('No puedes completar un campo vacío.'))
+      return
+    }
+    setSaving(true); setError(''); setNotice('')
     const verified = status === 'complete' || status === 'not_applicable'
     const { error: saveError } = await supabase.from('client_field_verifications').upsert({
       client_id: client.id,
