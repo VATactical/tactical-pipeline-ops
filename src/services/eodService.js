@@ -171,7 +171,7 @@ export async function loadUnreadEodCount(profile) {
   }).length
 }
 
-export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes }) {
+export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes, lateReason = '' }) {\n  const cleanLateReason = lateReason.trim()\n  if (reportDate < getDateInTimeZone(new Date(), DEFAULT_KEVIN_TIME_ZONE) && !cleanLateReason) {\n    throw new Error('Explica por qué estás enviando este EOD atrasado.')\n  }
   const submittedAt = new Date().toISOString()
   const startedEntries = timeEntries.filter((entry) => entry.hours || entry.memo.trim())
   if (startedEntries.some((entry) => !(Number(entry.hours) > 0) || !entry.memo.trim())) throw new Error('Cada registro de tiempo necesita horas y memo.')
