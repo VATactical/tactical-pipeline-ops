@@ -89,6 +89,8 @@ export default function ClientDetailPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [codeEditing, setCodeEditing] = useState(false)
+  const [codeDraft, setCodeDraft] = useState('')
   const [dossierSearch, setDossierSearch] = useState('')
   const [highlightedSection, setHighlightedSection] = useState(null)
   const [pauseOpen, setPauseOpen] = useState(false)
@@ -152,6 +154,23 @@ export default function ClientDetailPage() {
       setEditingSection(null); setMessage(`${t(section.title)} ${t('guardado correctamente.')}`)
     } catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
+  }
+  const saveClientCode = async (event) => {
+    event.preventDefault()
+    const code = codeDraft.trim().toUpperCase()
+    if (!code) { setError(t('Escribe un código para el cliente.')); return }
+    if (code === client.code) { setCodeEditing(false); return }
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, { code })
+      await refresh()
+      setCodeEditing(false)
+      setMessage(t('Código de cliente actualizado correctamente.'))
+    } catch (saveError) {
+      setError(saveError.code === '23505'
+        ? t('Ese código ya está asignado a otro cliente.')
+        : t(saveError.message))
+    } finally { setSaving(false) }
   }
   const toggleStep = async (step) => {
     try { await updateWorkflowStep(step.id, !step.completed); await refresh() }
@@ -396,10 +415,16 @@ export default function ClientDetailPage() {
   return <div className="page-stack client-dossier-page" data-client-tab={activeTab}>
     <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {t(client.archived ? 'Clientes archivados' : 'Todos los clientes')}</Link>
     <div className="client-sticky-shell">
-    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && client.status === 'ADS LIVE' && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
+    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && client.status === 'ADS LIVE' && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
     <nav className="client-detail-tabs" aria-label={t('Secciones del cliente')}>{tabs.map(([key, label]) => <button key={key} type="button" className={activeTab === key ? 'active' : ''} aria-current={activeTab === key ? 'page' : undefined} onClick={() => selectTab(key)}>{t(label)}</button>)}</nav>
     <form className="dossier-search compact-sticky-search client-tab-section tab-dossier" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
     </div>
+    {codeEditing && <form className="content-card client-code-editor" onSubmit={saveClientCode}>
+      <div className="section-heading"><div><p className="eyebrow">{t('Código')}</p><h3>{t('Editar código')}</h3><p className="muted">{t('El código debe ser único para cada cliente.')}</p></div></div>
+      <label htmlFor="client-code-input">{t('Código')}</label>
+      <input id="client-code-input" value={codeDraft} onChange={(event) => setCodeDraft(event.target.value)} autoComplete="off" autoCapitalize="characters" maxLength={30} required />
+      <div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => setCodeEditing(false)}>{t('Cancelar')}</button><button className="primary-button compact-button" disabled={saving}>{saving ? t('Guardando…') : t('Guardar')}</button></div>
+    </form>}
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     {archiveOpen && <form className="content-card client-archive-form client-tab-section tab-dossier" onSubmit={archiveClient}><div><p className="eyebrow">Salida de la operación</p><h3>Archivar cliente</h3><p className="muted">El dossier y el historial se conservarán fuera de los clientes activos.</p></div><label>Motivo<select value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} required><option value="">Seleccionar…</option><option>Contrato finalizado</option><option>Cancelación del cliente</option><option>Falta de pago</option><option>Campaña terminada</option><option>Otro</option></select></label><label>Nota final opcional<textarea rows="4" maxLength="2000" value={archiveNote} onChange={(event) => setArchiveNote(event.target.value)} placeholder="Contexto de la salida, pendientes o condiciones para regresar…" /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(false); setArchiveReason(''); setArchiveNote('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Archivando…' : 'Confirmar archivo'}</button></div></form>}
     {client.archived && <section className="content-card client-archive-summary client-tab-section tab-dossier"><div><p className="eyebrow">Cliente archivado</p><h3 data-no-translate>{client.archive_reason}</h3>{client.archive_note && <p data-no-translate>{client.archive_note}</p>}<small>{client.archived_at ? t(`Archivado el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}`) : ''}</small></div>{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}</section>}
