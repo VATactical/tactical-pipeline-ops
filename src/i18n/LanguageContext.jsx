@@ -258,6 +258,22 @@ const translations = {
   'Cruise control': 'Cruise control',
   'Ver solo la etapa actual': 'Show current stage only',
   'Ver checklist completo': 'View full checklist',
+  'No puedes completar un campo vacío.': 'You cannot mark an empty field as complete.',
+  'Sincronización de onboarding': 'Onboarding sync',
+  'Últimos intentos del formulario de GHL y etapa alcanzada.': 'Recent GHL form attempts and the stage reached.',
+  'No hay sincronizaciones registradas para este cliente.': 'No sync attempts are recorded for this client.',
+  'Intento': 'Attempt',
+  'received': 'Received',
+  'processed': 'Processed',
+  'failed': 'Failed',
+  'payload_saved': 'Payload secured',
+  'client_matched': 'Client matched',
+  'client_saved': 'Client saved',
+  'secrets_saved': 'Sensitive fields secured',
+  'audit_saved': 'Audit recorded',
+  'notified': 'Operations notified',
+  'created': 'Created',
+  'updated': 'Updated',
 }
 
 const patterns = [
