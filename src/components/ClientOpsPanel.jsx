@@ -70,7 +70,7 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   useEffect(() => { reload().catch((loadError) => setError(loadError.message)) }, [client.id])
 
   const currentStageIndex = Math.max(0, stages.findIndex(([key]) => key === client.lifecycle_stage))
-  const requiredBeforeNext = useMemo(() => stageRequirements.slice(0, currentStageIndex + 1).flat(), [currentStageIndex])
+  const requiredBeforeNext = useMemo(() => stageRequirements.slice(0, Math.min(currentStageIndex + 2, stageRequirements.length)).flat(), [currentStageIndex])
   const missingBeforeNext = requiredBeforeNext.filter((key) => {
     const field = dossierFields.find(([fieldKey]) => fieldKey === key)
     const status = verifications[key]?.status
