@@ -25,7 +25,7 @@ const translations = {
   'Cerrar': 'Close', 'Seguimiento por cliente': 'Client tracking', 'Falta en el dossier': 'Missing from dossier', 'Siguiente paso del proceso': 'Next process step', 'Tareas abiertas': 'Open tasks',
   '← Todos los clientes': '← All clients', 'Buscar en este dossier': 'Search this dossier', 'Escribe código o nombre…': 'Type code or name…', 'Abrir Slack ↗': 'Open Slack ↗',
   'Abrir Drive ↗': 'Open Drive ↗', 'Copiar para Google Docs': 'Copy for Google Docs', 'Descargar WWWW PDF': 'Download WWWW PDF', 'Abrir Google Docs ↗': 'Open Google Docs ↗',
-  'Marcar como actualizado': 'Mark as updated', 'Antes del dossier': 'Before the dossier', 'Dossier WWWW completo': 'Complete WWWW dossier', 'Editar': 'Edit', 'Guardar': 'Save', 'Cancelar': 'Cancel',
+  'Marcar como actualizado': 'Mark as updated', 'Antes del dossier': 'Before the dossier', 'Dossier WWWW completo': 'Complete WWWW dossier', 'Editar': 'Edit', 'Editar código': 'Edit code', 'Código de cliente actualizado correctamente.': 'Client code updated successfully.', 'Ese código ya está asignado a otro cliente.': 'That code is already assigned to another client.', 'Escribe un código para el cliente.': 'Enter a code for the client.', 'El código debe ser único para cada cliente.': 'The code must be unique for each client.', 'Guardar': 'Save', 'Cancelar': 'Cancel',
   'Historial de cambios': 'Change history', 'Abrir historial': 'Open history', 'Aún no hay cambios registrados.': 'No changes recorded yet.', 'Auditoría': 'Audit', 'Proceso completo · auditoría activa': 'Process complete · audit active',
   'Operational Task Log': 'Operational task log', 'Proceso asignado por rol': 'Process assigned by role',
   'Onboarding': 'Onboarding',
