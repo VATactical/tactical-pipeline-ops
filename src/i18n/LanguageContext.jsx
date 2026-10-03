@@ -251,6 +251,13 @@ const translations = {
   'email': 'Email',
   'sms': 'SMS',
   'other': 'Other',
+  'Datos y accesos': 'Data and access',
+  'Configuración técnica': 'Technical setup',
+  'Campaña lista': 'Campaign ready',
+  'Capacitación': 'Training',
+  'Cruise control': 'Cruise control',
+  'Ver solo la etapa actual': 'Show current stage only',
+  'Ver checklist completo': 'View full checklist',
 }
 
 const patterns = [
