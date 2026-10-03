@@ -189,6 +189,7 @@ const translations = {
   'Selecciona un logo.': 'Select a logo.', 'El logo debe pesar menos de 5 MB.': 'The logo must be smaller than 5 MB.', 'Usa un archivo PNG, JPG o WebP.': 'Use a PNG, JPG, or WebP file.',
   'La prioridad seleccionada no es válida.': 'The selected priority is invalid.', 'El estado seleccionado no es válido.': 'The selected status is invalid.', 'Selecciona una zona horaria válida.': 'Select a valid time zone.', 'Selecciona un avatar válido.': 'Select a valid avatar.', 'Selecciona un idioma válido.': 'Select a valid language.',
   'La nueva contraseña debe tener al menos 10 caracteres.': 'The new password must be at least 10 characters.', 'La nueva contraseña debe ser diferente a la actual.': 'The new password must be different from the current password.', 'La contraseña actual no es correcta.': 'The current password is incorrect.',
+  'Motivo del envío atrasado': 'Reason for late submission', 'Explica brevemente por qué el reporte se envía después de su fecha.': 'Briefly explain why you are submitting this report after its work date.', 'Explica por qué estás enviando este EOD atrasado.': 'Explain why you are submitting this late EOD.',
 }
 
 const patterns = [
