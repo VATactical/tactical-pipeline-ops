@@ -65,6 +65,8 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
     ])
     if (verificationResult.error) throw verificationResult.error
     if (interactionResult.error) throw interactionResult.error
+    if (syncResult.error) throw syncResult.error
+    setSyncEvents(syncResult.data || [])
     setVerifications(Object.fromEntries((verificationResult.data || []).map((row) => [row.field_key, row])))
     setInteractions(interactionResult.data || [])
   }
