@@ -5,7 +5,7 @@ const pending = (value) => {
 const yesNo = (value) => value ? 'YES' : 'NO'
 const money = (value) => value == null || value === '' ? 'Pending' : `$${Number(value).toLocaleString('en-US')}`
 const date = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : 'Pending'
-const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : 'Pending'
+const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : 'Pending'
 
 export function buildDossierText(client, updatedBy = 'Pending', { lastUpdatedAt = client.updated_at, copiedAt = null } = {}) {
   return `==================================================
