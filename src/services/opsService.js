@@ -178,6 +178,7 @@ export async function updateTaskDetails(taskId, { clientId, title, details = '',
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
     status: normalizeStatus(status),
+    next_step: nextStep.trim(),
     updated_at: new Date().toISOString(),
   }
   const { data, error } = await supabase.from('tasks').update(changes).eq('id', taskId).select('*, clients(code, business_name)').single()
@@ -199,6 +200,7 @@ export async function createAssignedTask({ clientId, title, details = '', body =
     owner_name: resolvedName,
     due_at: dueAt || null,
     due_label: dueAt || 'Sin fecha',
+    next_step: nextStep.trim(),
     comments: (details || body).trim(),
     phase: 'Asignada por administración',
     status: 'Pendiente',
