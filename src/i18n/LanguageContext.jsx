@@ -6,6 +6,19 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  'Resumen para nómina': 'Payroll summary',
+  'Reportes EOD por rango de fechas': 'EOD reports by date range',
+  'Selecciona el periodo. Las horas se suman desde los registros de tiempo de cada reporte enviado.': 'Select a period. Hours are totaled from the time entries in each submitted report.',
+  'Descargar resumen PDF': 'Download PDF summary',
+  'La fecha inicial debe ser anterior o igual a la fecha final.': 'The start date must be on or before the end date.',
+  'Horas reportadas': 'Reported hours',
+  'Reportes enviados': 'Submitted reports',
+  'Incluidos en el periodo': 'Included in the period',
+  'Integrantes con reporte': 'Team members with reports',
+  'Con horas registradas': 'With recorded hours',
+  'No hay reportes EOD enviados en este periodo.': 'No submitted EOD reports in this period.',
+  'Cargando reportes del periodo…': 'Loading reports for this period…',
+
   'Mensajes generales y específicos del equipo.': 'General and client-specific messages.',
   'mensajes': 'messages',
   'Esta zona controla cómo se muestran las fechas y la hora en TP Ops.': 'This setting controls how dates and times are displayed in TP Ops.',
