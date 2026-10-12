@@ -37,7 +37,7 @@ function normalizeStatus(status) {
 }
 
 export async function loadOperations(profileId) {
-  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, eventsResult, directoryResult, noteReadsResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientsResult, tasksResult, blockersResult, workflowResult, notesResult, activityResult, eodResult, directoryResult, noteReadsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select('*').eq('archived', false).order('code'),
     supabase.from('tasks').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('blockers').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
@@ -45,12 +45,11 @@ export async function loadOperations(profileId) {
     supabase.from('notes').select('*, clients(code, business_name)').order('created_at', { ascending: false }),
     supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(40),
     supabase.from('eod_reports').select('*').order('report_date', { ascending: false }).limit(8),
-    supabase.from('calendar_events').select('*, clients(code, business_name)').gte('start_at', new Date().toISOString()).order('start_at').limit(6),
     supabase.rpc('get_team_directory'),
     profileId ? supabase.from('note_reads').select('*').eq('user_id', profileId) : Promise.resolve({ data: [], error: null }),
   ]))
 
-  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || eventsResult.error || directoryResult.error || noteReadsResult.error
+  const error = clientsResult.error || tasksResult.error || blockersResult.error || workflowResult.error || notesResult.error || activityResult.error || eodResult.error || directoryResult.error || noteReadsResult.error
   if (error) throw error
 
   const clients = clientsResult.data || []
@@ -70,7 +69,6 @@ export async function loadOperations(profileId) {
       const member = members.get(report.user_id)
       return { ...report, profiles: member ? { full_name: member.full_name, role: member.role } : null }
     }),
-    upcomingEvents: (eventsResult.data || []).filter(belongsToActiveClient),
     directory: directoryResult.data || [],
   }
 }

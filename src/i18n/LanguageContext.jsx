@@ -6,6 +6,9 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  'Mensajes generales y específicos del equipo.': 'General and client-specific messages.',
+  'mensajes': 'messages',
+  'Esta zona controla cómo se muestran las fechas y la hora en TP Ops.': 'This setting controls how dates and times are displayed in TP Ops.',
   "Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.": "Offer history: previous offers and their dates are kept here. The copied or downloaded dossier shows only the current offer.",
   "Historial de ofertas": "Offer history",
   "Última actualización del dossier": "Last dossier update",

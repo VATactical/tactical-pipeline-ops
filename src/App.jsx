@@ -31,7 +31,6 @@ const TeamPage = lazyWithRetry(() => import('./pages/TeamPage'), 'team')
 const ClientsPage = lazyWithRetry(() => import('./pages/ClientsPage'), 'clients')
 const ClientDetailPage = lazyWithRetry(() => import('./pages/ClientDetailPage'), 'client-detail')
 const TasksPage = lazyWithRetry(() => import('./pages/TasksPage'), 'tasks')
-const CalendarPage = lazyWithRetry(() => import('./pages/CalendarPage'), 'calendar')
 const EodReportsPage = lazyWithRetry(() => import('./pages/EodReportsPage'), 'eod-reports')
 const TrainingPage = lazyWithRetry(() => import('./pages/TrainingPage'), 'training')
 const MyAccountPage = lazyWithRetry(() => import('./pages/MyAccountPage'), 'my-account')
@@ -65,7 +64,6 @@ export default function App() {
               <Route path="clientes" element={<ClientsPage />} />
               <Route path="clientes/:clientId" element={<ClientDetailPage />} />
               <Route path="tareas" element={<TasksPage />} />
-              <Route path="calendario" element={<CalendarPage />} />
               <Route path="comunicaciones" element={<CommunicationsPage />} />
               <Route path="training" element={<TrainingPage />} />
               <Route path="mi-cuenta" element={<MyAccountPage />} />
