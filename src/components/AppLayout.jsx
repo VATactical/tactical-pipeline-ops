@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { loadDueNotificationCount } from '../services/calendarService'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
 import { LanguageToggle, useLanguage } from '../i18n/LanguageContext'
 import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
@@ -19,7 +18,6 @@ export default function AppLayout() {
   const { profile, user, signOut } = useAuth()
   const { t } = useLanguage()
   const location = useLocation()
-  const [notificationCount, setNotificationCount] = useState(0)
   const [eodUnreadCount, setEodUnreadCount] = useState(0)
   const [communicationCount, setCommunicationCount] = useState(0)
   const [company, setCompany] = useState(defaultCompany)
@@ -35,14 +33,6 @@ export default function AppLayout() {
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [location.pathname])
-
-  useEffect(() => {
-    const refreshCount = () => loadDueNotificationCount().then(setNotificationCount).catch(() => {})
-    refreshCount()
-    const timer = window.setInterval(refreshCount, 60000)
-    window.addEventListener('focus', refreshCount)
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', refreshCount) }
-  }, [])
 
   useEffect(() => {
     const canReviewEod = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
@@ -131,7 +121,6 @@ export default function AppLayout() {
           <NavLink to="/" end>Panel{communicationCount > 0 && <span className="nav-badge">{communicationCount}</span>}</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/tareas">Tareas</NavLink>
-          <NavLink to="/calendario">Calendario{notificationCount > 0 && <span className="nav-badge">{notificationCount}</span>}</NavLink>
           <NavLink to="/comunicaciones">Comunicaciones{communicationCount > 0 && <span className="nav-badge">{communicationCount}</span>}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>

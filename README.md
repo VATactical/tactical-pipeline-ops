@@ -32,4 +32,4 @@ Configura las dos variables anteriores en Hostinger y usa:
 - Build command: `npm run build`
 - Output directory: `dist`
 
-Como la app usa `BrowserRouter`, configura el hosting para que las rutas desconocidas sirvan `index.html`.
+Como la app usa `BrowserRouter`, configura el hosting para que las rutas desconocidas sirvan `index.html`; `public/.htaccess` ya incluye esta regla para Apache.\n\nConsulta [disponibilidad y recuperación](docs/availability-and-recovery.md) para comprobar `app` y `www`, y para restaurar el subdominio de la app sin afectar el sitio principal.

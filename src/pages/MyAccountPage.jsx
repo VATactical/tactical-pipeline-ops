@@ -39,7 +39,7 @@ export default function MyAccountPage() {
   }
   const localTime = formatLocalTime(form.timezone, language)
   return <div className="page-stack compact-page">
-    <header className="page-header"><div><p className="eyebrow">Mi cuenta</p><h2>Perfil y hora local</h2><p className="muted">Esta zona controla cómo ves reuniones, fechas y tu reloj en el calendario.</p></div></header>
+    <header className="page-header"><div><p className="eyebrow">Mi cuenta</p><h2>Perfil y hora local</h2><p className="muted">Esta zona controla cómo se muestran las fechas y la hora en TP Ops.</p></div></header>
     {error && <p className="form-error">{error}</p>}{message && <p className="form-success">{message}</p>}
     <form className="content-card profile-form" onSubmit={submit}>
       <div className="profile-identity"><TeamAvatar avatarId={form.avatarId} label={profile.full_name || 'Avatar'} /><div><strong>{profile.full_name}</strong><span>{user.email}</span></div></div>
