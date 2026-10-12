@@ -1169,3 +1169,44 @@ html[data-theme='light'] .google-ads-status-badge.requiere-atención { border-co
     align-items: stretch;
   }
 }
+
+undefined
+.eod-payroll-ai-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eod-payroll-ai-consent {
+  display: flex;
+  flex: 1 1 420px;
+  align-items: flex-start;
+  gap: 9px;
+  color: #a9bed1;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.eod-payroll-ai-consent input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+  accent-color: #2fc7f5;
+}
+
+.eod-payroll-ai-summary {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #29435a;
+  border-radius: 10px;
+  background: #0a1927;
+}
+
+.eod-payroll-ai-summary p {
+  margin: 0;
+  color: #c3d2df;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
