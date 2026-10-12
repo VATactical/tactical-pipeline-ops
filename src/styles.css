@@ -1111,21 +1111,23 @@ html[data-theme='light'] .google-ads-status-badge.requiere-atención { border-co
 .eod-payroll-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 0 0 16px;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 0;
 }
-
 .eod-payroll-filters label {
   display: grid;
+  flex: 0 1 190px;
   gap: 6px;
-  min-width: 180px;
+  min-width: 170px;
   color: var(--muted, #5b6f82);
   font-size: 0.82rem;
   font-weight: 600;
 }
-
 .eod-payroll-filters input {
+  width: 100%;
   min-height: 40px;
+  margin: 0;
   border: 1px solid #29435a;
   border-radius: 8px;
   padding: 8px 10px;
@@ -1133,49 +1135,70 @@ html[data-theme='light'] .google-ads-status-badge.requiere-atención { border-co
   background: #0c1b2a;
   font: inherit;
 }
-
-.eod-payroll-summary { display: grid; gap: 1rem; border-left: 4px solid #2fc7f5; }
-
+.eod-payroll-summary {
+  display: grid;
+  gap: .85rem;
+  border-left: 4px solid #2fc7f5;
+}
+.eod-payroll-summary > .section-heading {
+  align-items: flex-start;
+  margin: 0;
+}
+.eod-payroll-summary > .section-heading > div {
+  min-width: 0;
+}
+.eod-payroll-summary > .section-heading h3 {
+  margin-bottom: .4rem;
+}
+.eod-payroll-summary > .section-heading p:last-child {
+  margin-bottom: 0;
+}
 .eod-payroll-metrics {
-  margin-top: 8px;
+  margin-top: 0;
 }
-
-@media (max-width: 640px) {
-  .eod-payroll-filters label {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .eod-payroll-summary > .section-heading {
-    align-items: stretch;
-  }
-}
-
-undefined
 .eod-payroll-ai-controls {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
-
 .eod-payroll-ai-consent {
   display: flex;
-  flex: 1 1 420px;
+  min-width: 0;
   align-items: flex-start;
-  gap: 9px;
+  gap: 10px;
+  margin: 0;
+  padding: .8rem .9rem;
+  border: 1px solid #29435a;
+  border-radius: 10px;
+  background: #0a1927;
   color: #a9bed1;
   font-size: 0.82rem;
   line-height: 1.5;
 }
-
+.eod-payroll-ai-consent span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .eod-payroll-ai-consent input {
-  flex: 0 0 auto;
-  margin: 3px 0 0;
+  display: block;
+  flex: 0 0 16px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
   accent-color: #2fc7f5;
 }
-
+.eod-payroll-ai-controls > .secondary-button {
+  min-height: 42px;
+  margin: 0;
+  white-space: nowrap;
+}
 .eod-payroll-ai-summary {
   display: grid;
   gap: 8px;
@@ -1184,17 +1207,21 @@ undefined
   border-radius: 10px;
   background: #0a1927;
 }
-
 .eod-payroll-ai-summary p {
   margin: 0;
   color: #c3d2df;
   line-height: 1.6;
   white-space: pre-wrap;
 }
-
-
-
-/* Weekly EOD hours - spacing and responsive layout */
+html[data-theme='light'] .eod-payroll-ai-consent {
+  border-color: #d5e1ea;
+  background: #f6f9fb;
+  color: #526b80;
+}
+html[data-theme='light'] .eod-payroll-ai-consent input {
+  accent-color: #087cae;
+}
+html[data-theme='light'] /* Weekly EOD hours - spacing and responsive layout */
 .weekly-hours-panel {
   display: grid;
   gap: 1.1rem;
