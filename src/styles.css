@@ -171,18 +171,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .manual-hours-row label { display: grid; gap: .35rem; color: #9db2c7; font-size: .78rem; font-weight: 700; }
 .eod-report-date { display: grid; gap: .35rem; min-width: 170px; color: #9db2c7; font-size: .78rem; font-weight: 700; }
 .eod-report-date input { margin: 0; }
-.weekly-hours-panel { overflow: hidden; }
-.weekly-hours-filters { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.weekly-hours-filters input, .weekly-hours-filters select { width: auto; min-width: 160px; }
-.weekly-hours-total { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 1rem 1.1rem; margin-bottom: 1rem; border-radius: 14px; background: linear-gradient(135deg, #0c2d43, #11243c); border: 1px solid #24516d; }
-.weekly-hours-total strong { color: #62dafc; font-size: 1.8rem; }
-.weekly-hours-total small { grid-column: 1 / -1; color: #89a2ba; }
-.weekly-day-grid { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: .65rem; overflow-x: auto; padding-bottom: .35rem; }
-.weekly-day-card { min-height: 135px; padding: .85rem; border: 1px solid #1e3a51; border-radius: 13px; background: #081827; }
-.weekly-day-card > div { display: flex; justify-content: space-between; gap: .5rem; padding-bottom: .6rem; border-bottom: 1px solid #193147; }
-.weekly-day-card > div b { color: #5ed8fa; }
-.weekly-day-card p { margin: .7rem 0 0; color: #d7e5f2; font-size: .82rem; line-height: 1.35; }
-.weekly-day-card p small, .weekly-day-card > small { display: block; margin-top: .3rem; color: #7f99b1; }
+/* Weekly EOD hours styles are grouped at the end of this file. */
 .eod-hours-total { color: #8fcde8; }
 .report-open-button { width: max-content; margin: .75rem 0; }
 .eod-report-modal { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: clamp(.75rem, 3vw, 2.5rem); background: #020914dd; backdrop-filter: blur(5px); }
@@ -256,7 +245,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 @media (max-width: 1050px) { .client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.dashboard-grid { grid-template-columns: 1fr; }.pipeline-row { grid-template-columns: 105px 1fr auto; }.pipeline-row p { grid-column: 2 / -1; } }
 @media (max-width: 1050px) { .filter-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }.filter-controls .search-control { grid-column: 1 / -1; } }
 @media (max-width: 800px) { .login-page { grid-template-columns: 1fr; }.login-intro { min-height: 40vh; padding: 3rem 1.5rem; }.login-intro h1 { font-size: 2.8rem; }.login-card { margin: -1.5rem auto 3rem; }.app-shell { grid-template-columns: 1fr; }.sidebar { position: static; height: auto; padding: 1rem 1.25rem; border-right: 0; border-bottom: 1px solid #182a3c; }.sidebar > div:first-child { display: flex; align-items: center; gap: .75rem; }.sidebar .brand-mark, .sidebar .eyebrow { margin: 0; }.sidebar h1 { margin: 0; }.sidebar nav { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; margin: .8rem 0 0; }.user-card { margin-top: .8rem; }.metric-grid, .client-grid, .dossier-grid, .admin-grid, .role-progress-grid, .client-form, .composer-grid, .filter-controls, .user-create-form, .calendar-form, .team-grid { grid-template-columns: 1fr; }.client-form .wide, .composer-grid .wide, .filter-controls .search-control, .user-create-form .wide, .calendar-form .wide { grid-column: auto; }.metric-card { min-height: 125px; }.page-header { flex-direction: column; }.header-actions { width: 100%; flex-wrap: wrap; justify-content: flex-start; }.filter-bar { flex-direction: column; }.filter-bar select { width: 100%; }.task-row { grid-template-columns: auto minmax(0, 1fr); }.task-row > select { grid-column: 2; width: 100%; }.task-status-controls { grid-column: 1 / -1; width: 100%; }.assignment-select { width: 100%; }.pipeline-row { grid-template-columns: 1fr auto; }.pipeline-row > .lifecycle { grid-column: 1 / -1; }.pipeline-row p { grid-column: 1 / -1; }.detail-grid { grid-template-columns: 1fr; }.detail-item:nth-child(odd), .detail-item:nth-child(even) { padding: 1rem 0; border-left: 0; }.member-editor, .audit-row { grid-template-columns: 1fr; }.main-content { padding: 1.25rem; }.new-task-alert { align-items: stretch; flex-direction: column; }.status-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .25rem; }.status-tabs button { white-space: nowrap; }.calendar-event { grid-template-columns: 1fr; }.calendar-event .secondary-button { justify-self: start; }.launch-deadline { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 800px) { .manual-hours-row { grid-template-columns: 1fr; }.eod-section-fields { grid-template-columns: 1fr; }.weekly-hours-filters { align-items: stretch; flex-direction: column; }.weekly-hours-filters input, .weekly-hours-filters select, .weekly-hours-filters button { width: 100%; }.weekly-day-grid { grid-template-columns: repeat(7, minmax(220px, 78vw)); }.ads-report-grid { grid-template-columns: 1fr 1fr; }.ads-report-grid .wide { grid-column: 1 / -1; }.ads-metric-strip { grid-template-columns: repeat(2, 1fr); }.ads-report-title { flex-direction: column; }.communications-card .section-heading, .communications-card .section-actions { align-items: stretch; flex-direction: column; }.communication-actions select, .communication-actions button { width: 100%; } }
+@media (max-width: 800px) { .manual-hours-row { grid-template-columns: 1fr; }.eod-section-fields { grid-template-columns: 1fr; }.weekly-hours-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; padding: .65rem; }.weekly-hours-filters input, .weekly-hours-filters select, .weekly-hours-filters .text-button { width: 100%; min-width: 0; }.weekly-day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }.ads-report-grid { grid-template-columns: 1fr 1fr; }.ads-report-grid .wide { grid-column: 1 / -1; }.ads-metric-strip { grid-template-columns: repeat(2, 1fr); }.ads-report-title { flex-direction: column; }.communications-card .section-heading, .communications-card .section-actions { align-items: stretch; flex-direction: column; }.communication-actions select, .communication-actions button { width: 100%; } }
 @media (max-width: 800px) { .docs-sync-status { grid-template-columns: 1fr; }.dossier-actions .secondary-button { width: 100%; justify-content: center; } }
 @media (max-width: 800px) { .report-user-grid { grid-template-columns: 1fr; }.eod-cycle-summary, .eod-submit-row { align-items: stretch; flex-direction: column; }.eod-period { justify-content: flex-start; }.eod-period small { text-align: left; }.eod-submit-row .primary-button { width: 100%; } }
 
@@ -843,8 +832,7 @@ html[data-theme='light'] .eod-review-card,
 html[data-theme='light'] .report-card,
 html[data-theme='light'] .eod-check,
 html[data-theme='light'] .eod-compliance-row,
-html[data-theme='light'] .eod-comment,
-html[data-theme='light'] .weekly-day-card { border-color: #d4e0ea; background: #ffffff; }
+html[data-theme='light'] .eod-comment { border-color: #d4e0ea; background: #ffffff; }
 html[data-theme='light'] .eod-report-filters { box-shadow: 0 8px 22px #35556b12; }
 html[data-theme='light'] .eod-report-title strong,
 html[data-theme='light'] .report-day-heading h4,
@@ -901,14 +889,7 @@ html[data-theme='light'] .eod-report-modal-header small,
 html[data-theme='light'] .eod-report-modal-body .report-period { color: #60758a; }
 html[data-theme='light'] .eod-slack-preview { border-color: #c9dce8; background: #f1f8fc; }
 html[data-theme='light'] .eod-slack-preview code { color: #29435b; }
-html[data-theme='light'] .weekly-hours-total { border-color: #a9d5e8; background: linear-gradient(135deg, #e9f8fd, #f8fcff); }
-html[data-theme='light'] .weekly-hours-total strong { color: #087cae; }
-html[data-theme='light'] .weekly-hours-total small,
-html[data-theme='light'] .weekly-day-card p small,
-html[data-theme='light'] .weekly-day-card > small { color: #60758a; }
-html[data-theme='light'] .weekly-day-card > div { border-color: #dce6ee; }
-html[data-theme='light'] .weekly-day-card > div b { color: #087cae; }
-html[data-theme='light'] .weekly-day-card p { color: #334b61; }
+/* Weekly hours light theme styles are grouped at the end of this file. */
 html[data-theme='light'] .calendar-workspace { border-color: #d2dfe9; background: #ffffff; }
 html[data-theme='light'] .month-toolbar h3,
 html[data-theme='light'] .day-agenda h3,
@@ -1209,4 +1190,231 @@ undefined
   color: #c3d2df;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+
+
+/* Weekly EOD hours - spacing and responsive layout */
+.weekly-hours-panel {
+  display: grid;
+  gap: 1.1rem;
+  overflow: hidden;
+}
+.weekly-hours-panel > .section-heading {
+  margin: 0;
+}
+.weekly-hours-panel > .section-heading > div {
+  max-width: 52rem;
+}
+.weekly-hours-panel > .section-heading .eyebrow {
+  margin: 0 0 .35rem;
+}
+.weekly-hours-panel > .section-heading h3 {
+  margin: 0 0 .45rem;
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+.weekly-hours-panel > .section-heading .muted {
+  margin: 0;
+  line-height: 1.55;
+}
+.weekly-hours-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin: 0;
+  padding: .75rem;
+  border: 1px solid #243b50;
+  border-radius: 12px;
+  background: #0a1724;
+}
+.weekly-hours-filters input,
+.weekly-hours-filters select {
+  width: auto;
+  min-width: 180px;
+  height: 42px;
+  margin: 0;
+}
+.weekly-hours-filters .text-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem .8rem;
+  border: 1px solid #2a4358;
+  border-radius: 9px;
+  background: #101f2e;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.weekly-hours-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 88px;
+  padding: 1rem 1.2rem;
+  margin: 0;
+  border: 1px solid #24516d;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #0c2d43, #11243c);
+}
+.weekly-hours-total > div {
+  display: grid;
+  gap: .4rem;
+}
+.weekly-hours-total span {
+  color: #d7e8f4;
+  font-size: .88rem;
+  font-weight: 700;
+}
+.weekly-hours-total strong {
+  color: #62dafc;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1;
+  white-space: nowrap;
+}
+.weekly-hours-total small {
+  color: #89a2ba;
+  overflow-wrap: anywhere;
+}
+.weekly-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr));
+  gap: .75rem;
+  overflow: visible;
+  padding: 0;
+}
+.weekly-day-card {
+  min-width: 0;
+  min-height: 145px;
+  padding: .9rem;
+  border: 1px solid #1e3a51;
+  border-radius: 12px;
+  background: #081827;
+}
+.weekly-day-card > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: .5rem;
+  padding-bottom: .65rem;
+  border-bottom: 1px solid #193147;
+}
+.weekly-day-card > div strong {
+  color: #e2edf5;
+  font-size: .84rem;
+  line-height: 1.35;
+}
+.weekly-day-card > div b {
+  color: #5ed8fa;
+  font-size: .85rem;
+  white-space: nowrap;
+}
+.weekly-day-card p {
+  margin: .65rem 0 0;
+  padding-top: .6rem;
+  border-top: 1px solid #193147;
+  color: #d7e5f2;
+  font-size: .82rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.weekly-day-card p:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.weekly-day-card p small,
+.weekly-day-card > small {
+  display: block;
+  margin-top: .35rem;
+  color: #8ea5ba;
+  line-height: 1.4;
+}
+.weekly-day-card p small b {
+  color: #b9d0e2;
+}
+html[data-theme='light'] .weekly-hours-filters {
+  border-color: #d7e1ea;
+  background: #f6f9fb;
+}
+html[data-theme='light'] .weekly-hours-filters .text-button {
+  border-color: #d1dee8;
+  background: #ffffff;
+  color: #087cae;
+}
+html[data-theme='light'] .weekly-hours-total {
+  border-color: #cfe0e9;
+  background: linear-gradient(135deg, #f0f8fb, #f8fbfd);
+}
+html[data-theme='light'] .weekly-hours-total span {
+  color: #334b61;
+}
+html[data-theme='light'] .weekly-hours-total strong {
+  color: #087cae;
+}
+html[data-theme='light'] .weekly-hours-total small {
+  color: #60758a;
+}
+html[data-theme='light'] .weekly-day-card {
+  border-color: #d4e0ea;
+  background: #ffffff;
+}
+html[data-theme='light'] .weekly-day-card > div,
+html[data-theme='light'] .weekly-day-card p {
+  border-color: #e4ebf0;
+}
+html[data-theme='light'] .weekly-day-card > div strong {
+  color: #243b50;
+}
+html[data-theme='light'] .weekly-day-card p {
+  color: #334b61;
+}
+html[data-theme='light'] .weekly-day-card p small,
+html[data-theme='light'] .weekly-day-card > small,
+html[data-theme='light'] .weekly-day-card p small b {
+  color: #60758a;
+}
+@media (max-width: 800px) {
+  .weekly-hours-panel {
+    gap: .9rem;
+  }
+  .weekly-hours-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+    padding: .65rem;
+  }
+  .weekly-hours-filters input,
+  .weekly-hours-filters select,
+  .weekly-hours-filters .text-button {
+    width: 100%;
+    min-width: 0;
+  }
+  .weekly-day-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .6rem;
+  }
+}
+@media (max-width: 520px) {
+  .weekly-hours-panel {
+    padding: .9rem;
+  }
+  .weekly-hours-panel > .section-heading h3 {
+    font-size: 1.08rem;
+  }
+  .weekly-hours-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .weekly-hours-total {
+    min-height: 76px;
+    padding: .9rem;
+  }
+  .weekly-day-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .weekly-day-card {
+    min-height: 0;
+  }
 }
