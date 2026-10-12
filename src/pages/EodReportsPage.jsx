@@ -59,6 +59,7 @@ export default function EodReportsPage() {
   const [payrollEnd, setPayrollEnd] = useState(() => getDateInTimeZone(new Date(), timeZone))
   const [payrollReports, setPayrollReports] = useState([])
   const [payrollLoading, setPayrollLoading] = useState(false)
+  const payrollRequestId = useRef(0)
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
   const [reports, setReports] = useState([])
@@ -165,16 +166,18 @@ export default function EodReportsPage() {
   }, { total: 0, new: 0, reviewed: 0, followUp: 0 }) : null, [canReviewAll, profile.id, reports])
 
   const refreshPayroll = useCallback(async () => {
+    const requestId = ++payrollRequestId.current
     if (!canReviewAll || payrollStart > payrollEnd) {
       setPayrollReports([])
+      setPayrollLoading(false)
       return
     }
     setPayrollLoading(true)
     try {
       const result = await loadEodPayrollReports(profile, payrollStart, payrollEnd)
-      setPayrollReports(result)
+      if (requestId === payrollRequestId.current) setPayrollReports(result)
     } finally {
-      setPayrollLoading(false)
+      if (requestId === payrollRequestId.current) setPayrollLoading(false)
     }
   }, [canReviewAll, payrollEnd, payrollStart, profile])
 
