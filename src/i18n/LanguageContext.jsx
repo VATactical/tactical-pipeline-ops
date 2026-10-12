@@ -300,7 +300,7 @@ const translations = {
   'Configuración técnica': 'Technical setup',
   'Campaña lista': 'Campaign ready',
   'Capacitación': 'Training',
-  'Cruise control': 'Cruise control',
+  'Cruise control': 'Cruise control', 'Cruise Control': 'Cruise Control', 'Operación estable': 'Steady operations',
   'Ver solo la etapa actual': 'Show current stage only',
   'Ver checklist completo': 'View full checklist',
   'No puedes completar un campo vacío.': 'You cannot mark an empty field as complete.',

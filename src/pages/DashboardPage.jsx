@@ -26,7 +26,7 @@ const slackChannels = [
 ]
 const isOverdue = (task) => task.due_at && task.status !== 'Completada' && new Date(`${task.due_at}T23:59:59`) < new Date()
 const isStale = (client) => Date.now() - new Date(client.updated_at).getTime() > 3 * 86400000
-const launchOverdue = (client) => client.target_launch_date && !['ADS LIVE', 'ADS PAUSED'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
+const launchOverdue = (client) => client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date()
 const dossierFields = [
   'legal_name', 'owner_name', 'phone', 'email', 'address', 'target_zip_codes', 'legal_business_info',
   'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date',
@@ -36,8 +36,9 @@ const dossierFields = [
 const isMissing = (value) => !value || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
 
 function ClientStatusCards({ clients }) {
+  const { t } = useLanguage()
   const counts = clients.reduce((total, client) => ({ ...total, [client.status]: (total[client.status] || 0) + 1 }), {})
-  return <section className="metric-grid status-metrics" aria-label="Clientes por estado"><article className="metric-card blue"><span>Onboarding</span><strong>{counts.ONBOARDING || 0}</strong><small>de {clients.length} clientes</small></article><article className="metric-card amber"><span>A2P Submitted</span><strong>{counts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article><article className="metric-card green"><span>Ads Live</span><strong>{counts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article><article className="metric-card purple"><span>Ads Paused</span><strong>{counts['ADS PAUSED'] || 0}</strong><small>campañas pausadas</small></article></section>
+  return <section className="metric-grid status-metrics" aria-label="Clientes por estado"><article className="metric-card blue"><span>Onboarding</span><strong>{counts.ONBOARDING || 0}</strong><small>de {clients.length} clientes</small></article><article className="metric-card amber"><span>A2P Submitted</span><strong>{counts['A2P SUBMITTED'] || 0}</strong><small>verificación enviada</small></article><article className="metric-card green"><span>Ads Live</span><strong>{counts['ADS LIVE'] || 0}</strong><small>campañas activas</small></article><article className="metric-card purple"><span>Ads Paused</span><strong>{counts['ADS PAUSED'] || 0}</strong><small>campañas pausadas</small></article><article className="metric-card teal"><span>{t('Cruise Control')}</span><strong>{counts['CRUISE CONTROL'] || 0}</strong><small>{t('Operación estable')}</small></article></section>
 }
 
 function AdminComposer({ clients, onCreated }) {
