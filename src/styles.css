@@ -1126,3 +1126,87 @@ html[data-theme='light'] .google-ads-status-badge.requiere-atención { border-co
   .google-ads-status-card .section-heading { align-items: flex-start; }
   .google-ads-status-control { max-width: none; }
 }
+
+.eod-payroll-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.eod-payroll-filters label {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  color: var(--muted, #5b6f82);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.eod-payroll-filters input {
+  min-height: 40px;
+  border: 1px solid #29435a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #dbe8f6;
+  background: #0c1b2a;
+  font: inherit;
+}
+
+.eod-payroll-summary { display: grid; gap: 1rem; border-left: 4px solid #2fc7f5; }
+
+.eod-payroll-metrics {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .eod-payroll-filters label {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .eod-payroll-summary > .section-heading {
+    align-items: stretch;
+  }
+}
+
+undefined
+.eod-payroll-ai-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eod-payroll-ai-consent {
+  display: flex;
+  flex: 1 1 420px;
+  align-items: flex-start;
+  gap: 9px;
+  color: #a9bed1;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.eod-payroll-ai-consent input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+  accent-color: #2fc7f5;
+}
+
+.eod-payroll-ai-summary {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #29435a;
+  border-radius: 10px;
+  background: #0a1927;
+}
+
+.eod-payroll-ai-summary p {
+  margin: 0;
+  color: #c3d2df;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}

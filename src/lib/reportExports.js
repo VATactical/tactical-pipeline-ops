@@ -77,6 +77,43 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
   doc.save(`TP-Ops-Hours-${cleanFileName(userLabel)}-${weekStart}.pdf`)
 }
 
+export async function downloadEodPayrollPdf({ reports, startDate, endDate, company, geminiSummary = '' }) {
+  const doc = await makeDocument({ title: 'EOD PAYROLL SUMMARY', subtitle: `Work dates: ${startDate} — ${endDate}`, company })
+  const entries = reports.flatMap((report) => (report.time_entries || []).map((entry) => ({
+    date: report.report_date,
+    user: report.profiles?.full_name || 'Team member',
+    hours: Number(entry.hours || 0),
+    memo: entry.memo || '',
+    submittedAt: report.submitted_at || report.updated_at,
+  }))).sort((a, b) => a.date.localeCompare(b.date) || a.user.localeCompare(b.user))
+  const totalsByUser = new Map()
+  entries.forEach((entry) => totalsByUser.set(entry.user, (totalsByUser.get(entry.user) || 0) + entry.hours))
+  const totalHours = entries.reduce((sum, entry) => sum + entry.hours, 0)
+  let y = 48
+  y = paragraph(doc, `Submitted EOD reports: ${reports.length} · Team members: ${totalsByUser.size}`, y, { bold: true, size: 10 })
+  y = paragraph(doc, `Total reported hours: ${totalHours.toFixed(2)}`, y, { bold: true, size: 13 })
+  if (geminiSummary) {
+    y = sectionTitle(doc, 'GEMINI SUMMARY', y + 3)
+    y = paragraph(doc, geminiSummary, y)
+  }
+  y = sectionTitle(doc, 'HOURS BY TEAM MEMBER', y + 3)
+  if (!totalsByUser.size) y = paragraph(doc, 'No time entries were recorded in this date range.', y)
+  for (const [name, hours] of [...totalsByUser.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    y = paragraph(doc, `${name} · ${hours.toFixed(2)} hours`, y, { bold: true })
+  }
+  y = sectionTitle(doc, 'DAILY TIME ENTRIES', y + 4)
+  if (!entries.length) y = paragraph(doc, 'No time entries were recorded in this date range.', y)
+  for (const entry of entries) {
+    y = ensureSpace(doc, y, 20)
+    doc.setDrawColor(210, 222, 232); doc.line(18, y, 198, y)
+    y += 6
+    y = paragraph(doc, `${entry.date} · ${entry.user} · ${entry.hours.toFixed(2)} hours`, y, { bold: true })
+    if (entry.submittedAt) y = paragraph(doc, `EOD submitted: ${new Date(entry.submittedAt).toLocaleString()}`, y, { size: 8 })
+    if (entry.memo) y = paragraph(doc, entry.memo, y)
+  }
+  doc.save(`TP-Ops-EOD-Payroll-${startDate}-to-${endDate}.pdf`)
+}
+
 export async function downloadCommunicationsPdf({ notes, viewerName, company }) {
   const doc = await makeDocument({ title: 'TEAM COMMUNICATIONS', subtitle: `Exported for ${viewerName}`, company })
   let y = 48
