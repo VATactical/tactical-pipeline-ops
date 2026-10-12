@@ -77,7 +77,7 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
   doc.save(`TP-Ops-Hours-${cleanFileName(userLabel)}-${weekStart}.pdf`)
 }
 
-export async function downloadEodPayrollPdf({ reports, startDate, endDate, company }) {
+export async function downloadEodPayrollPdf({ reports, startDate, endDate, company, geminiSummary = '' }) {
   const doc = await makeDocument({ title: 'EOD PAYROLL SUMMARY', subtitle: `Work dates: ${startDate} — ${endDate}`, company })
   const entries = reports.flatMap((report) => (report.time_entries || []).map((entry) => ({
     date: report.report_date,
@@ -92,6 +92,10 @@ export async function downloadEodPayrollPdf({ reports, startDate, endDate, compa
   let y = 48
   y = paragraph(doc, `Submitted EOD reports: ${reports.length} · Team members: ${totalsByUser.size}`, y, { bold: true, size: 10 })
   y = paragraph(doc, `Total reported hours: ${totalHours.toFixed(2)}`, y, { bold: true, size: 13 })
+  if (geminiSummary) {
+    y = sectionTitle(doc, 'GEMINI SUMMARY', y + 3)
+    y = paragraph(doc, geminiSummary, y)
+  }
   y = sectionTitle(doc, 'HOURS BY TEAM MEMBER', y + 3)
   if (!totalsByUser.size) y = paragraph(doc, 'No time entries were recorded in this date range.', y)
   for (const [name, hours] of [...totalsByUser.entries()].sort(([a], [b]) => a.localeCompare(b))) {
