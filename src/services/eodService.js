@@ -90,6 +90,47 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
   }
 }
 
+async function loadAllRows(makeQuery) {
+  const rows = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await runWithSessionRetry(() => makeQuery().range(from, from + 999))
+    if (error) throw error
+    const page = data || []
+    rows.push(...page)
+    if (page.length < 1000) return rows
+  }
+}
+
+export async function loadEodPayrollReports(profile, startDate, endDate) {
+  if (!canReviewAll(profile)) throw new Error('No tienes permiso para ver el resumen de nómina.')
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/
+  if (!datePattern.test(startDate) || !datePattern.test(endDate) || startDate > endDate) {
+    throw new Error('Selecciona un rango de fechas válido.')
+  }
+  const [reports, entries, directoryResult] = await Promise.all([
+    loadAllRows(() => supabase.from('eod_reports').select('*')
+      .gte('report_date', startDate).lte('report_date', endDate)
+      .order('report_date', { ascending: true }).order('user_id', { ascending: true })),
+    loadAllRows(() => supabase.from('time_entries').select('*')
+      .gte('work_date', startDate).lte('work_date', endDate)
+      .order('work_date', { ascending: true }).order('user_id', { ascending: true })),
+    runWithSessionRetry(() => supabase.rpc('get_team_directory')),
+  ])
+  if (directoryResult.error) throw directoryResult.error
+  const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
+  const entriesByReportDate = new Map()
+  entries.forEach((entry) => {
+    const key = `${entry.user_id}:${entry.work_date}`
+    if (!entriesByReportDate.has(key)) entriesByReportDate.set(key, [])
+    entriesByReportDate.get(key).push(entry)
+  })
+  return reports.map((report) => ({
+    ...report,
+    profiles: memberProfile(members.get(report.user_id)),
+    time_entries: entriesByReportDate.get(`${report.user_id}:${report.report_date}`) || [],
+  }))
+}
+
 export async function loadOwnEodState(profile) {
   if (profile?.role === 'superadmin' || !profile?.permissions?.eod_reports) return { required: false }
   const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
