@@ -77,429 +77,417 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
   doc.save(`TP-Ops-Hours-${cleanFileName(userLabel)}-${weekStart}.pdf`)
 }
 
-export async function downloadEodPayrollPdf({ reports, startDate, endDate, company, geminiSummary = '' }) {
-  const doc = await makeDocument({
-    title: 'EOD PAYROLL SUMMARY',
-    subtitle: 'Work dates: ' + startDate + ' — ' + endDate,
-    company,
-  })
-  const right = 202
-  const contentWidth = 188
-  const bottom = 263
+export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, company, geminiSummary = '' }) {
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const left = 16
+  const right = pageWidth - 16
+  const width = right - left
+  const contentBottom = pageHeight - 19
+  const green = [20, 138, 0]
+  const dark = [32, 39, 38]
+  const gray = [101, 112, 108]
+  const line = [221, 228, 224]
+  const pale = [244, 248, 245]
+  const paleGreen = [239, 247, 236]
   const submittedAtFormatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     dateStyle: 'medium',
     timeStyle: 'short',
   })
-  let y = 48
+  const generatedAt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date()) + ' ET'
+  const logo = await imageDataUrl(company?.logo_url)
+  let y = 0
 
-  const drawContinuationHeader = () => {
-    doc.setFillColor(...navy)
-    doc.rect(0, 0, 216, 29, 'F')
-    doc.setTextColor(230, 242, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.text('EOD PAYROLL SUMMARY', 14, 13)
-    doc.setTextColor(...cyan)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.text('Work dates: ' + startDate + ' — ' + endDate, 14, 21)
-    y = 36
-  }
+  const drawPageHeader = (continued = false) => {
+    if (!continued) {
+      doc.setFillColor(...green)
+      doc.rect(0, 0, pageWidth, 2, 'F')
+      if (logo) {
+        const format = logo.startsWith('data:image/jpeg') ? 'JPEG' : logo.startsWith('data:image/webp') ? 'WEBP' : 'PNG'
+        try { doc.addImage(logo, format, left, 12, 17, 17, undefined, 'FAST') } catch { /* text header remains readable */ }
+      }
+      const titleX = logo ? left + 23 : left
+      doc.setTextColor(...dark)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(19)
+      doc.text('EOD Hours Report', titleX, 18)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...gray)
+      doc.text('PAYROLL REPORT', titleX, 25)
+      doc.setDrawColor(...line)
+      doc.line(left, 34, right, 34)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...gray)
+      doc.text('REPORTING PERIOD', left, 42)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(...dark)
+      doc.text(startDate + ' to ' + endDate, left, 48)
+      doc.setFontSize(8)
+      doc.setTextColor(...gray)
+      doc.text('Generated ' + generatedAt, right, 48, { align: 'right' })
+      doc.text(company?.company_name || 'Tactical Pipeline', left, 55)
+      y = 63
+      return
+    }
 
-  const addPayrollPage = () => {
-    doc.addPage()
-    drawContinuationHeader()
-  }
-
-  const ensurePayrollSpace = (needed = 10) => {
-    if (y + needed <= bottom) return
-    addPayrollPage()
-  }
-
-  const drawSection = (label) => {
-    ensurePayrollSpace(14)
-    doc.setFillColor(232, 246, 252)
-    doc.roundedRect(14, y, contentWidth, 9, 2, 2, 'F')
-    doc.setTextColor(...ink)
+    doc.setFillColor(...green)
+    doc.rect(0, 0, pageWidth, 1.5, 'F')
+    doc.setTextColor(...dark)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.text(label, 18, y + 6)
-    y += 13
+    doc.text('EOD HOURS REPORT', left, 10)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...gray)
+    doc.text(startDate + ' to ' + endDate, right, 10, { align: 'right' })
+    doc.setDrawColor(...line)
+    doc.line(left, 14, right, 14)
+    y = 21
   }
 
-  const writeWrapped = (value, { x = 18, width = 180, size = 8.5, color = ink, bold = false, lineHeight = 4.3 } = {}) => {
+  const addPage = () => {
+    doc.addPage()
+    drawPageHeader(true)
+  }
+
+  const ensureSpace = (needed) => {
+    if (y + needed <= contentBottom) return
+    addPage()
+  }
+
+  const drawSection = (title) => {
+    ensureSpace(13)
+    doc.setTextColor(...dark)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text(title, left, y + 4)
+    doc.setDrawColor(...green)
+    doc.setLineWidth(0.45)
+    doc.line(left, y + 7, right, y + 7)
+    doc.setLineWidth(0.2)
+    y += 12
+  }
+
+  const writeParagraph = (value, { x = left, textWidth = width, size = 8.5, color = dark, bold = false, lineHeight = 4.2, gapAfter = 2 } = {}) => {
     const text = String(value || '').trim()
     if (!text) return
     doc.setFont('helvetica', bold ? 'bold' : 'normal')
     doc.setFontSize(size)
-    const lines = doc.splitTextToSize(text, width)
-    for (const line of lines) {
-      ensurePayrollSpace(lineHeight + 1)
+    const lines = doc.splitTextToSize(text, textWidth)
+    for (const textLine of lines) {
+      ensureSpace(lineHeight + 1)
       doc.setTextColor(...color)
-      doc.text(line, x, y)
+      doc.text(textLine, x, y + lineHeight - 1)
       y += lineHeight
     }
-    y += 1
+    y += gapAfter
   }
 
   const drawMetricCards = (metrics) => {
-    const gap = 2.5
-    const cardWidth = (contentWidth - gap * (metrics.length - 1)) / metrics.length
-    const cardHeight = 21
+    const gap = 3
+    const cardWidth = (width - gap * (metrics.length - 1)) / metrics.length
+    const cardHeight = 20
+    ensureSpace(cardHeight + 4)
     metrics.forEach((metric, index) => {
-      const x = 14 + index * (cardWidth + gap)
-      doc.setFillColor(247, 250, 252)
-      doc.setDrawColor(213, 225, 234)
-      doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD')
-      doc.setTextColor(...muted)
+      const x = left + index * (cardWidth + gap)
+      doc.setFillColor(...paleGreen)
+      doc.setDrawColor(...[221, 232, 218])
+      doc.roundedRect(x, y, cardWidth, cardHeight, 1.5, 1.5, 'FD')
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(6.3)
-      doc.text(metric.label, x + 2.5, y + 5)
-      doc.setTextColor(...ink)
-      doc.setFontSize(metric.value.length > 11 ? 9 : 11)
-      doc.text(metric.value, x + 2.5, y + 14)
+      doc.setFontSize(6.8)
+      doc.setTextColor(...gray)
+      doc.text(metric.label, x + 3, y + 5)
+      doc.setFontSize(metric.value.length > 12 ? 12 : 14)
+      doc.setTextColor(...dark)
+      doc.text(metric.value, x + 3, y + 14)
     })
     y += cardHeight + 4
   }
 
-  const drawTeamTableHeader = (continued = false) => {
-    ensurePayrollSpace(12)
-    doc.setFillColor(20, 43, 62)
-    doc.roundedRect(14, y, contentWidth, 8, 1.5, 1.5, 'F')
-    doc.setTextColor(235, 245, 252)
+  const drawTableHeader = (columns) => {
+    ensureSpace(11)
+    doc.setFillColor(...pale)
+    doc.rect(left, y, width, 8, 'F')
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
-    doc.text(continued ? 'TEAM MEMBER (CONT.)' : 'TEAM MEMBER', 18, y + 5.4)
-    doc.text('REPORTS', 112, y + 5.4, { align: 'right' })
-    doc.text('ENTRIES', 140, y + 5.4, { align: 'right' })
-    doc.text('HOURS', 170, y + 5.4, { align: 'right' })
-    doc.text('SHARE', 198, y + 5.4, { align: 'right' })
-    y += 10
+    doc.setFontSize(7)
+    doc.setTextColor(...gray)
+    columns.forEach((column) => {
+      const tx = column.align === 'right' ? column.x + column.width - 2 : column.x + 2
+      doc.text(column.label, tx, y + 5.3, { align: column.align || 'left' })
+    })
+    y += 9
   }
 
-  const drawDailyTableHeader = (continued = false) => {
-    ensurePayrollSpace(12)
-    doc.setFillColor(20, 43, 62)
-    doc.roundedRect(14, y, contentWidth, 8, 1.5, 1.5, 'F')
-    doc.setTextColor(235, 245, 252)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
-    doc.text(continued ? 'WORK DATE (CONT.)' : 'WORK DATE', 18, y + 5.4)
-    doc.text('REPORTS', 106, y + 5.4, { align: 'right' })
-    doc.text('ENTRIES', 136, y + 5.4, { align: 'right' })
-    doc.text('HOURS', 166, y + 5.4, { align: 'right' })
-    doc.text('AVG / REPORT', 198, y + 5.4, { align: 'right' })
-    y += 10
-  }
-
-  const drawHoursChart = (title, rows, labelFor, valueFor, limit) => {
-    drawSection(title)
-    const visibleRows = rows.slice().sort((a, b) => valueFor(b) - valueFor(a)).slice(0, limit)
-    if (!visibleRows.length || visibleRows.every((row) => valueFor(row) <= 0)) {
-      writeWrapped('No reported hours are available to chart.', { size: 8, color: muted })
-      return
+  const drawTableRow = (columns, values, rowHeight, shade = false, boldColumns = []) => {
+    ensureSpace(rowHeight + 1)
+    if (shade) {
+      doc.setFillColor(250, 252, 250)
+      doc.rect(left, y - 1, width, rowHeight, 'F')
     }
-    const maximum = Math.max(...visibleRows.map(valueFor))
-    for (const row of visibleRows) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.5)
-      const labelLines = doc.splitTextToSize(labelFor(row), 48)
-      const rowHeight = Math.max(9, labelLines.length * 3.5 + 3)
-      if (y + rowHeight > bottom) {
-        addPayrollPage()
-        drawSection(title + ' (CONTINUED)')
-      }
-      const barY = y + Math.min(rowHeight / 2, 5)
-      doc.setTextColor(...ink)
-      doc.text(labelLines, 18, y + 3.5)
-      doc.setFillColor(235, 241, 245)
-      doc.roundedRect(70, barY - 1.5, 108, 3.5, 1.5, 1.5, 'F')
-      const width = Math.max(0.8, 108 * valueFor(row) / maximum)
-      doc.setFillColor(...cyan)
-      doc.roundedRect(70, barY - 1.5, width, 3.5, 1.5, 1.5, 'F')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(7.5)
-      doc.text(valueFor(row).toFixed(2) + ' h', 198, y + 3.5, { align: 'right' })
-      y += rowHeight + 1
-    }
-    if (rows.length > limit) {
-      y += 1
-      writeWrapped('Chart shows the ' + limit + ' highest-hour records; the tables include the full period.', {
-        size: 7, color: muted, lineHeight: 3.7,
-      })
-    }
-    y += 2
+    values.forEach((value, index) => {
+      const column = columns[index]
+      doc.setFont('helvetica', boldColumns.includes(index) ? 'bold' : 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...dark)
+      const tx = column.align === 'right' ? column.x + column.width - 2 : column.x + 2
+      doc.text(String(value), tx, y + 4.2, { align: column.align || 'left' })
+    })
+    doc.setDrawColor(...line)
+    doc.line(left, y + rowHeight - 0.5, right, y + rowHeight - 0.5)
+    y += rowHeight
   }
 
   const entries = reports.flatMap((report) => (report.time_entries || []).map((entry) => {
-    const numericHours = Number(entry.hours)
+    const parsedHours = Number(entry.hours)
     return {
-      date: report.report_date,
+      date: report.report_date || '',
       userId: report.user_id || '',
       user: report.profiles?.full_name || 'Team member',
-      hours: Number.isFinite(numericHours) ? numericHours : 0,
+      hours: Number.isFinite(parsedHours) ? parsedHours : 0,
       memo: String(entry.memo || '').trim(),
-      submittedAt: report.submitted_at || report.updated_at,
+      submittedAt: report.submitted_at || report.updated_at || '',
     }
   })).sort((a, b) => a.date.localeCompare(b.date) || a.user.localeCompare(b.user))
 
   const members = new Map()
-  const dailyStats = new Map()
-  for (const report of reports) {
+  const days = new Map()
+  reports.forEach((report) => {
     const id = report.user_id || report.profiles?.full_name || 'unknown'
     const name = report.profiles?.full_name || 'Team member'
     const member = members.get(id) || { id, name, reports: 0, entries: 0, hours: 0 }
     member.reports += 1
     members.set(id, member)
-
-    const day = dailyStats.get(report.report_date) || { date: report.report_date, reports: 0, entries: 0, hours: 0 }
+    const day = days.get(report.report_date) || { date: report.report_date, reports: 0, entries: 0, hours: 0 }
     day.reports += 1
-    dailyStats.set(report.report_date, day)
-  }
-
-  for (const entry of entries) {
+    days.set(report.report_date, day)
+  })
+  entries.forEach((entry) => {
     const id = entry.userId || entry.user
     const member = members.get(id) || { id, name: entry.user, reports: 0, entries: 0, hours: 0 }
     member.entries += 1
     member.hours += entry.hours
     members.set(id, member)
-
-    const day = dailyStats.get(entry.date) || { date: entry.date, reports: 0, entries: 0, hours: 0 }
+    const day = days.get(entry.date) || { date: entry.date, reports: 0, entries: 0, hours: 0 }
     day.entries += 1
     day.hours += entry.hours
-    dailyStats.set(entry.date, day)
-  }
+    days.set(entry.date, day)
+  })
 
   const teamRows = [...members.values()].sort((a, b) => a.name.localeCompare(b.name))
-  const days = [...dailyStats.values()].sort((a, b) => a.date.localeCompare(b.date))
+  const dayRows = [...days.values()].sort((a, b) => a.date.localeCompare(b.date))
   const totalHours = entries.reduce((sum, entry) => sum + entry.hours, 0)
   const averagePerReport = reports.length ? totalHours / reports.length : 0
   const averagePerMember = members.size ? totalHours / members.size : 0
-  const busiestDay = days.slice().sort((a, b) => b.hours - a.hours)[0]
+  const busiestDay = dayRows.slice().sort((a, b) => b.hours - a.hours)[0]
+  const leadingMember = teamRows.slice().sort((a, b) => b.hours - a.hours)[0]
 
+  drawPageHeader()
   drawMetricCards([
-    { label: 'SUBMITTED EOD REPORTS', value: String(reports.length) },
+    { label: 'TOTAL HOURS', value: totalHours.toFixed(2) + ' h' },
+    { label: 'EOD REPORTS', value: String(reports.length) },
     { label: 'TEAM MEMBERS', value: String(members.size) },
-    { label: 'TOTAL REPORTED HOURS', value: totalHours.toFixed(2) + ' h' },
   ])
 
-  drawSection('PERIOD ANALYSIS')
-  drawMetricCards([
-    { label: 'TIME ENTRIES', value: String(entries.length) },
-    { label: 'ACTIVE REPORT DAYS', value: String(days.length) },
-    { label: 'AVG HOURS / EOD REPORT', value: averagePerReport.toFixed(2) + ' h' },
-    { label: 'AVG HOURS / MEMBER', value: averagePerMember.toFixed(2) + ' h' },
-  ])
-  if (busiestDay) {
-    writeWrapped('Highest reported day: ' + busiestDay.date + ' · ' + busiestDay.hours.toFixed(2) + ' h across ' + busiestDay.entries + ' time entries.', {
-      size: 8, color: muted,
-    })
-  }
+  drawSection('REPORT ANALYSIS')
+  writeParagraph(
+    (busiestDay
+      ? 'Peak day: ' + busiestDay.date + ' with ' + busiestDay.hours.toFixed(2) + ' hours across ' + busiestDay.entries + ' entries. '
+      : 'No submitted time entries were found in this date range. ') +
+    'Average: ' + averagePerReport.toFixed(2) + ' hours per EOD report and ' +
+    averagePerMember.toFixed(2) + ' hours per team member.' +
+    (leadingMember && totalHours > 0 ? ' Highest contributor: ' + leadingMember.name + ' at ' + (leadingMember.hours / totalHours * 100).toFixed(1) + '% of reported hours.' : ''),
+    { size: 8.5, color: dark },
+  )
 
   if (geminiSummary) {
-    drawSection('QUALITATIVE WORK SUMMARY · GEMINI')
-    writeWrapped('The hours and payroll metrics in this report are calculated from submitted EOD time entries. Gemini provides a qualitative summary only.', {
-      size: 7, color: muted, lineHeight: 3.7,
+    drawSection('WORK SUMMARY')
+    writeParagraph('AI-generated summary based on submitted work descriptions. Payroll hours below are calculated directly from EOD time entries.', {
+      size: 7.5, color: gray, lineHeight: 3.8, gapAfter: 1,
     })
-    const summaryLines = String(geminiSummary).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    for (const line of summaryLines) {
-      const cleanLine = line.replace(/^[-*•]\s*/, '')
-      writeWrapped('• ' + cleanLine, { x: 18, width: 180, size: 8.3, lineHeight: 4.2 })
-    }
-    y += 2
+    String(geminiSummary).split(/\r?\n/).map((item) => item.trim()).filter(Boolean).forEach((item) => {
+      writeParagraph('- ' + item.replace(/^[-*•]\s*/, ''), { size: 8.2, lineHeight: 4.1, gapAfter: 0.5 })
+    })
   }
 
-  drawHoursChart(
-    'REPORTED HOURS BY TEAM MEMBER',
-    teamRows,
-    (member) => member.name,
-    (member) => member.hours,
-    8,
-  )
-  drawHoursChart(
-    'TOP DAYS BY REPORTED HOURS',
-    days,
-    (day) => day.date,
-    (day) => day.hours,
-    10,
-  )
-
-  drawSection('TEAM MEMBER PAYROLL TABLE')
-  drawTeamTableHeader()
-  if (!teamRows.length) {
-    writeWrapped('No submitted EOD reports were found in this date range.', { size: 8.5 })
-  } else {
-    teamRows.forEach((member, index) => {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      const nameLines = doc.splitTextToSize(member.name, 78)
-      const rowHeight = Math.max(8, nameLines.length * 4.1 + 3)
-      if (y + rowHeight > bottom) {
-        addPayrollPage()
-        drawSection('TEAM MEMBER PAYROLL TABLE (CONTINUED)')
-        drawTeamTableHeader(true)
-      }
-      if (index % 2 === 0) {
-        doc.setFillColor(248, 251, 253)
-        doc.rect(14, y - 1, contentWidth, rowHeight, 'F')
-      }
-      const share = totalHours > 0 ? (member.hours / totalHours) * 100 : 0
-      doc.setTextColor(...ink)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.text(nameLines, 18, y + 4.2)
-      doc.text(String(member.reports), 112, y + 4.2, { align: 'right' })
-      doc.text(String(member.entries), 140, y + 4.2, { align: 'right' })
-      doc.setFont('helvetica', 'bold')
-      doc.text(member.hours.toFixed(2), 170, y + 4.2, { align: 'right' })
-      doc.setFont('helvetica', 'normal')
-      doc.text(share.toFixed(1) + '%', 198, y + 4.2, { align: 'right' })
-      doc.setDrawColor(225, 233, 239)
-      doc.line(14, y + rowHeight - 1, right, y + rowHeight - 1)
-      y += rowHeight
-    })
-
-    if (y + 11 > bottom) {
-      addPayrollPage()
-      drawSection('TEAM MEMBER PAYROLL TABLE (CONTINUED)')
-      drawTeamTableHeader(true)
-    }
-    doc.setFillColor(232, 246, 252)
-    doc.roundedRect(14, y, contentWidth, 9, 1.5, 1.5, 'F')
-    doc.setTextColor(...ink)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text('TOTAL', 18, y + 6)
-    doc.text(String(reports.length), 112, y + 6, { align: 'right' })
-    doc.text(String(entries.length), 140, y + 6, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', 170, y + 6, { align: 'right' })
-    doc.text(totalHours > 0 ? '100.0%' : '0.0%', 198, y + 6, { align: 'right' })
-    y += 14
-  }
-
-  drawSection('DAILY PAYROLL SUMMARY')
-  drawDailyTableHeader()
-  if (!days.length) {
-    writeWrapped('No submitted EOD reports were found in this date range.', { size: 8.5 })
-  } else {
-    days.forEach((day, index) => {
-      if (y + 8 > bottom) {
-        addPayrollPage()
-        drawSection('DAILY PAYROLL SUMMARY (CONTINUED)')
-        drawDailyTableHeader(true)
-      }
-      if (index % 2 === 0) {
-        doc.setFillColor(248, 251, 253)
-        doc.rect(14, y - 1, contentWidth, 8, 'F')
-      }
-      doc.setTextColor(...ink)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.text(day.date, 18, y + 4.4)
-      doc.text(String(day.reports), 106, y + 4.4, { align: 'right' })
-      doc.text(String(day.entries), 136, y + 4.4, { align: 'right' })
-      doc.setFont('helvetica', 'bold')
-      doc.text(day.hours.toFixed(2), 166, y + 4.4, { align: 'right' })
-      doc.setFont('helvetica', 'normal')
-      doc.text(day.reports ? (day.hours / day.reports).toFixed(2) + ' h' : '—', 198, y + 4.4, { align: 'right' })
-      doc.setDrawColor(225, 233, 239)
-      doc.line(14, y + 7, right, y + 7)
-      y += 8
-    })
-
-    if (y + 11 > bottom) {
-      addPayrollPage()
-      drawSection('DAILY PAYROLL SUMMARY (CONTINUED)')
-      drawDailyTableHeader(true)
-    }
-    doc.setFillColor(232, 246, 252)
-    doc.roundedRect(14, y, contentWidth, 9, 1.5, 1.5, 'F')
-    doc.setTextColor(...ink)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.text('TOTAL', 18, y + 6)
-    doc.text(String(reports.length), 106, y + 6, { align: 'right' })
-    doc.text(String(entries.length), 136, y + 6, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', 166, y + 6, { align: 'right' })
-    doc.text(reports.length ? averagePerReport.toFixed(2) + ' h' : '—', 198, y + 6, { align: 'right' })
-    y += 14
-  }
-
-  drawSection('DAILY TIME ENTRIES')
-  if (!entries.length) {
-    writeWrapped('No time entries were recorded in this date range.', { size: 8.5 })
-  } else {
-    const groupedByDate = new Map()
-    for (const entry of entries) {
-      if (!groupedByDate.has(entry.date)) groupedByDate.set(entry.date, [])
-      groupedByDate.get(entry.date).push(entry)
-    }
-
-    for (const [date, dayEntries] of groupedByDate) {
-      ensurePayrollSpace(16)
-      const dayHours = dayEntries.reduce((sum, entry) => sum + entry.hours, 0)
-      doc.setFillColor(20, 43, 62)
-      doc.roundedRect(14, y, contentWidth, 9, 1.5, 1.5, 'F')
-      doc.setTextColor(235, 245, 252)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
-      doc.text(date, 18, y + 6)
+  if (teamRows.length) {
+    drawSection('HOURS BY TEAM MEMBER')
+    const chartRows = teamRows.slice().sort((a, b) => b.hours - a.hours).slice(0, 8)
+    const maxHours = Math.max(...chartRows.map((item) => item.hours), 0)
+    chartRows.forEach((member) => {
+      ensureSpace(9)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(7.5)
-      doc.text(dayEntries.length + ' entries · ' + dayHours.toFixed(2) + ' h', right - 4, y + 6, { align: 'right' })
-      y += 12
-
-      for (const entry of dayEntries) {
-        ensurePayrollSpace(14)
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(8.5)
-        const userLines = doc.splitTextToSize(entry.user, 154)
-        doc.setTextColor(...ink)
-        doc.text(userLines, 18, y + 4)
-        doc.text(entry.hours.toFixed(2) + ' h', right - 4, y + 4, { align: 'right' })
-        y += Math.max(7, userLines.length * 4.2 + 2)
-
-        if (entry.submittedAt) {
-          const submittedDate = new Date(entry.submittedAt)
-          if (!Number.isNaN(submittedDate.getTime())) {
-            writeWrapped('EOD submitted · ' + submittedAtFormatter.format(submittedDate) + ' ET', {
-              x: 21, width: 177, size: 7, color: muted, lineHeight: 3.8,
-            })
-          }
-        }
-        if (entry.memo) {
-          writeWrapped(entry.memo, { x: 21, width: 177, size: 8, lineHeight: 4.1 })
-        } else {
-          writeWrapped('No work description provided.', { x: 21, width: 177, size: 8, color: muted, lineHeight: 4.1 })
-        }
-        doc.setDrawColor(225, 233, 239)
-        doc.line(18, y, right, y)
-        y += 4
+      doc.setTextColor(...dark)
+      doc.text(doc.splitTextToSize(member.name, 48).slice(0, 1), left + 1, y + 4.4)
+      const trackX = left + 53
+      const trackWidth = width - 76
+      doc.setFillColor(235, 240, 236)
+      doc.roundedRect(trackX, y + 1.5, trackWidth, 3.5, 1.5, 1.5, 'F')
+      if (maxHours > 0) {
+        doc.setFillColor(...green)
+        doc.roundedRect(trackX, y + 1.5, Math.max(0.8, trackWidth * member.hours / maxHours), 3.5, 1.5, 1.5, 'F')
       }
-      y += 2
+      doc.setFont('helvetica', 'bold')
+      doc.text(member.hours.toFixed(2) + ' h', right, y + 4.4, { align: 'right' })
+      y += 8
+    })
+    if (teamRows.length > chartRows.length) {
+      writeParagraph('Chart shows the eight highest totals. The table below includes all team members.', {
+        size: 7, color: gray, lineHeight: 3.6, gapAfter: 1,
+      })
     }
   }
 
-  const generatedAt = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' ET'
+  drawSection('TEAM MEMBER SUMMARY')
+  const teamColumns = [
+    { label: 'TEAM MEMBER', x: left, width: 88 },
+    { label: 'REPORTS', x: left + 88, width: 27, align: 'right' },
+    { label: 'ENTRIES', x: left + 115, width: 27, align: 'right' },
+    { label: 'HOURS', x: left + 142, width: 26, align: 'right' },
+    { label: 'SHARE', x: left + 168, width: 16, align: 'right' },
+  ]
+  drawTableHeader(teamColumns)
+  if (!teamRows.length) {
+    writeParagraph('No submitted EOD reports were found in this date range.', { size: 8.5 })
+  } else {
+    teamRows.forEach((member, index) => {
+      const nameLines = doc.splitTextToSize(member.name, 82)
+      const rowHeight = Math.max(8, nameLines.length * 4 + 2)
+      if (y + rowHeight + 1 > contentBottom) {
+        addPage()
+        drawSection('TEAM MEMBER SUMMARY (CONTINUED)')
+        drawTableHeader(teamColumns)
+      }
+      const share = totalHours ? (member.hours / totalHours * 100).toFixed(1) + '%' : '0.0%'
+      drawTableRow(teamColumns, [nameLines, String(member.reports), String(member.entries), member.hours.toFixed(2), share], rowHeight, index % 2 === 0, [3])
+    })
+    ensureSpace(11)
+    doc.setFillColor(...paleGreen)
+    doc.rect(left, y, width, 8.5, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...dark)
+    doc.text('TOTAL', left + 2, y + 5.5)
+    doc.text(String(reports.length), left + 88 + 25, y + 5.5, { align: 'right' })
+    doc.text(String(entries.length), left + 115 + 25, y + 5.5, { align: 'right' })
+    doc.text(totalHours.toFixed(2) + ' h', left + 142 + 24, y + 5.5, { align: 'right' })
+    doc.text(totalHours ? '100%' : '0%', right - 2, y + 5.5, { align: 'right' })
+    y += 12
+  }
+
+  drawSection('DAILY SUMMARY')
+  const dayColumns = [
+    { label: 'WORK DATE', x: left, width: 88 },
+    { label: 'EOD REPORTS', x: left + 88, width: 30, align: 'right' },
+    { label: 'ENTRIES', x: left + 118, width: 26, align: 'right' },
+    { label: 'HOURS', x: left + 144, width: 24, align: 'right' },
+    { label: 'AVG / REPORT', x: left + 168, width: 16, align: 'right' },
+  ]
+  drawTableHeader(dayColumns)
+  if (!dayRows.length) {
+    writeParagraph('No submitted EOD reports were found in this date range.', { size: 8.5 })
+  } else {
+    dayRows.forEach((day, index) => {
+      if (y + 9 > contentBottom) {
+        addPage()
+        drawSection('DAILY SUMMARY (CONTINUED)')
+        drawTableHeader(dayColumns)
+      }
+      const average = day.reports ? (day.hours / day.reports).toFixed(2) + ' h' : '0.00 h'
+      drawTableRow(dayColumns, [day.date, String(day.reports), String(day.entries), day.hours.toFixed(2), average], 8, index % 2 === 0, [3])
+    })
+    if (y + 11 > contentBottom) {
+      addPage()
+      drawSection('DAILY SUMMARY (CONTINUED)')
+      drawTableHeader(dayColumns)
+    }
+    doc.setFillColor(...paleGreen)
+    doc.rect(left, y, width, 8.5, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...dark)
+    doc.text('TOTAL', left + 2, y + 5.5)
+    doc.text(String(reports.length), left + 88 + 28, y + 5.5, { align: 'right' })
+    doc.text(String(entries.length), left + 118 + 24, y + 5.5, { align: 'right' })
+    doc.text(totalHours.toFixed(2) + ' h', left + 144 + 22, y + 5.5, { align: 'right' })
+    doc.text(reports.length ? averagePerReport.toFixed(2) + ' h' : '0.00 h', right - 2, y + 5.5, { align: 'right' })
+    y += 12
+  }
+
+  drawSection('DETAILED TIME ENTRIES')
+  if (!entries.length) {
+    writeParagraph('No time entries were recorded for this period.', { size: 8.5 })
+  } else {
+    let currentDate = ''
+    entries.forEach((entry) => {
+      const submittedDate = entry.submittedAt ? new Date(entry.submittedAt) : null
+      const submittedText = submittedDate && !Number.isNaN(submittedDate.getTime())
+        ? submittedAtFormatter.format(submittedDate) + ' ET'
+        : 'Submission time unavailable'
+      const memoLines = doc.splitTextToSize(entry.memo || 'No work description provided.', width - 4)
+      const rowHeight = 13 + memoLines.length * 3.8
+      if (y + Math.min(rowHeight, contentBottom - y + 1) > contentBottom) addPage()
+      if (currentDate !== entry.date) {
+        if (y + 13 > contentBottom) addPage()
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.5)
+        doc.setTextColor(...green)
+        doc.text(entry.date, left, y + 4)
+        const dateTotal = dayRows.find((day) => day.date === entry.date)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(...gray)
+        if (dateTotal) doc.text(dateTotal.hours.toFixed(2) + ' total hours', right, y + 4, { align: 'right' })
+        doc.setDrawColor(...line)
+        doc.line(left, y + 6.5, right, y + 6.5)
+        y += 9
+        currentDate = entry.date
+      }
+      if (y + 10 > contentBottom) addPage()
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...dark)
+      doc.text(entry.user, left + 2, y + 3.8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...gray)
+      doc.setFontSize(7)
+      doc.text(submittedText, right - 25, y + 3.8, { align: 'right' })
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...dark)
+      doc.setFontSize(8)
+      doc.text(entry.hours.toFixed(2) + ' h', right, y + 3.8, { align: 'right' })
+      y += 6.5
+      writeParagraph(entry.memo || 'No work description provided.', { x: left + 2, textWidth: width - 4, size: 8, color: gray, lineHeight: 3.8, gapAfter: 2 })
+      doc.setDrawColor(...line)
+      doc.line(left + 2, y, right, y)
+      y += 3
+    })
+  }
+
   const pageCount = doc.getNumberOfPages()
   for (let page = 1; page <= pageCount; page += 1) {
     doc.setPage(page)
-    doc.setFillColor(255, 255, 255)
-    doc.rect(0, 264, 216, 15, 'F')
-    doc.setDrawColor(220, 230, 237)
-    doc.line(14, 266, 202, 266)
-    doc.setTextColor(...muted)
+    doc.setDrawColor(...line)
+    doc.line(left, pageHeight - 13, right, pageHeight - 13)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
-    doc.text('Page ' + page + ' of ' + pageCount, 108, 271, { align: 'center' })
-    doc.setFontSize(6.5)
-    doc.text((company?.company_name || 'Tactical Pipeline') + ' · ' + (company?.company_email || ''), 14, 276)
-    doc.text('Generated ' + generatedAt, 202, 276, { align: 'right' })
+    doc.setTextColor(...gray)
+    doc.text((company?.company_name || 'Tactical Pipeline') + ' | EOD Payroll', left, pageHeight - 8)
+    doc.text('Page ' + page + ' of ' + pageCount, right, pageHeight - 8, { align: 'right' })
   }
 
   doc.save('TP-Ops-EOD-Payroll-' + startDate + '-to-' + endDate + '.pdf')
 }
+
 export async function downloadCommunicationsPdf({ notes, viewerName, company }) {
   const doc = await makeDocument({ title: 'TEAM COMMUNICATIONS', subtitle: `Exported for ${viewerName}`, company })
   let y = 48
