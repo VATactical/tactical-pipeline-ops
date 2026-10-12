@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { downloadEodPayrollPdf } from '../lib/reportExports'
+import { supabase } from '../lib/supabase'
 import LoadingScreen from '../components/LoadingScreen'
 import WeeklyHoursPanel from '../components/WeeklyHoursPanel'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -59,6 +60,9 @@ export default function EodReportsPage() {
   const [payrollEnd, setPayrollEnd] = useState(() => getDateInTimeZone(new Date(), timeZone))
   const [payrollReports, setPayrollReports] = useState([])
   const [payrollLoading, setPayrollLoading] = useState(false)
+  const [geminiConsent, setGeminiConsent] = useState(false)
+  const [geminiSummary, setGeminiSummary] = useState('')
+  const [geminiLoading, setGeminiLoading] = useState(false)
   const payrollRequestId = useRef(0)
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
@@ -185,6 +189,11 @@ export default function EodReportsPage() {
     refreshPayroll().catch((loadError) => setError(t(loadError.message)))
   }, [refreshPayroll, t])
 
+  useEffect(() => {
+    setGeminiConsent(false)
+    setGeminiSummary('')
+  }, [payrollStart, payrollEnd])
+
   const payrollHours = useMemo(() => payrollReports.reduce((sum, report) => sum + (report.time_entries || []).reduce((total, entry) => total + Number(entry.hours || 0), 0), 0), [payrollReports])
   const payrollMemberCount = useMemo(() => new Set(payrollReports.map((report) => report.user_id)).size, [payrollReports])
 
@@ -193,8 +202,24 @@ export default function EodReportsPage() {
     setError('')
     try {
       const company = await loadCompanySettings()
-      await downloadEodPayrollPdf({ reports: payrollReports, startDate: payrollStart, endDate: payrollEnd, company })
+      await downloadEodPayrollPdf({ reports: payrollReports, startDate: payrollStart, endDate: payrollEnd, company, geminiSummary })
     } catch (exportError) { setError(t(exportError.message)) }
+  }
+
+  const generateGeminiSummary = async () => {
+    if (!canReviewAll || !geminiConsent || !payrollReports.length || payrollStart > payrollEnd) return
+    setError(''); setMessage(''); setGeminiLoading(true)
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('eod-payroll-integrations', {
+        body: { action: 'summarize', startDate: payrollStart, endDate: payrollEnd },
+      })
+      if (invokeError) throw invokeError
+      if (data?.error) throw new Error(data.error)
+      if (!data?.summary) throw new Error('Gemini devolvió un resumen vacío.')
+      setGeminiSummary(data.summary)
+      setMessage(t('Resumen de Gemini generado.'))
+    } catch (summaryError) { setError(t(summaryError.message)) }
+    finally { setGeminiLoading(false) }
   }
 
   const groupedReports = useMemo(() => {
@@ -344,6 +369,11 @@ export default function EodReportsPage() {
     {canReviewAll && <section className="content-card eod-payroll-summary">
       <div className="section-heading"><div><p className="eyebrow">{t('Resumen para nómina')}</p><h3>{t('Reportes EOD por rango de fechas')}</h3><p className="muted">{t('Selecciona el periodo. Las horas se suman desde los registros de tiempo de cada reporte enviado.')}</p></div><button className="primary-button compact-button" type="button" onClick={exportPayroll} disabled={payrollLoading || !payrollReports.length || payrollStart > payrollEnd}>{t('Descargar resumen PDF')}</button></div>
       <div className="eod-payroll-filters"><label>{t('Desde')}<input type="date" value={payrollStart} max={payrollEnd || currentReportDate} onChange={(event) => setPayrollStart(event.target.value)} /></label><label>{t('Hasta')}<input type="date" value={payrollEnd} min={payrollStart} max={currentReportDate} onChange={(event) => setPayrollEnd(event.target.value)} /></label></div>
+      <div className="eod-payroll-ai-controls">
+        <label className="eod-payroll-ai-consent"><input type="checkbox" checked={geminiConsent} onChange={(event) => setGeminiConsent(event.target.checked)} /><span>{t('Autorizo enviar a Gemini las fechas, horas y descripciones del rango seleccionado. Se excluyen los nombres de empleados; las descripciones podrían mencionar clientes.')}</span></label>
+        <button className="secondary-button" type="button" onClick={generateGeminiSummary} disabled={!geminiConsent || geminiLoading || payrollLoading || !payrollReports.length}>{t(geminiLoading ? 'Generando con Gemini…' : geminiSummary ? 'Actualizar resumen con Gemini' : 'Generar resumen con Gemini')}</button>
+      </div>
+      {geminiSummary && <div className="eod-payroll-ai-summary"><strong>{t('Resumen de Gemini')}</strong><p className="formatted-text">{geminiSummary}</p></div>}
       {payrollStart > payrollEnd && <p className="form-error" role="alert">{t('La fecha inicial debe ser anterior o igual a la fecha final.')}</p>}
       <div className="metric-grid eod-payroll-metrics"><article className="metric-card blue"><span>{t('Horas reportadas')}</span><strong>{payrollHours.toFixed(2)} h</strong><small>{payrollStart} — {payrollEnd}</small></article><article className="metric-card green"><span>{t('Reportes enviados')}</span><strong>{payrollReports.length}</strong><small>{t('Incluidos en el periodo')}</small></article><article className="metric-card amber"><span>{t('Integrantes con reporte')}</span><strong>{payrollMemberCount}</strong><small>{t('Con horas registradas')}</small></article></div>
       {payrollLoading && <p className="muted">{t('Cargando reportes del periodo…')}</p>}{!payrollLoading && !payrollReports.length && payrollStart <= payrollEnd && <p className="muted">{t('No hay reportes EOD enviados en este periodo.')}</p>}
