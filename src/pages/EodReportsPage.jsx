@@ -63,6 +63,7 @@ export default function EodReportsPage() {
   const [geminiConsent, setGeminiConsent] = useState(false)
   const [geminiSummary, setGeminiSummary] = useState('')
   const [geminiLoading, setGeminiLoading] = useState(false)
+  const geminiRequestId = useRef(0)
   const payrollRequestId = useRef(0)
   const [completedTasks, setCompletedTasks] = useState([])
   const [selectedTaskIds, setSelectedTaskIds] = useState([])
@@ -190,8 +191,10 @@ export default function EodReportsPage() {
   }, [refreshPayroll, t])
 
   useEffect(() => {
+    geminiRequestId.current += 1
     setGeminiConsent(false)
     setGeminiSummary('')
+    setGeminiLoading(false)
   }, [payrollStart, payrollEnd])
 
   const payrollHours = useMemo(() => payrollReports.reduce((sum, report) => sum + (report.time_entries || []).reduce((total, entry) => total + Number(entry.hours || 0), 0), 0), [payrollReports])
@@ -208,6 +211,7 @@ export default function EodReportsPage() {
 
   const generateGeminiSummary = async () => {
     if (!canReviewAll || !geminiConsent || !payrollReports.length || payrollStart > payrollEnd) return
+    const requestId = ++geminiRequestId.current
     setError(''); setMessage(''); setGeminiLoading(true)
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('eod-payroll-integrations', {
@@ -216,10 +220,12 @@ export default function EodReportsPage() {
       if (invokeError) throw invokeError
       if (data?.error) throw new Error(data.error)
       if (!data?.summary) throw new Error('Gemini devolvió un resumen vacío.')
+      if (requestId !== geminiRequestId.current) return
       setGeminiSummary(data.summary)
       setMessage(t('Resumen de Gemini generado.'))
-    } catch (summaryError) { setError(t(summaryError.message)) }
-    finally { setGeminiLoading(false) }
+    } catch (summaryError) {
+      if (requestId === geminiRequestId.current) setError(t(summaryError.message))
+    } finally { if (requestId === geminiRequestId.current) setGeminiLoading(false) }
   }
 
   const groupedReports = useMemo(() => {
