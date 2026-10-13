@@ -23,7 +23,7 @@ const sections = [
   ] },
   { title: 'Infraestructura', fields: [
     ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
-    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Correo de Google Business Profile · formulario', 'gbp_email', 'email'], ['Enlace GBP existente', 'gbp_link', 'url'],
+    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Acceso a Google Business Profile confirmado', 'gbp_access_confirmed', 'boolean'], ['Correo de Google Business Profile · formulario', 'gbp_email', 'email'], ['Enlace GBP existente', 'gbp_link', 'url'],
     ['Activos de marca / Drive · formulario', 'available_assets'],
   ] },
   { title: 'Cuándo · Cronología', fields: [
@@ -47,7 +47,7 @@ const sections = [
     ['Onboarding completado', 'onboarding_completed', 'boolean'], ['Acceso GHL confirmado', 'ghl_access_confirmed', 'boolean'],
     ['Acceso Facebook confirmado', 'facebook_access_confirmed', 'boolean'], ['Acceso a cuenta publicitaria confirmado', 'ad_account_access_confirmed', 'boolean'],
     ['Acceso al pixel confirmado', 'pixel_access_confirmed', 'boolean'], ['Acceso al dominio confirmado', 'domain_access_confirmed', 'boolean'],
-    ['Método de pago confirmado', 'payment_method_confirmed', 'boolean'], ['Persona / KYC completado', 'kyc_completed', 'boolean'],
+    ['Método de pago agregado a GHL', 'payment_method_confirmed', 'boolean'], ['Persona / KYC completado', 'kyc_completed', 'boolean'],
     ['A2P enviado', 'a2p_submitted', 'boolean'], ['Funnel activo', 'funnel_live', 'boolean'], ['Campaña Meta activa', 'meta_campaign_live', 'boolean'],
   ] },
 ]
