@@ -1487,3 +1487,20 @@ html[data-theme='light'] .client-integration-summary-item > strong.paused { back
 @media (max-width: 800px) {
   .client-integration-summary-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Dossier verification: readable, separated field rows */
+.client-ops-panel { display: grid; gap: 1.1rem; }
+.dossier-verification-list { display: grid; gap: .65rem; }
+.dossier-verification-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(155px, 190px); gap: .85rem; align-items: start; padding: .85rem 0; border-top: 1px solid #1d3043; }
+.dossier-verification-row > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: .38rem; min-width: 0; }
+.dossier-verification-row strong { line-height: 1.35; }
+.dossier-verification-row small { display: block; color: #8299b0; line-height: 1.4; overflow-wrap: anywhere; }
+.dossier-verification-row input,
+.dossier-verification-row select { width: 100%; min-width: 0; margin: 0; }
+html[data-theme='light'] .dossier-verification-row { border-color: #dce6ee; }
+html[data-theme='light'] .dossier-verification-row small { color: #61768b; }
+@media (max-width: 700px) {
+  .dossier-verification-row { grid-template-columns: 1fr; gap: .55rem; }
+  .dossier-verification-row select { max-width: 240px; }
+}
