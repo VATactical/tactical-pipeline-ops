@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
+import { useLanguage } from '../i18n/LanguageContext'
 import { createClient } from '../services/opsService'
 
 const requiredFields = ['legal_name', 'owner_name', 'phone', 'contact_phone', 'email', 'address', 'target_zip_codes', 'legal_business_info', 'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date', 'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info', 'retell_agent_id', 'make_scenario_link', 'slack_channel_link']
@@ -10,8 +11,23 @@ const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE', 'ADS PAUSE
 const naturalCode = (value) => Number(String(value).match(/\d+/)?.[0] || 0)
 const dossierComplete = (client) => requiredFields.every((key) => client[key] && !/pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(client[key])))
 
+function ClientIntegrationIndicators({ client }) {
+  const { t } = useLanguage()
+  const gbpLabel = client.gbp_access_confirmed === true ? 'Acceso confirmado' : client.gbp_access_confirmed === false ? 'Sin acceso' : 'Pendiente'
+  const gbpTone = client.gbp_access_confirmed === true ? 'positive' : client.gbp_access_confirmed === false ? 'negative' : 'pending'
+  const paymentAdded = client.payment_method_confirmed === true
+  const googleAdsStatus = client.google_ads_status || 'Pendiente'
+  const googleAdsTone = googleAdsStatus === 'Activa' ? 'positive' : googleAdsStatus === 'Pausada' ? 'paused' : googleAdsStatus === 'Requiere atención' ? 'attention' : 'pending'
+  return <div className="client-integration-indicators" aria-label={t('Accesos e integraciones')}>
+    <span className={`integration-pill ${gbpTone}`} title={`${t('Acceso GBP')}: ${t(gbpLabel)}`}><b>GBP</b><span>{t(gbpLabel)}</span></span>
+    <span className={`integration-pill ${paymentAdded ? 'positive' : 'pending'}`} title={`${t('Pago GHL')}: ${t(paymentAdded ? 'Agregado' : 'Pendiente')}`}><b>GHL</b><span>{t('Pago GHL')}: {t(paymentAdded ? 'Agregado' : 'Pendiente')}</span></span>
+    <span className={`integration-pill ${googleAdsTone}`} title={`${t('Google Ads')}: ${t(googleAdsStatus)}`}><b>Ads</b><span>{t(googleAdsStatus)}</span></span>
+  </div>
+}
+
 export default function ClientsPage() {
   const { profile } = useAuth()
+  const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clients, setClients] = useState([])
   const [blockedIds, setBlockedIds] = useState(new Set())
@@ -98,7 +114,7 @@ export default function ClientsPage() {
       </div>
       <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span><div className="view-toggle"><button type="button" className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}>Tarjetas</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
     </section>
-    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{viewMode === 'list' && <div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>Tareas</span><span /></div>}{filtered.map((client) => {
+    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{viewMode === 'list' && <div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>{t('Accesos e integraciones')}</span><span>Tareas</span><span /></div>}{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
       const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
       const clientSteps = steps.filter((step) => step.client_id === client.id)
@@ -108,12 +124,14 @@ export default function ClientsPage() {
         <span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>
         <div className="client-list-progress"><strong>{progress}%</strong><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <ClientIntegrationIndicators client={client} />
         <span className="client-list-tasks">{clientTasks.length} tareas</span><span className="row-arrow">→</span>
       </Link>
       return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p>
         <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <ClientIntegrationIndicators client={client} />
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
         <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && !client.archived && <span className="blocked">Bloqueo abierto</span>}</div>
         <span className="card-link">Ver expediente →</span>
