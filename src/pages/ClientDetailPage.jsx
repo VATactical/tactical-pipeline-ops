@@ -436,8 +436,8 @@ export default function ClientDetailPage() {
 
   return <div className="page-stack client-dossier-page" data-client-tab={activeTab}>
     <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {t(client.archived ? 'Clientes archivados' : 'Todos los clientes')}</Link>
-    <div className="client-sticky-shell">
     <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
+    <div className="client-sticky-shell">
     <nav className="client-detail-tabs" aria-label={t('Secciones del cliente')}>{tabs.map(([key, label]) => <button key={key} type="button" className={activeTab === key ? 'active' : ''} aria-current={activeTab === key ? 'page' : undefined} onClick={() => selectTab(key)}>{t(label)}</button>)}</nav>
     <form className="dossier-search compact-sticky-search client-tab-section tab-dossier" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
     </div>
@@ -483,6 +483,21 @@ export default function ClientDetailPage() {
         </section>
       })}
     </div>
+
+    <section className="content-card client-integration-summary client-tab-section tab-dossier" aria-labelledby="client-integration-summary-title">
+      <div className="section-heading"><div><p className="eyebrow">{t('Accesos e integraciones')}</p><h3 id="client-integration-summary-title">{t('Estado de plataformas')}</h3></div><span className="muted">{t('Actualizado en el dossier')}</span></div>
+      <div className="client-integration-summary-grid">
+        {[
+          { key: 'gbp', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative', target: 'dossier-section-3', action: t('Ver en infraestructura') },
+          { key: 'ghl', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative', target: 'dossier-section-8', action: t('Ver datos de finalización') },
+          { key: 'ads', label: t('Google Ads'), value: t(client.google_ads_status || 'Pendiente'), state: String(client.google_ads_status || '').toLowerCase().includes('activ') ? 'positive' : String(client.google_ads_status || '').toLowerCase().includes('paus') ? 'paused' : String(client.google_ads_status || '').toLowerCase().includes('atención') ? 'attention' : 'pending', target: null, action: t('Ver estado de Ads') },
+        ].map((item) => <article className="client-integration-summary-item" key={item.key}>
+          <span>{item.label}</span>
+          <strong className={item.state}>{item.value}</strong>
+          <button type="button" className="text-button" onClick={() => item.target ? document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : selectTab('ads')}>{item.action} →</button>
+        </article>)}
+      </div>
+    </section>
 
     <section className="content-card client-tab-section tab-notes">
       <div className="section-heading"><div><p className="eyebrow">{t('Notas del cliente')}</p><h3>{t('Contexto compartido')}</h3></div><span className="muted">{notes.length} {t('notas')}</span></div>
