@@ -1466,7 +1466,7 @@ html[data-theme='light'] .weekly-day-card p small b {
 .dossier-section .detail-item > strong,
 .dossier-section .detail-item > a { display: block; margin-top: .15rem; line-height: 1.5; overflow-wrap: anywhere; }
 .dossier-section { scroll-margin-top: 7.5rem; }
-.client-integration-summary { display: grid; gap: .8rem; }
+.client-dossier-page[data-client-tab="dossier"] .client-integration-summary { display: grid; gap: .8rem; }
 .client-integration-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
 .client-integration-summary-item { display: grid; align-content: start; gap: .6rem; min-width: 0; padding: 1rem; border: 1px solid #294158; border-radius: 13px; background: #091522; }
 .client-integration-summary-item > span { color: #7890a8; font-size: .72rem; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
