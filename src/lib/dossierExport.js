@@ -56,8 +56,6 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Current Lifecycle Status: ${pending(client.status)}
 • A2P Status: ${pending(client.a2p_status)}
 • Meta Ads Status: ${pending(client.meta_status)}
-• Last Dossier Update: ${dateTime(lastUpdatedAt)}
-• Updated By: ${pending(updatedBy)}${copiedAt ? '\n• Dossier Copied for Google Docs At: ' + dateTime(copiedAt) : ''}
 
 [WHERE — SYSTEM LINKS & ACCESS]
 
@@ -84,6 +82,10 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Funnel Live: ${yesNo(client.funnel_live)}
 • Meta Campaign Live: ${yesNo(client.meta_campaign_live)}
 
+==================================================
+[DOCUMENT FOOTER]
+Last updated: ${dateTime(lastUpdatedAt)}
+Updated by: ${pending(updatedBy)}${copiedAt ? '\nCopied for Google Docs: ' + dateTime(copiedAt) : ''}
 ==================================================`
 }
 

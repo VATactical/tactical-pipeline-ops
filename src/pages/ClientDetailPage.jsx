@@ -456,7 +456,6 @@ export default function ClientDetailPage() {
       <section className={`content-card launch-deadline compact-summary-card ${launchOverdue ? 'overdue' : ''}`}><div><p className="eyebrow">Deadline de lanzamiento ADS</p><h3>{client.target_launch_date || 'Sin fecha definida'}</h3></div><span>{client.status === 'CRUISE CONTROL' ? t('Cruise Control') : client.status === 'ADS LIVE' ? 'Campaña activa' : client.status === 'ADS PAUSED' ? 'Campaña pausada' : launchOverdue ? 'Lanzamiento atrasado' : 'Pendiente de lanzamiento'}</span></section>
       <section className="content-card docs-sync-status compact-summary-card compact-last-copy-card"><div><span>{t('Última actualización del dossier')}</span><strong>{formatDossierDateTime(dossierUpdatedAt)}</strong><small>{dossierUpdatedBy}</small></div><div><span>Última copia</span><strong>{client.dossier_copied_at ? formatDossierDateTime(client.dossier_copied_at) : t('Todavía no se ha copiado')}</strong></div><div><span>Google Docs actualizado</span><strong>{client.google_docs_updated_at ? formatDossierDateTime(client.google_docs_updated_at) : t('Pendiente')}</strong></div></section>
     </div>
-    <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
     {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary client-tab-section tab-ads"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p data-no-translate>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? t(`Pausada el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}`) : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
     {adStatusEvents.length > 0 && <section className="content-card client-tab-section tab-ads"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p data-no-translate>{event.note}</p><small><span data-no-translate>{event.actor_name}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
     <div className="client-tab-section tab-ads">
@@ -498,6 +497,8 @@ export default function ClientDetailPage() {
         </article>)}
       </div>
     </section>
+
+    <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
 
     <section className="content-card client-tab-section tab-notes">
       <div className="section-heading"><div><p className="eyebrow">{t('Notas del cliente')}</p><h3>{t('Contexto compartido')}</h3></div><span className="muted">{notes.length} {t('notas')}</span></div>
