@@ -1581,3 +1581,59 @@ html[data-theme='light'] .eod-payroll-period-options button.active {
   .eod-payroll-period-options button { flex: 1 1 auto; }
   .eod-payroll-filters .text-button { text-align: left; }
 }
+
+
+/* EOD history: compact summaries with review details in the report dialog */
+.eod-report-center { display: grid; gap: 1rem; }
+.eod-report-center > .section-heading,
+.eod-report-center > .eod-report-filters,
+.eod-report-center > .report-day-list { margin: 0; }
+.eod-report-filters { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; }
+.eod-report-filters .view-toggle { margin-left: auto; }
+.report-day-list { display: grid; gap: 1.15rem; }
+.report-day-group { gap: .65rem; }
+.report-day-heading { align-items: center; padding: 0 .15rem; }
+.report-day-heading h4 { font-size: .98rem; }
+.report-day-heading span { white-space: nowrap; }
+.report-user-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: .65rem; }
+.eod-review-card.report-collapsed { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .55rem .85rem; padding: .8rem; }
+.eod-review-card.report-collapsed .eod-report-title { grid-column: 1 / -1; margin: 0; }
+.eod-report-title { align-items: flex-start; }
+.eod-report-title > div { display: grid; gap: .15rem; min-width: 0; }
+.eod-report-title strong { overflow-wrap: anywhere; }
+.eod-report-title small { line-height: 1.4; }
+.eod-review-status { flex: 0 0 auto; }
+.eod-compact-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .8rem; min-width: 0; }
+.eod-compact-summary > span { display: inline-flex; align-items: baseline; gap: .25rem; color: #9db2c7; font-size: .76rem; }
+.eod-compact-summary > span strong { color: #e0edf7; font-size: .8rem; }
+.eod-late-badge { padding: .2rem .45rem; border: 1px solid #7d5c22; border-radius: 999px; background: #352a14; color: #f2c766 !important; font-size: .68rem !important; font-weight: 750; }
+.eod-review-card.report-collapsed .report-open-button { grid-column: 2; grid-row: 2; align-self: center; margin: 0; white-space: nowrap; }
+.eod-modal-review { display: grid; gap: .7rem; margin-top: 1.25rem; padding: 1rem; border: 1px solid #294158; border-radius: 12px; background: #0b1a28; }
+.eod-modal-review h3 { margin: 0; }
+.eod-modal-review .eod-review-actions { margin: 0; padding: 0 0 .75rem; border-bottom: 1px solid #294158; }
+.eod-modal-review .eod-comment-form { margin: 0; }
+.eod-review-history { display: grid; gap: .5rem; margin-top: 1rem; padding: .9rem 1rem; border: 1px solid #294158; border-radius: 11px; background: #0a1927; }
+.eod-review-history > strong { margin-bottom: .2rem; }
+.eod-review-history article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: .75rem; padding-top: .45rem; border-top: 1px solid #1d3043; }
+.eod-review-history b { overflow-wrap: anywhere; }
+.eod-review-history span { color: #83cde9; font-size: .8rem; font-weight: 700; }
+.eod-review-history small { color: #8299b0; white-space: nowrap; }
+.eod-comment-list { margin-top: 1rem; }
+html[data-theme='light'] .eod-compact-summary > span { color: #60758a; }
+html[data-theme='light'] .eod-compact-summary > span strong { color: #243b50; }
+html[data-theme='light'] .eod-late-badge { border-color: #e4cc87; background: #fff7df; color: #775600 !important; }
+html[data-theme='light'] .eod-modal-review,
+html[data-theme='light'] .eod-review-history { border-color: #d5e1ea; background: #f8fbfd; }
+html[data-theme='light'] .eod-modal-review .eod-review-actions,
+html[data-theme='light'] .eod-review-history article { border-color: #dce6ee; }
+html[data-theme='light'] .eod-review-history span { color: #087cae; }
+html[data-theme='light'] .eod-review-history small { color: #60758a; }
+@media (max-width: 700px) {
+  .eod-report-filters { align-items: stretch; }
+  .eod-report-filters .view-toggle { margin-left: 0; }
+  .eod-report-filters .view-toggle button { flex: 1 1 auto; }
+  .eod-review-card.report-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .eod-review-card.report-collapsed .report-open-button { grid-column: 1; grid-row: auto; width: 100%; }
+  .eod-review-history article { grid-template-columns: minmax(0, 1fr) auto; }
+  .eod-review-history small { grid-column: 1 / -1; }
+}
