@@ -27,6 +27,24 @@ function reportPreview(value, limit = 200) {
   return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text
 }
 
+function decimalHoursToInputs(value) {
+  const totalMinutes = Math.max(0, Math.round(Number(value || 0) * 60))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return { hours: hours ? String(hours) : '', minutes: minutes ? String(minutes) : '' }
+}
+
+function normalizeHoursInput(section) {
+  if (Object.prototype.hasOwnProperty.call(section || {}, 'minutes')) {
+    return { ...section, hours: String(section.hours ?? ''), minutes: String(section.minutes ?? '') }
+  }
+  return { ...section, ...decimalHoursToInputs(section?.hours) }
+}
+
+function sectionDurationHours(section) {
+  return (Number(section.hours) || 0) + (Number(section.minutes) || 0) / 60
+}
+
 function normalizeManualSection(item) {
   return typeof item === 'string'
     ? { title: item, description: '', hours: null }
@@ -87,7 +105,7 @@ export default function EodReportsPage() {
   const [directory, setDirectory] = useState([])
   const [timeEntries, setTimeEntries] = useState([])
   const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), timeZone))
-  const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '' }])
+  const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '', minutes: '' }])
   const [notes, setNotes] = useState('')
   const [lateReason, setLateReason] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
@@ -124,7 +142,7 @@ export default function EodReportsPage() {
           ? existing.manual_tasks.map((item, index) => ({
             title: typeof item === 'string' ? item : item.title || '',
             description: typeof item === 'string' ? existingEntries[index]?.memo || '' : item.description || existingEntries[index]?.memo || '',
-            hours: String(typeof item === 'object' && item.hours != null ? item.hours : existingEntries[index]?.hours || ''),
+            ...decimalHoursToInputs(typeof item === 'object' && item.hours != null ? item.hours : existingEntries[index]?.hours || ''),
           }))
           : [{ title: '', description: '', hours: '' }])
         setNotes(existing.notes || '')
@@ -133,7 +151,9 @@ export default function EodReportsPage() {
         let savedDraft = null
         try { savedDraft = draftKey ? JSON.parse(window.localStorage.getItem(draftKey) || 'null') : null } catch { savedDraft = null }
         setSelectedTaskIds(savedDraft?.selectedTaskIds?.filter((id) => data.completedTasks.some((task) => task.id === id)) || data.completedTasks.map((task) => task.id))
-        setManualSections(savedDraft?.manualSections?.length ? savedDraft.manualSections : [{ title: '', description: '', hours: '' }])
+        setManualSections(savedDraft?.manualSections?.length
+          ? savedDraft.manualSections.map(normalizeHoursInput)
+          : [{ title: '', description: '', hours: '', minutes: '' }])
         setNotes(savedDraft?.notes || '')
         setLateReason(savedDraft?.lateReason || '')
       }
@@ -285,7 +305,7 @@ export default function EodReportsPage() {
 
   const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
-  const totalManualHours = useMemo(() => manualSections.reduce((sum, section) => sum + Number(section.hours || 0), 0), [manualSections])
+  const totalManualHours = useMemo(() => manualSections.reduce((sum, section) => sum + sectionDurationHours(section), 0), [manualSections])
 
   const runAction = async (key, action, success) => {
     setActionKey(key); setError(''); setMessage('')
@@ -335,8 +355,8 @@ export default function EodReportsPage() {
 
   const submit = async (event) => {
     event.preventDefault(); setError(''); setMessage('')
-    const activeSections = manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours)
-    if (activeSections.some((section) => !section.title.trim() || !section.description.trim() || !(Number(section.hours) > 0))) {
+    const activeSections = manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes)
+    if (activeSections.some((section) => !section.title.trim() || !section.description.trim() || !(sectionDurationHours(section) > 0) || !Number.isInteger(Number(section.hours || 0)) || Number(section.hours || 0) < 0 || Number(section.hours || 0) > 24 || !Number.isInteger(Number(section.minutes || 0)) || Number(section.minutes || 0) < 0 || Number(section.minutes || 0) > 59 || (Number(section.hours || 0) === 24 && Number(section.minutes || 0) > 0))) {
       setError(t('Cada sección necesita título, descripción y horas.'))
       return
     }
@@ -356,9 +376,13 @@ export default function EodReportsPage() {
         periodStart: cycle.start.toISOString(),
         periodEnd: cycle.end.toISOString(),
         completedTasks: selectedTasks,
-        manualTasks: manualSections,
-        timeEntries: manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours).map((section) => ({
-          hours: section.hours,
+        manualTasks: activeSections.map((section) => ({
+          title: section.title,
+          description: section.description,
+          hours: sectionDurationHours(section),
+        })),
+        timeEntries: activeSections.map((section) => ({
+          hours: sectionDurationHours(section),
           memo: `${section.title.trim()}${section.description.trim() ? `: ${section.description.trim()}` : ''}`,
         })),
         notes,
@@ -396,8 +420,8 @@ export default function EodReportsPage() {
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
       <div className="section-heading"><div><p className="eyebrow">{t('Checklist de actividades')}</p><h3>{selectedTaskIds.length} {t('de')} {completedTasks.length} {t('tareas seleccionadas')}</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><div className="eod-report-date"><label>{t('Fecha del reporte')}<input type="date" value={reportDate} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength={1000} rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</div>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? t('Desmarcar todas') : t('Seleccionar todas')}</button>}</div>
       <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
-      <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '' }])}>+ {t('Agregar sección')}</button></div>
-      <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas de esta sección')}<input type="number" min="0.01" max="24" step="0.01" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0.00" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
+      <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '', minutes: '' }])}>+ {t('Agregar sección')}</button></div>
+      <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas')}<input type="number" min="0" max="24" step="1" inputMode="numeric" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0" /></label><label>{t('Minutos')}<input type="number" min="0" max="59" step="1" inputMode="numeric" value={section.minutes} onChange={(event) => changeSection(index, 'minutes', event.target.value)} placeholder="0" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
       <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{totalManualHours.toFixed(2)} h</strong></div>
       <label>{t('Resumen general del día')}<textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('Resultados generales, bloqueos o contexto para supervisión…')} /></label>
       <div className="eod-submit-row"><span>{selectedTaskIds.length + manualSections.filter((section) => section.title.trim()).length} {t('actividades serán enviadas.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
