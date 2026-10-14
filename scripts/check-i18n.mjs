@@ -91,7 +91,7 @@ const clientDetailSource = readFileSync('src/pages/ClientDetailPage.jsx', 'utf8'
 const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.ts', 'utf8')
 const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('client_ops_lifecycle_followups')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
 if (clientOpsSource.includes('client_field_verifications')) violations.push('Client operations must not render the confusing per-field verification panel.')
-if (!clientOpsSource.includes('client_interactions') || !clientOpsSource.includes('next_follow_up_at')) violations.push('Client contact logs must support an owner and next follow-up.')
+if (clientOpsSource.includes('client_interactions') || clientOpsSource.includes('client-contact-summary') || !clientOpsSource.includes('ghl_form_imports')) violations.push('Client operations must omit the manual contact log while retaining onboarding sync history.')
 if (!clientDetailSource.includes('savePlatformStatus') || !['gbp_access_confirmed', 'google_ads_status', 'ghl_access_confirmed', 'payment_method_confirmed'].every((field) => clientDetailSource.includes(field))) violations.push('Client dossier must expose editable GBP, Google Ads, GHL, and payment statuses.')
 if (!onboardingSource.includes('target_zip_codes: value(payload, "target_zip_codes"') || !onboardingSource.includes('markets: value(payload, "service_areas"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
 if (!onboardingSource.includes('attempt_count') || !onboardingSource.includes('sync_stage')) violations.push('Onboarding sync must keep retry and stage details.')
