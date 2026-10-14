@@ -1637,3 +1637,48 @@ html[data-theme='light'] .eod-review-history small { color: #60758a; }
   .eod-review-history article { grid-template-columns: minmax(0, 1fr) auto; }
   .eod-review-history small { grid-column: 1 / -1; }
 }
+
+
+/* EOD report history: use the available workspace without hover motion or card shadows */
+.eod-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.eod-page .eod-report-center {
+  min-width: 0;
+  padding: clamp(.9rem, 1.5vw, 1.4rem);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.eod-page .eod-report-filters {
+  box-shadow: none;
+}
+.eod-page .eod-review-card,
+.eod-page .report-card {
+  box-shadow: none;
+  transition: none;
+}
+.eod-page .eod-review-card:hover,
+.eod-page .report-card:hover {
+  box-shadow: none;
+  transform: none;
+}
+.eod-page .report-user-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: .7rem;
+}
+.eod-page .eod-review-card.report-collapsed {
+  border-radius: 8px;
+}
+html[data-theme='light'] .eod-page .eod-report-center {
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  .eod-page .eod-report-center {
+    padding: .85rem;
+  }
+  .eod-page .report-user-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -396,7 +396,7 @@ export default function EodReportsPage() {
   }
 
   if (loading) return <LoadingScreen />
-  return <div className="page-stack">
+  return <div className="page-stack eod-page">
     <header className="page-header"><div><p className="eyebrow">EOD Reports</p><h2>{canReviewAll ? t('Centro de revisión diaria') : t('Informe de fin de día')}</h2><p className="muted">{canReviewAll ? t('Revisa el trabajo del equipo, registra seguimiento y conviértelo en tareas.') : t('Envía un solo reporte dentro de TP OPS al finalizar tu turno. Kevin lo revisa cada mañana de 9:00 a 10:00 a. m.')}</p></div>{canSubmit && <button className="primary-button compact-button eod-prepare-button" type="button" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()}>{composerOpen ? t('Cerrar reporte') : t('Preparar reporte')}</button>}</header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
 
