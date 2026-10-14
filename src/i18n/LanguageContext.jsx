@@ -6,6 +6,12 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  'Mes': 'Month',
+  'Periodo quincenal': 'Semi-monthly period',
+  'Del 1 al 13': 'Days 1–13',
+  'Del 14 al fin de mes': 'Days 14–month-end',
+  'Restablecer quincena': 'Reset to pay period',
+  'Mostrando reportes del periodo seleccionado': 'Showing reports for the selected period',
   'Autorizo enviar a Gemini las fechas, horas y descripciones del rango seleccionado. Se excluyen los nombres de empleados; las descripciones podrían mencionar clientes.': 'I authorize sending the selected period dates, hours, and work descriptions to Gemini. Employee names are excluded; descriptions may mention clients.',
   'Generando con Gemini…': 'Generating with Gemini…',
   'Actualizar resumen con Gemini': 'Update Gemini summary',
