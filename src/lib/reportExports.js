@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { resolveCompanyLogo } from '../services/companyService'
+import { formatHoursAndMinutes } from '../utils/timeDuration'
 
 const cyan = [33, 198, 244]
 const navy = [7, 20, 34]
@@ -64,14 +65,14 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
   let y = 48
   y = paragraph(doc, `Team member: ${userLabel}`, y, { bold: true, size: 11 })
   const total = entries.reduce((sum, item) => sum + Number(item.hours || 0), 0)
-  y = paragraph(doc, `Total hours: ${total.toFixed(2)}`, y, { bold: true, size: 13 })
+  y = paragraph(doc, `Total hours: ${formatHoursAndMinutes(total)}`, y, { bold: true, size: 13 })
   y = sectionTitle(doc, 'MANUAL TIME ENTRIES', y + 3)
   if (!entries.length) y = paragraph(doc, 'No time entries were recorded for this week.', y)
   entries.forEach((entry) => {
     y = ensureSpace(doc, y, 16)
     doc.setDrawColor(210, 222, 232); doc.line(18, y, 198, y)
     y += 6
-    y = paragraph(doc, `${entry.work_date} · ${Number(entry.hours).toFixed(2)} hours · ${entry.profiles?.full_name || userLabel}`, y, { bold: true })
+    y = paragraph(doc, `${entry.work_date} · ${formatHoursAndMinutes(Number(entry.hours))} · ${entry.profiles?.full_name || userLabel}`, y, { bold: true })
     y = paragraph(doc, entry.memo, y)
   })
   doc.save(`TP-Ops-Hours-${cleanFileName(userLabel)}-${weekStart}.pdf`)
@@ -292,7 +293,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
 
   drawPageHeader()
   drawMetricCards([
-    { label: 'TOTAL HOURS', value: totalHours.toFixed(2) + ' h' },
+    { label: 'TOTAL HOURS', value: formatHoursAndMinutes(totalHours) },
     { label: 'EOD REPORTS', value: String(reports.length) },
     { label: 'TEAM MEMBERS', value: String(members.size) },
   ])
@@ -300,10 +301,10 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
   drawSection('REPORT ANALYSIS')
   writeParagraph(
     (busiestDay
-      ? 'Peak day: ' + busiestDay.date + ' with ' + busiestDay.hours.toFixed(2) + ' hours across ' + busiestDay.entries + ' entries. '
+      ? 'Peak day: ' + busiestDay.date + ' with ' + formatHoursAndMinutes(busiestDay.hours) + ' across ' + busiestDay.entries + ' entries. '
       : 'No submitted time entries were found in this date range. ') +
-    'Average: ' + averagePerReport.toFixed(2) + ' hours per EOD report and ' +
-    averagePerMember.toFixed(2) + ' hours per team member.' +
+    'Average: ' + formatHoursAndMinutes(averagePerReport) + ' per EOD report and ' +
+    formatHoursAndMinutes(averagePerMember) + ' per team member.' +
     (leadingMember && totalHours > 0 ? ' Highest contributor: ' + leadingMember.name + ' at ' + (leadingMember.hours / totalHours * 100).toFixed(1) + '% of reported hours.' : ''),
     { size: 8.5, color: dark },
   )
@@ -337,7 +338,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
         doc.roundedRect(trackX, y + 1.5, Math.max(0.8, trackWidth * member.hours / maxHours), 3.5, 1.5, 1.5, 'F')
       }
       doc.setFont('helvetica', 'bold')
-      doc.text(member.hours.toFixed(2) + ' h', right, y + 4.4, { align: 'right' })
+      doc.text(formatHoursAndMinutes(member.hours), right, y + 4.4, { align: 'right' })
       y += 8
     })
     if (teamRows.length > chartRows.length) {
@@ -368,7 +369,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
         drawTableHeader(teamColumns)
       }
       const share = totalHours ? (member.hours / totalHours * 100).toFixed(1) + '%' : '0.0%'
-      drawTableRow(teamColumns, [nameLines, String(member.reports), String(member.entries), member.hours.toFixed(2), share], rowHeight, index % 2 === 0, [3])
+      drawTableRow(teamColumns, [nameLines, String(member.reports), String(member.entries), formatHoursAndMinutes(member.hours), share], rowHeight, index % 2 === 0, [3])
     })
     ensureSpace(11)
     doc.setFillColor(...paleGreen)
@@ -379,7 +380,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
     doc.text('TOTAL', left + 2, y + 5.5)
     doc.text(String(reports.length), left + 88 + 25, y + 5.5, { align: 'right' })
     doc.text(String(entries.length), left + 115 + 25, y + 5.5, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', left + 142 + 24, y + 5.5, { align: 'right' })
+    doc.text(formatHoursAndMinutes(totalHours), left + 142 + 24, y + 5.5, { align: 'right' })
     doc.text(totalHours ? '100%' : '0%', right - 2, y + 5.5, { align: 'right' })
     y += 12
   }
@@ -402,8 +403,8 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
         drawSection('DAILY SUMMARY (CONTINUED)')
         drawTableHeader(dayColumns)
       }
-      const average = day.reports ? (day.hours / day.reports).toFixed(2) + ' h' : '0.00 h'
-      drawTableRow(dayColumns, [day.date, String(day.reports), String(day.entries), day.hours.toFixed(2), average], 8, index % 2 === 0, [3])
+      const average = day.reports ? formatHoursAndMinutes(day.hours / day.reports) : '0 min'
+      drawTableRow(dayColumns, [day.date, String(day.reports), String(day.entries), formatHoursAndMinutes(day.hours), average], 8, index % 2 === 0, [3])
     })
     if (y + 11 > contentBottom) {
       addPage()
@@ -418,8 +419,8 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
     doc.text('TOTAL', left + 2, y + 5.5)
     doc.text(String(reports.length), left + 88 + 28, y + 5.5, { align: 'right' })
     doc.text(String(entries.length), left + 118 + 24, y + 5.5, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', left + 144 + 22, y + 5.5, { align: 'right' })
-    doc.text(reports.length ? averagePerReport.toFixed(2) + ' h' : '0.00 h', right - 2, y + 5.5, { align: 'right' })
+    doc.text(formatHoursAndMinutes(totalHours), left + 144 + 22, y + 5.5, { align: 'right' })
+    doc.text(reports.length ? formatHoursAndMinutes(averagePerReport) : '0 min', right - 2, y + 5.5, { align: 'right' })
     y += 12
   }
 
@@ -446,7 +447,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(7.5)
         doc.setTextColor(...gray)
-        if (dateTotal) doc.text(dateTotal.hours.toFixed(2) + ' total hours', right, y + 4, { align: 'right' })
+        if (dateTotal) doc.text(formatHoursAndMinutes(dateTotal.hours) + ' total hours', right, y + 4, { align: 'right' })
         doc.setDrawColor(...line)
         doc.line(left, y + 6.5, right, y + 6.5)
         y += 9
@@ -464,7 +465,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...dark)
       doc.setFontSize(8)
-      doc.text(entry.hours.toFixed(2) + ' h', right, y + 3.8, { align: 'right' })
+      doc.text(formatHoursAndMinutes(entry.hours), right, y + 3.8, { align: 'right' })
       y += 6.5
       writeParagraph(entry.memo || 'No work description provided.', { x: left + 2, textWidth: width - 4, size: 8, color: gray, lineHeight: 3.8, gapAfter: 2 })
       doc.setDrawColor(...line)
