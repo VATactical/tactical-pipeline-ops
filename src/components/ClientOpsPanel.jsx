@@ -9,35 +9,25 @@ const stages = [
   ['campaign_ready', 'Campaña lista'], ['campaign_active', 'Campaña activa'], ['training', 'Capacitación'], ['cruise_control', 'Cruise control'],
 ]
 
-const emptyInteraction = { direction: 'outbound', channel: 'ghl', summary: '', responder_id: '', next_step: '', next_follow_up_at: '' }
-
-export default function ClientOpsPanel({ client, directory = [], canEdit, onRefresh }) {
+export default function ClientOpsPanel({ client, canEdit, onRefresh }) {
   const { profile } = useAuth()
   const canViewSyncLog = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const { t, locale } = useLanguage()
-  const [interactions, setInteractions] = useState([])
   const [syncEvents, setSyncEvents] = useState([])
-  const [interaction, setInteraction] = useState(emptyInteraction)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   const reload = async () => {
-    const [interactionResult, syncResult] = await Promise.all([
-      supabase.from('client_interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(50),
-      canViewSyncLog ? supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [], error: null }),
-    ])
-    if (interactionResult.error) throw interactionResult.error
+    const syncResult = canViewSyncLog
+      ? await supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10)
+      : { data: [], error: null }
     if (syncResult.error) throw syncResult.error
     setSyncEvents(syncResult.data || [])
-    setInteractions(interactionResult.data || [])
   }
 
-  useEffect(() => { reload().catch((loadError) => setError(loadError.message)) }, [client.id])
+  useEffect(() => { reload().catch((loadError) => setError(loadError.message)) }, [client.id, client.ghl_contact_id, canViewSyncLog])
 
-  const latestContact = interactions[0]
-  const unclaimedInbound = interactions.find((item) => item.direction === 'inbound' && !item.responder_id)
-  const memberName = (id) => directory.find((member) => member.id === id)?.full_name || t('Sin responsable')
   const formatDate = (value) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : ''
 
   const changeStage = async (nextStage) => {
@@ -50,32 +40,10 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
     finally { setSaving(false) }
   }
 
-  const saveInteraction = async (event) => {
-    event.preventDefault(); setSaving(true); setError(''); setNotice('')
-    const { error: saveError } = await supabase.from('client_interactions').insert({
-      client_id: client.id,
-      ...interaction,
-      responder_id: interaction.responder_id || null,
-      next_follow_up_at: interaction.next_follow_up_at ? new Date(interaction.next_follow_up_at).toISOString() : null,
-      created_by: profile.id,
-    })
-    if (saveError) setError(t(saveError.message))
-    else {
-      setInteraction(emptyInteraction)
-      setNotice(t('Seguimiento registrado.'))
-      await reload()
-    }
-    setSaving(false)
-  }
-
   return <section className="content-card client-ops-panel">
     <div className="section-heading"><div><p className="eyebrow">{t('Control del cliente')}</p><h3>{t('Estado del cliente')}</h3></div></div>
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="form-success">{notice}</p>}
     <div className="lifecycle-stage-picker status-only"><label>{t('Etapa actual')}<select value={client.lifecycle_stage || 'onboarding'} disabled={!canEdit || saving || client.archived} onChange={(event) => changeStage(event.target.value)}>{stages.map(([key, label]) => <option key={key} value={key}>{t(label)}</option>)}</select></label></div>
     {canViewSyncLog && <div className="client-sync-log"><div className="section-heading"><div><h4>{t('Sincronización de onboarding')}</h4><p className="muted">{t('Últimos intentos del formulario de GHL y etapa alcanzada.')}</p></div></div>{syncEvents.length === 0 ? <p className="muted">{t('No hay sincronizaciones registradas para este cliente.')}</p> : syncEvents.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{t(entry.status)} · {t(entry.sync_stage)}</strong><small>{t('Intento')}: {entry.attempt_count} · {formatDate(entry.last_attempt_at || entry.created_at)}{entry.action ? ' · ' + t(entry.action) : ''}</small>{entry.error_message && <p className="form-error">{entry.error_message}</p>}</article>)}</div>}
-    <div className="client-contact-summary"><div className="section-heading"><div><h4>{t('Seguimiento del cliente')}</h4><p className="muted">{latestContact ? t('Último contacto') + ': ' + formatDate(latestContact.created_at) + ' · ' + t(latestContact.channel) + ' · ' + memberName(latestContact.responder_id || latestContact.created_by) : t('Aún no hay contactos registrados.')}</p></div></div>{unclaimedInbound && <p className="form-error">{t('Respuesta del cliente sin responsable')}: {unclaimedInbound.summary}</p>}
-      <div className="client-contact-list">{interactions.slice(0, 5).map((item) => <article className="client-contact-row" key={item.id}><strong>{t(item.direction)} · {t(item.channel)}</strong><p>{item.summary}</p><small>{memberName(item.responder_id || item.created_by)} · {formatDate(item.created_at)}{item.next_follow_up_at ? ' · ' + t('Próximo seguimiento') + ': ' + formatDate(item.next_follow_up_at) : ''}{item.next_step ? ' · ' + item.next_step : ''}</small></article>)}</div>
-      {canEdit && !client.archived && <form className="client-contact-form" onSubmit={saveInteraction}><label>{t('Canal')}<select value={interaction.channel} onChange={(event) => setInteraction((value) => ({ ...value, channel: event.target.value }))}>{['ghl','whatsapp','phone','email','sms','other'].map((key) => <option key={key} value={key}>{t(key)}</option>)}</select></label><label>{t('Dirección')}<select value={interaction.direction} onChange={(event) => setInteraction((value) => ({ ...value, direction: event.target.value }))}>{['outbound','inbound','internal'].map((key) => <option key={key} value={key}>{t(key)}</option>)}</select></label><label>{t('Responsable de responder')}<select value={interaction.responder_id} onChange={(event) => setInteraction((value) => ({ ...value, responder_id: event.target.value }))}><option value="">{t('Sin responsable')}</option>{directory.map((member) => <option key={member.id} value={member.id}>{member.full_name}</option>)}</select></label><label>{t('Resumen del contacto')}<textarea required maxLength={3000} rows={3} value={interaction.summary} onChange={(event) => setInteraction((value) => ({ ...value, summary: event.target.value }))} /></label><div className="client-contact-form-grid"><label>{t('Próximo paso')}<input maxLength={1000} value={interaction.next_step} onChange={(event) => setInteraction((value) => ({ ...value, next_step: event.target.value }))} /></label><label>{t('Fecha del próximo seguimiento')}<input type="datetime-local" value={interaction.next_follow_up_at} onChange={(event) => setInteraction((value) => ({ ...value, next_follow_up_at: event.target.value }))} /></label></div><button className="primary-button compact-button" disabled={saving}>{saving ? t('Guardando…') : t('Registrar contacto')}</button></form>}
-    </div>
   </section>
 }

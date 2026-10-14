@@ -449,8 +449,7 @@ export default function ClientDetailPage() {
     }
     setError(''); setMessage(t(`Resultado encontrado en ${sections[matchIndex].title}.`)); setHighlightedSection(matchIndex)
     const targetSection = document.getElementById(`dossier-section-${matchIndex}`)
-    const stickyHeight = document.querySelector('.client-sticky-shell')?.getBoundingClientRect().height || 0
-    if (targetSection) window.scrollTo({ top: window.scrollY + targetSection.getBoundingClientRect().top - stickyHeight - 16, behavior: 'smooth' })
+    if (targetSection) window.scrollTo({ top: window.scrollY + targetSection.getBoundingClientRect().top - 24, behavior: 'smooth' })
     window.setTimeout(() => setHighlightedSection((current) => current === matchIndex ? null : current), 2200)
   }
 
