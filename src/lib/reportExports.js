@@ -79,24 +79,271 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
 }
 
 export async function downloadOwnHoursPdf({ entries = [], startDate, endDate, userLabel }) {
-  const doc = await makeDocument({ title: 'PERSONAL HOURS REPORT', subtitle: startDate + ' — ' + endDate })
-  let y = 48
-  y = paragraph(doc, 'Team member: ' + (userLabel || 'Team member'), y, { bold: true, size: 11 })
-  const totalHours = entries.reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
-  y = paragraph(doc, 'Total hours: ' + formatHoursAndMinutes(totalHours), y, { bold: true, size: 13 })
-  y = sectionTitle(doc, 'TIME ENTRIES', y + 3)
-  if (!entries.length) {
-    y = paragraph(doc, 'No time entries were recorded for this period.', y)
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const left = 16
+  const right = pageWidth - 16
+  const width = right - left
+  const bottom = pageHeight - 19
+  const green = [20, 138, 0]
+  const dark = [32, 39, 38]
+  const gray = [101, 112, 108]
+  const line = [221, 228, 224]
+  const pale = [244, 248, 245]
+  const paleGreen = [239, 247, 236]
+  const generatedAt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date()) + ' ET'
+  const memberName = String(userLabel || 'Team member')
+  const sortedEntries = entries.slice().sort((a, b) =>
+    String(a.work_date || '').localeCompare(String(b.work_date || '')) ||
+    String(a.created_at || '').localeCompare(String(b.created_at || '')),
+  )
+  const totalHours = sortedEntries.reduce((sum, entry) => {
+    const hours = Number(entry.hours)
+    return sum + (Number.isFinite(hours) ? hours : 0)
+  }, 0)
+  const byDay = new Map()
+  sortedEntries.forEach((entry) => {
+    const date = entry.work_date || 'Date unavailable'
+    const day = byDay.get(date) || { date, entries: 0, hours: 0 }
+    const hours = Number(entry.hours)
+    day.entries += 1
+    day.hours += Number.isFinite(hours) ? hours : 0
+    byDay.set(date, day)
+  })
+  const dayRows = [...byDay.values()]
+  const activeDays = dayRows.length
+  const averagePerActiveDay = activeDays ? totalHours / activeDays : 0
+  const peakDay = dayRows.slice().sort((a, b) => b.hours - a.hours)[0]
+  let y = 0
+
+  const drawHeader = (continued = false) => {
+    doc.setFillColor(...green)
+    doc.rect(0, 0, pageWidth, continued ? 1.5 : 2, 'F')
+    if (!continued) {
+      doc.setTextColor(...dark)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(19)
+      doc.text('Personal Hours Report', left, 18)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...gray)
+      doc.text('PAYROLL SUMMARY', left, 25)
+      doc.setDrawColor(...line)
+      doc.line(left, 34, right, 34)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.text('TEAM MEMBER', left, 42)
+      doc.text('REPORTING PERIOD', left + 88, 42)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(...dark)
+      doc.text(doc.splitTextToSize(memberName, 82).slice(0, 1), left, 48)
+      doc.text(startDate + ' to ' + endDate, left + 88, 48)
+      doc.setFontSize(8)
+      doc.setTextColor(...gray)
+      doc.text('Generated ' + generatedAt, right, 55, { align: 'right' })
+      y = 64
+      return
+    }
+    doc.setTextColor(...dark)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.text('PERSONAL HOURS REPORT', left, 10)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...gray)
+    doc.text(startDate + ' to ' + endDate, right, 10, { align: 'right' })
+    doc.setDrawColor(...line)
+    doc.line(left, 14, right, 14)
+    y = 21
+  }
+  const addPage = () => { doc.addPage(); drawHeader(true) }
+  const ensureSpace = (needed) => { if (y + needed > bottom) addPage() }
+  const section = (title) => {
+    ensureSpace(13)
+    doc.setTextColor(...dark)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text(title, left, y + 4)
+    doc.setDrawColor(...green)
+    doc.setLineWidth(0.45)
+    doc.line(left, y + 7, right, y + 7)
+    doc.setLineWidth(0.2)
+    y += 12
+  }
+  const writeText = (value, { x = left, textWidth = width, size = 8.5, color = dark, bold = false, lineHeight = 4.2, gapAfter = 2 } = {}) => {
+    const text = String(value || '').trim()
+    if (!text) return
+    doc.setFont('helvetica', bold ? 'bold' : 'normal')
+    doc.setFontSize(size)
+    const lines = doc.splitTextToSize(text, textWidth)
+    lines.forEach((textLine) => {
+      ensureSpace(lineHeight + 1)
+      doc.setTextColor(...color)
+      doc.text(textLine, x, y + lineHeight - 1)
+      y += lineHeight
+    })
+    y += gapAfter
+  }
+  const drawMetrics = (metrics) => {
+    const gap = 3
+    const cardWidth = (width - gap * (metrics.length - 1)) / metrics.length
+    const cardHeight = 20
+    ensureSpace(cardHeight + 4)
+    metrics.forEach((metric, index) => {
+      const x = left + index * (cardWidth + gap)
+      doc.setFillColor(...paleGreen)
+      doc.setDrawColor(221, 232, 218)
+      doc.roundedRect(x, y, cardWidth, cardHeight, 1.5, 1.5, 'FD')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(6.8)
+      doc.setTextColor(...gray)
+      doc.text(metric.label, x + 3, y + 5)
+      doc.setFontSize(metric.value.length > 12 ? 12 : 14)
+      doc.setTextColor(...dark)
+      doc.text(metric.value, x + 3, y + 14)
+    })
+    y += cardHeight + 4
+  }
+  const dateLabel = (date) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(date + 'T12:00:00Z'))
+  }
+  const drawTableHeader = () => {
+    ensureSpace(11)
+    doc.setFillColor(...pale)
+    doc.rect(left, y, width, 8, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...gray)
+    doc.text('WORK DATE', left + 2, y + 5.3)
+    doc.text('ENTRIES', left + 128, y + 5.3, { align: 'right' })
+    doc.text('TOTAL HOURS', right - 2, y + 5.3, { align: 'right' })
+    y += 9
+  }
+  const drawDayRow = (day, index) => {
+    ensureSpace(9)
+    if (index % 2 === 0) {
+      doc.setFillColor(250, 252, 250)
+      doc.rect(left, y - 1, width, 8, 'F')
+    }
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...dark)
+    doc.text(dateLabel(day.date), left + 2, y + 4.2)
+    doc.text(String(day.entries), left + 128, y + 4.2, { align: 'right' })
+    doc.setFont('helvetica', 'bold')
+    doc.text(formatHoursAndMinutes(day.hours), right - 2, y + 4.2, { align: 'right' })
+    doc.setDrawColor(...line)
+    doc.line(left, y + 7, right, y + 7)
+    y += 8
+  }
+
+  drawHeader()
+  drawMetrics([
+    { label: 'TOTAL HOURS', value: formatHoursAndMinutes(totalHours) },
+    { label: 'DAYS WITH ENTRIES', value: String(activeDays) },
+    { label: 'TIME ENTRIES', value: String(sortedEntries.length) },
+  ])
+
+  section('PERIOD ANALYSIS')
+  writeText(
+    activeDays
+      ? 'Time was recorded on ' + activeDays + (activeDays === 1 ? ' day' : ' days') +
+        ', averaging ' + formatHoursAndMinutes(averagePerActiveDay) + ' per recorded day.' +
+        (peakDay ? ' Highest daily total: ' + dateLabel(peakDay.date) + ' (' + formatHoursAndMinutes(peakDay.hours) + ').' : '')
+      : 'No time entries were recorded for this period.',
+    { size: 8.5 },
+  )
+
+  section('DAILY SUMMARY')
+  drawTableHeader()
+  if (!dayRows.length) {
+    writeText('No recorded work days for this period.', { size: 8.5 })
   } else {
-    entries.forEach((entry) => {
-      y = ensureSpace(doc, y, 18)
-      doc.setDrawColor(210, 222, 232)
-      doc.line(18, y, 198, y)
+    dayRows.forEach(drawDayRow)
+    ensureSpace(10)
+    doc.setFillColor(...paleGreen)
+    doc.rect(left, y, width, 8.5, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...dark)
+    doc.text('TOTAL', left + 2, y + 5.5)
+    doc.text(String(sortedEntries.length), left + 128, y + 5.5, { align: 'right' })
+    doc.text(formatHoursAndMinutes(totalHours), right - 2, y + 5.5, { align: 'right' })
+    y += 12
+  }
+
+  section('DETAILED TIME ENTRIES')
+  if (!sortedEntries.length) {
+    writeText('No time entries were recorded for this period.', { size: 8.5 })
+  } else {
+    let currentDate = ''
+    sortedEntries.forEach((entry) => {
+      const date = entry.work_date || 'Date unavailable'
+      const memoLines = doc.splitTextToSize(String(entry.memo || 'No work description provided.'), width - 4)
+      const rowHeight = 12 + memoLines.length * 3.8
+      if (y + Math.min(rowHeight, bottom - y + 1) > bottom) addPage()
+      if (currentDate !== date) {
+        ensureSpace(11)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.5)
+        doc.setTextColor(...green)
+        doc.text(dateLabel(date), left, y + 4)
+        const day = byDay.get(date)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(...gray)
+        if (day) doc.text(formatHoursAndMinutes(day.hours) + ' total', right, y + 4, { align: 'right' })
+        doc.setDrawColor(...line)
+        doc.line(left, y + 6.5, right, y + 6.5)
+        y += 9
+        currentDate = date
+      }
+      ensureSpace(10)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(...dark)
+      doc.text('Work entry', left + 2, y + 3.8)
+      doc.text(formatHoursAndMinutes(Number(entry.hours) || 0), right, y + 3.8, { align: 'right' })
       y += 6
-      y = paragraph(doc, entry.work_date + ' · ' + formatHoursAndMinutes(Number(entry.hours)), y, { bold: true })
-      y = paragraph(doc, entry.memo || 'No work description provided.', y)
+      writeText(entry.memo || 'No work description provided.', {
+        x: left + 2,
+        textWidth: width - 4,
+        size: 8,
+        color: gray,
+        lineHeight: 3.8,
+        gapAfter: 2,
+      })
+      doc.setDrawColor(...line)
+      doc.line(left + 2, y, right, y)
+      y += 3
     })
   }
+
+  const pageCount = doc.getNumberOfPages()
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page)
+    doc.setDrawColor(...line)
+    doc.line(left, pageHeight - 13, right, pageHeight - 13)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...gray)
+    doc.text('Tactical Pipeline | Personal Hours', left, pageHeight - 8)
+    doc.text('Page ' + page + ' of ' + pageCount, right, pageHeight - 8, { align: 'right' })
+  }
+
   doc.save('TP-Ops-Personal-Hours-' + cleanFileName(userLabel) + '-' + startDate + '-to-' + endDate + '.pdf')
 }
 
