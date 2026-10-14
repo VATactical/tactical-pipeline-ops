@@ -51,6 +51,7 @@ const translations = {
   'No hay reportes EOD enviados en este periodo.': 'No submitted EOD reports in this period.',
   'Cargando reportes del periodo…': 'Loading reports for this period…',
 
+  'Estado del cliente': 'Client status',
   'Mensajes generales y específicos del equipo.': 'General and client-specific messages.',
   'mensajes': 'messages',
   'Esta zona controla cómo se muestran las fechas y la hora en TP Ops.': 'This setting controls how dates and times are displayed in TP Ops.',
