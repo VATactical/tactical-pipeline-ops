@@ -1785,3 +1785,60 @@ html[data-theme='light'] .eod-page .eod-report-center {
   .dossier-search.compact-sticky-search > div { grid-template-columns: minmax(0, 1fr) auto; }
   .platform-status-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Client operations panel: keep each decision and history item easy to scan. */
+.client-ops-panel {
+  display: grid;
+  gap: .8rem;
+}
+.client-ops-panel > .section-heading,
+.client-ops-panel .section-heading {
+  margin-bottom: 0;
+}
+.client-ops-panel > .lifecycle-stage-picker {
+  display: grid;
+  grid-template-columns: minmax(220px, .8fr) minmax(180px, 1.2fr);
+  gap: .75rem;
+  align-items: end;
+  padding: .75rem;
+  border: 1px solid #20374b;
+  border-radius: 10px;
+  background: #091725;
+}
+.client-ops-panel .lifecycle-stage-picker label { margin: 0; }
+.client-ops-panel .client-sync-log,
+.client-ops-panel .client-contact-summary {
+  display: grid;
+  gap: .6rem;
+  padding: .85rem;
+  border: 1px solid #20374b;
+  border-radius: 10px;
+  background: #0a1724;
+}
+.client-ops-panel .client-sync-log .section-heading p,
+.client-ops-panel .client-contact-summary .section-heading p {
+  margin: .25rem 0 0;
+}
+.client-ops-panel .client-contact-row {
+  margin: 0;
+  padding: .65rem .75rem;
+  border: 1px solid #1e3447;
+  border-radius: 8px;
+  background: #0c1b2a;
+}
+.client-ops-panel .client-contact-row p { margin: .3rem 0; }
+.client-ops-panel .client-contact-form {
+  gap: .65rem;
+  padding-top: .7rem;
+  border-top: 1px solid #20374b;
+}
+.client-ops-panel .client-contact-form textarea { min-height: 72px; }
+.weekly-hours-heading { align-items: center; gap: .75rem; }
+.weekly-hours-heading .secondary-button { flex: 0 0 auto; }
+.weekly-hours-heading-actions { display: flex; gap: .5rem; }
+@media (max-width: 700px) {
+  .client-ops-panel > .lifecycle-stage-picker { grid-template-columns: 1fr; }
+  .weekly-hours-heading { align-items: stretch; flex-direction: column; }
+  .weekly-hours-heading .secondary-button { width: 100%; }
+}
