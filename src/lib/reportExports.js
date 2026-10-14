@@ -380,7 +380,7 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
     doc.text('TOTAL', left + 2, y + 5.5)
     doc.text(String(reports.length), left + 88 + 25, y + 5.5, { align: 'right' })
     doc.text(String(entries.length), left + 115 + 25, y + 5.5, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', left + 142 + 24, y + 5.5, { align: 'right' })
+    doc.text(formatHoursAndMinutes(totalHours), left + 142 + 24, y + 5.5, { align: 'right' })
     doc.text(totalHours ? '100%' : '0%', right - 2, y + 5.5, { align: 'right' })
     y += 12
   }
@@ -419,8 +419,8 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
     doc.text('TOTAL', left + 2, y + 5.5)
     doc.text(String(reports.length), left + 88 + 28, y + 5.5, { align: 'right' })
     doc.text(String(entries.length), left + 118 + 24, y + 5.5, { align: 'right' })
-    doc.text(totalHours.toFixed(2) + ' h', left + 144 + 22, y + 5.5, { align: 'right' })
-    doc.text(reports.length ? formatHoursAndMinutes(averagePerReport) : '0.00 h', right - 2, y + 5.5, { align: 'right' })
+    doc.text(formatHoursAndMinutes(totalHours), left + 144 + 22, y + 5.5, { align: 'right' })
+    doc.text(reports.length ? formatHoursAndMinutes(averagePerReport) : '0 min', right - 2, y + 5.5, { align: 'right' })
     y += 12
   }
 
