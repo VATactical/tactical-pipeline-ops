@@ -301,9 +301,9 @@ export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, 
   drawSection('REPORT ANALYSIS')
   writeParagraph(
     (busiestDay
-      ? 'Peak day: ' + busiestDay.date + ' with ' + formatHoursAndMinutes(busiestDay.hours) + ' hours across ' + busiestDay.entries + ' entries. '
+      ? 'Peak day: ' + busiestDay.date + ' with ' + formatHoursAndMinutes(busiestDay.hours) + ' across ' + busiestDay.entries + ' entries. '
       : 'No submitted time entries were found in this date range. ') +
-    'Average: ' + formatHoursAndMinutes(averagePerReport) + ' hours per EOD report and ' +
+    'Average: ' + formatHoursAndMinutes(averagePerReport) + ' per EOD report and ' +
     formatHoursAndMinutes(averagePerMember) + ' per team member.' +
     (leadingMember && totalHours > 0 ? ' Highest contributor: ' + leadingMember.name + ' at ' + (leadingMember.hours / totalHours * 100).toFixed(1) + '% of reported hours.' : ''),
     { size: 8.5, color: dark },
