@@ -1842,3 +1842,14 @@ html[data-theme='light'] .eod-page .eod-report-center {
   .weekly-hours-heading { align-items: stretch; flex-direction: column; }
   .weekly-hours-heading .secondary-button { width: 100%; }
 }
+
+html[data-theme='light'] .client-ops-panel > .lifecycle-stage-picker,
+html[data-theme='light'] .client-ops-panel .client-sync-log,
+html[data-theme='light'] .client-ops-panel .client-contact-summary {
+  border-color: #d6e1eb;
+  background: #f6f9fc;
+}
+html[data-theme='light'] .client-ops-panel .client-contact-row {
+  border-color: #dce5ed;
+  background: #fff;
+}
