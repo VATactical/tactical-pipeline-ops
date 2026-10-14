@@ -78,6 +78,28 @@ export async function downloadWeeklyHoursPdf({ entries, weekStart, weekEnd, user
   doc.save(`TP-Ops-Hours-${cleanFileName(userLabel)}-${weekStart}.pdf`)
 }
 
+export async function downloadOwnHoursPdf({ entries = [], startDate, endDate, userLabel }) {
+  const doc = await makeDocument({ title: 'PERSONAL HOURS REPORT', subtitle: startDate + ' — ' + endDate })
+  let y = 48
+  y = paragraph(doc, 'Team member: ' + (userLabel || 'Team member'), y, { bold: true, size: 11 })
+  const totalHours = entries.reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
+  y = paragraph(doc, 'Total hours: ' + formatHoursAndMinutes(totalHours), y, { bold: true, size: 13 })
+  y = sectionTitle(doc, 'TIME ENTRIES', y + 3)
+  if (!entries.length) {
+    y = paragraph(doc, 'No time entries were recorded for this period.', y)
+  } else {
+    entries.forEach((entry) => {
+      y = ensureSpace(doc, y, 18)
+      doc.setDrawColor(210, 222, 232)
+      doc.line(18, y, 198, y)
+      y += 6
+      y = paragraph(doc, entry.work_date + ' · ' + formatHoursAndMinutes(Number(entry.hours)), y, { bold: true })
+      y = paragraph(doc, entry.memo || 'No work description provided.', y)
+    })
+  }
+  doc.save('TP-Ops-Personal-Hours-' + cleanFileName(userLabel) + '-' + startDate + '-to-' + endDate + '.pdf')
+}
+
 export async function downloadEodPayrollPdf({ reports = [], startDate, endDate, company, geminiSummary = '' }) {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' })
   const pageWidth = doc.internal.pageSize.getWidth()
