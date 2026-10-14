@@ -1682,3 +1682,78 @@ html[data-theme='light'] .eod-page .eod-report-center {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Client directory: use the available workspace and keep interactions still */
+.clients-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.clients-page .client-filters {
+  box-shadow: none;
+}
+.clients-page .filter-controls {
+  grid-template-columns: minmax(240px, 2fr) repeat(5, minmax(125px, 1fr));
+  gap: .7rem;
+}
+.clients-page .client-list-header,
+.clients-page .client-list-row {
+  grid-template-columns: minmax(250px, 2fr) minmax(125px, .85fr) minmax(135px, 1fr) minmax(145px, 1fr) minmax(220px, 1.4fr) minmax(85px, .65fr) 20px !important;
+  column-gap: .8rem;
+}
+.clients-page .client-list-row,
+.clients-page .client-card {
+  box-shadow: none;
+  transition: none;
+}
+.clients-page .client-list-row:hover,
+.clients-page .client-card:hover {
+  box-shadow: none;
+  transform: none;
+}
+.clients-page .client-list-row:hover {
+  border-color: #7db8d4;
+}
+.clients-page .client-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+  gap: .8rem;
+}
+.clients-page .client-card {
+  padding: 1rem;
+  border-radius: 12px;
+}
+@media (max-width: 1200px) {
+  .clients-page .client-list-header,
+  .clients-page .client-list-row {
+    grid-template-columns: minmax(190px, 1.7fr) 120px minmax(100px, .8fr) 130px minmax(180px, 1.3fr) 70px 18px !important;
+    column-gap: .55rem;
+  }
+  .clients-page .filter-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .clients-page .filter-controls .search-control {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 800px) {
+  .clients-page .client-list-header { display: none; }
+  .clients-page .client-list-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    column-gap: .6rem;
+    row-gap: .35rem;
+  }
+  .clients-page .client-list-name { grid-column: 1 / -1; }
+  .clients-page .client-list-row .lifecycle { grid-column: 1; }
+  .clients-page .client-list-progress { grid-column: 2; grid-row: 2; }
+  .clients-page .client-list-row .client-deadline { grid-column: 1; }
+  .clients-page .client-list-tasks { grid-column: 2; grid-row: 3; }
+  .clients-page .client-list-row .client-integration-indicators { grid-column: 1 / -1; grid-row: 4; }
+  .clients-page .client-list-row .row-arrow { display: none; }
+  .clients-page .client-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .clients-page .filter-controls { grid-template-columns: minmax(0, 1fr); }
+  .clients-page .filter-controls .search-control { grid-column: auto; }
+  .clients-page .filter-summary { align-items: flex-start; flex-direction: column; gap: .65rem; }
+}
