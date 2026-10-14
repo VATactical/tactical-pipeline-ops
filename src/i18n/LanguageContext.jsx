@@ -353,6 +353,11 @@ const translations = {
   'Dato recibido; falta verificar': 'Data received; verification pending',
   'Verificado por': 'Verified by',
   'Guarda o cancela la sección actual antes de editar otra.': 'Save or cancel the current section before editing another one.',
+  'Cambiar estado': 'Change status',
+  'Acceso a GoHighLevel': 'GoHighLevel access',
+  'Estado de plataforma': 'Platform status',
+  'Revisa la etapa actual y los datos que faltan para avanzar.': 'Review the current stage and the information still needed to move forward.',
+  'Estado de plataforma guardado.': 'Platform status saved.',
 }
 
 const patterns = [
