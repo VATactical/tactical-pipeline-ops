@@ -401,7 +401,7 @@ export default function EodReportsPage() {
       await refreshPayroll()
       setComposerOpen(false)
       if (draftKey) window.localStorage.removeItem(draftKey)
-      setMessage(t('Reporte EOD enviado a Kevin y Alejandra correctamente.'))
+      setMessage(t('Reporte EOD enviado para revisión de Operaciones correctamente.'))
     } catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
   }
