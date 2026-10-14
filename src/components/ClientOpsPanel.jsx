@@ -39,12 +39,20 @@ const stageRequirements = [
 const verificationStatuses = ['pending', 'complete', 'not_applicable', 'verify']
 const emptyInteraction = { direction: 'outbound', channel: 'ghl', summary: '', responder_id: '', next_step: '', next_follow_up_at: '' }
 
+function displayFieldValue(value, t) {
+  if (value == null || value === '') return t('No hay dato registrado')
+  if (typeof value === 'boolean') return t(value ? 'Sí' : 'No')
+  if (Array.isArray(value)) return value.length ? value.join(', ') : t('No hay dato registrado')
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
 function fieldHasValue(value) {
   if (typeof value === 'boolean') return value
   return value != null && String(value).trim() !== '' && !/^(pending|pendiente|confirm|verificar|n\/?a|none|null)$/i.test(String(value).trim())
 }
 
-export default function ClientOpsPanel({ client, directory = [], canEdit, onRefresh }) {
+export default function ClientOpsPanel({ client, directory = [], canEdit, onRefresh, onEditField }) {
   const { profile } = useAuth()
   const canViewSyncLog = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const { t, locale } = useLanguage()
@@ -155,7 +163,7 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
     <div className="section-heading"><div><h4>{t('Verificación del dossier')}</h4><p className="muted">{t('Campos completos, pendientes, no aplicables o por verificar.')}</p></div><button className="text-button" type="button" onClick={() => setShowAllFields((value) => !value)}>{showAllFields ? t('Ver solo pendientes') : t('Ver todos los campos')}</button></div>
     <div className="dossier-verification-list">{displayedFields.map(([key, label]) => {
       const row = verifications[key] || { status: fieldHasValue(client[key]) ? 'verify' : 'pending', note: '' }
-      return <article className="dossier-verification-row" key={key}><div><strong>{t(label)}</strong><small>{fieldHasValue(client[key]) ? t('Dato recibido') : t('Sin dato')}{row.verified_by ? ' · ' + memberName(row.verified_by) + ' · ' + formatDate(row.verified_at) : ''}</small><input aria-label={t('Nota de verificación') + ' ' + t(label)} maxLength={1000} placeholder={t('Nota de verificación')} value={row.note || ''} disabled={!canEdit || client.archived} onChange={(event) => setVerifications((current) => ({ ...current, [key]: { ...row, note: event.target.value } }))} onBlur={(event) => canEdit && !client.archived && event.target.value !== (verifications[key]?.note || '') && saveVerification(key, row.status, event.target.value)} /></div><select aria-label={t('Estado de verificación') + ' ' + t(label)} value={row.status} disabled={!canEdit || saving || client.archived} onChange={(event) => saveVerification(key, event.target.value, row.note || '')}>{verificationStatuses.map((status) => <option key={status} value={status}>{t(status)}</option>)}</select></article>
+      return <article className="dossier-verification-row" key={key}><div className="dossier-field-copy"><strong>{t(label)}</strong><span className="dossier-current-value"><span>{t('Valor actual')}</span><b data-no-translate>{displayFieldValue(client[key], t)}</b></span><small>{row.verified_by ? t('Verificado por') + ' ' + memberName(row.verified_by) + ' · ' + formatDate(row.verified_at) : fieldHasValue(client[key]) ? t('Dato recibido; falta verificar') : t('No hay dato registrado')}</small><input aria-label={t('Nota de verificación') + ' ' + t(label)} maxLength={1000} placeholder={t('Nota de verificación')} value={row.note || ''} disabled={!canEdit || client.archived} onChange={(event) => setVerifications((current) => ({ ...current, [key]: { ...row, note: event.target.value } }))} onBlur={(event) => canEdit && !client.archived && event.target.value !== (verifications[key]?.note || '') && saveVerification(key, row.status, event.target.value)} /></div><select aria-label={t('Estado de verificación') + ' ' + t(label)} value={row.status} disabled={!canEdit || saving || client.archived} onChange={(event) => saveVerification(key, event.target.value, row.note || '')}>{verificationStatuses.map((status) => <option key={status} value={status}>{t(status)}</option>)}</select>{canEdit && !client.archived && <button className="secondary-button dossier-edit-field" type="button" onClick={() => onEditField?.(key)}>{t('Editar dato')}</button>}</article>
     })}</div>
     <div className="client-sync-log client-offer-history"><div className="section-heading"><div><h4>{t('Historial de ofertas')}</h4><p className="muted">{t('Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.')}</p></div></div><p><strong>{t('Oferta actual')}:</strong> {client.offer || t('pending')}</p>{offerHistory.length === 0 ? <p className="muted">{t('Sin cambios de oferta registrados.')}</p> : offerHistory.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{entry.new_offer || t('Oferta retirada')}</strong>{entry.previous_offer && <p>{t('Oferta anterior:')} {entry.previous_offer}</p>}<small>{entry.source === 'baseline' ? t('Seguimiento inicial') : entry.changed_by ? memberName(entry.changed_by) : t('Sistema / integración')} · {formatDate(entry.changed_at)}</small></article>)}</div>
     {canViewSyncLog && <div className="client-sync-log"><div className="section-heading"><div><h4>{t('Sincronización de onboarding')}</h4><p className="muted">{t('Últimos intentos del formulario de GHL y etapa alcanzada.')}</p></div></div>{syncEvents.length === 0 ? <p className="muted">{t('No hay sincronizaciones registradas para este cliente.')}</p> : syncEvents.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{t(entry.status)} · {t(entry.sync_stage)}</strong><small>{t('Intento')}: {entry.attempt_count} · {formatDate(entry.last_attempt_at || entry.created_at)}{entry.action ? ' · ' + t(entry.action) : ''}</small>{entry.error_message && <p className="form-error">{entry.error_message}</p>}</article>)}</div>}
