@@ -45,6 +45,14 @@ function shiftDate(dateString, amount) {
   return date.toISOString().slice(0, 10)
 }
 
+function getSemiMonthlyRange(month, period) {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
+  return period === 'first'
+    ? { start: `${month}-01`, end: `${month}-13` }
+    : { start: `${month}-14`, end: `${month}-${String(lastDay).padStart(2, '0')}` }
+}
+
 export default function EodReportsPage() {
   const { profile } = useAuth()
   const { locale, t } = useLanguage()
@@ -56,8 +64,16 @@ export default function EodReportsPage() {
   const cycle = useMemo(() => getCalendarDayWindow(cycleReference, timeZone), [cycleReference, timeZone])
   const reportDate = cycle.reportDate
   const currentReportDate = getDateInTimeZone(new Date(), timeZone)
-  const [payrollStart, setPayrollStart] = useState(() => `${getDateInTimeZone(new Date(), timeZone).slice(0, 7)}-01`)
-  const [payrollEnd, setPayrollEnd] = useState(() => getDateInTimeZone(new Date(), timeZone))
+  const [payrollMonth, setPayrollMonth] = useState(() => getDateInTimeZone(new Date(), timeZone).slice(0, 7))
+  const [payrollPeriod, setPayrollPeriod] = useState(() => Number(getDateInTimeZone(new Date(), timeZone).slice(8, 10)) < 14 ? 'first' : 'second')
+  const [payrollStart, setPayrollStart] = useState(() => {
+    const currentDate = getDateInTimeZone(new Date(), timeZone)
+    return getSemiMonthlyRange(currentDate.slice(0, 7), Number(currentDate.slice(8, 10)) < 14 ? 'first' : 'second').start
+  })
+  const [payrollEnd, setPayrollEnd] = useState(() => {
+    const currentDate = getDateInTimeZone(new Date(), timeZone)
+    return getSemiMonthlyRange(currentDate.slice(0, 7), Number(currentDate.slice(8, 10)) < 14 ? 'first' : 'second').end
+  })
   const [payrollReports, setPayrollReports] = useState([])
   const [payrollLoading, setPayrollLoading] = useState(false)
   const [geminiConsent, setGeminiConsent] = useState(false)
@@ -200,6 +216,24 @@ export default function EodReportsPage() {
   const payrollHours = useMemo(() => payrollReports.reduce((sum, report) => sum + (report.time_entries || []).reduce((total, entry) => total + Number(entry.hours || 0), 0), 0), [payrollReports])
   const payrollMemberCount = useMemo(() => new Set(payrollReports.map((report) => report.user_id)).size, [payrollReports])
 
+  const selectPayrollPeriod = (period, month = payrollMonth) => {
+    const range = getSemiMonthlyRange(month, period)
+    setPayrollMonth(month)
+    setPayrollPeriod(period)
+    setPayrollStart(range.start)
+    setPayrollEnd(range.end)
+  }
+
+  const changePayrollMonth = (month) => {
+    if (!month) return
+    setPayrollMonth(month)
+    if (payrollPeriod !== 'custom') {
+      const range = getSemiMonthlyRange(month, payrollPeriod)
+      setPayrollStart(range.start)
+      setPayrollEnd(range.end)
+    }
+  }
+
   const exportPayroll = async () => {
     if (!canReviewAll || !payrollReports.length || payrollStart > payrollEnd) return
     setError('')
@@ -234,10 +268,11 @@ export default function EodReportsPage() {
     reports.filter((report) => {
       const state = getReviewState(report, profile.id)
       const matchesUser = !search || (report.profiles?.full_name || '').toLowerCase().includes(search)
+      const matchesPeriod = !canReviewAll || (report.report_date >= payrollStart && report.report_date <= payrollEnd)
       const matchesState = !canReviewAll || reviewFilter === 'Todos'
         || (reviewFilter === 'Nuevos' && state.unread)
         || (!state.unread && reviewFilter === state.label)
-      return matchesUser && matchesState
+      return matchesUser && matchesState && matchesPeriod
     }).forEach((report) => {
       if (!groups.has(report.report_date)) groups.set(report.report_date, [])
       groups.get(report.report_date).push(report)
@@ -246,7 +281,7 @@ export default function EodReportsPage() {
       date,
       items: items.sort((a, b) => (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '')),
     }))
-  }, [canReviewAll, profile.id, reports, reviewFilter, userSearch])
+  }, [canReviewAll, payrollEnd, payrollStart, profile.id, reports, reviewFilter, userSearch])
 
   const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
@@ -374,7 +409,14 @@ export default function EodReportsPage() {
 
     {canReviewAll && <section className="content-card eod-payroll-summary">
       <div className="section-heading"><div><p className="eyebrow">{t('Resumen para nómina')}</p><h3>{t('Reportes EOD por rango de fechas')}</h3><p className="muted">{t('Selecciona el periodo. Las horas se suman desde los registros de tiempo de cada reporte enviado.')}</p></div><button className="primary-button compact-button" type="button" onClick={exportPayroll} disabled={payrollLoading || !payrollReports.length || payrollStart > payrollEnd}>{t('Descargar resumen PDF')}</button></div>
-      <div className="eod-payroll-filters"><label>{t('Desde')}<input type="date" value={payrollStart} max={payrollEnd || currentReportDate} onChange={(event) => setPayrollStart(event.target.value)} /></label><label>{t('Hasta')}<input type="date" value={payrollEnd} min={payrollStart} max={currentReportDate} onChange={(event) => setPayrollEnd(event.target.value)} /></label></div>
+      <div className="eod-payroll-period-picker">
+        <label>{t('Mes')}<input type="month" value={payrollMonth} onChange={(event) => changePayrollMonth(event.target.value)} /></label>
+        <div className="eod-payroll-period-options" role="group" aria-label={t('Periodo quincenal')}>
+          <button type="button" className={payrollPeriod === 'first' ? 'active' : ''} aria-pressed={payrollPeriod === 'first'} onClick={() => selectPayrollPeriod('first')}>{t('Del 1 al 13')}</button>
+          <button type="button" className={payrollPeriod === 'second' ? 'active' : ''} aria-pressed={payrollPeriod === 'second'} onClick={() => selectPayrollPeriod('second')}>{t('Del 14 al fin de mes')}</button>
+        </div>
+      </div>
+      <div className="eod-payroll-filters"><label>{t('Desde')}<input type="date" value={payrollStart} onChange={(event) => { setPayrollPeriod('custom'); setPayrollStart(event.target.value); if (event.target.value) setPayrollMonth(event.target.value.slice(0, 7)) }} /></label><label>{t('Hasta')}<input type="date" value={payrollEnd} onChange={(event) => { setPayrollPeriod('custom'); setPayrollEnd(event.target.value); if (event.target.value) setPayrollMonth(event.target.value.slice(0, 7)) }} /></label>{payrollPeriod === 'custom' && <button className="text-button" type="button" onClick={() => selectPayrollPeriod(Number(payrollStart.slice(-2)) <= 13 ? 'first' : 'second')}>{t('Restablecer quincena')}</button>}</div>
       <div className="eod-payroll-ai-controls">
         <label className="eod-payroll-ai-consent"><input type="checkbox" checked={geminiConsent} onChange={(event) => setGeminiConsent(event.target.checked)} /><span>{t('Autorizo enviar a Gemini las fechas, horas y descripciones del rango seleccionado. Se excluyen los nombres de empleados; las descripciones podrían mencionar clientes.')}</span></label>
         <button className="secondary-button" type="button" onClick={generateGeminiSummary} disabled={!geminiConsent || geminiLoading || payrollLoading || !payrollReports.length}>{t(geminiLoading ? 'Generando con Gemini…' : geminiSummary ? 'Actualizar resumen con Gemini' : 'Generar resumen con Gemini')}</button>
@@ -386,7 +428,7 @@ export default function EodReportsPage() {
     </section>}
 
     <section className="content-card eod-report-center">
-      <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3></div></div>
+      <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3>{canReviewAll && <p className="muted">{t('Mostrando reportes del periodo seleccionado')}: {payrollStart} — {payrollEnd}</p>}</div></div>
       <div className="eod-report-filters"><input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…"/>{canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option>Todos</option><option>Nuevos</option><option>Revisado</option><option>Requiere seguimiento</option><option>Visto</option></select>}<div className="view-toggle"><button type="button" className={reportViewMode === 'cards' ? 'active' : ''} onClick={() => setReportViewMode('cards')}>Tarjetas</button><button type="button" className={reportViewMode === 'list' ? 'active' : ''} onClick={() => setReportViewMode('list')}>Lista</button></div></div>
       <div className="report-day-list">{groupedReports.length === 0 && <p className="muted">No hay informes con estos filtros.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className={`report-user-grid ${reportViewMode === 'list' ? 'report-list-view' : ''}`}>{group.items.map((report) => {
         const reportTimeZone = report.profiles?.timezone || timeZone
