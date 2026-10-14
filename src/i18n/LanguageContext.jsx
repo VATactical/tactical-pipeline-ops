@@ -16,6 +16,7 @@ const translations = {
   'Resumen quincenal': 'Semi-monthly summary',
   'Horas registradas en la quincena': 'Hours logged in the pay period',
   'Total de la quincena': 'Pay-period total',
+  'Reportes EOD por quincena': 'EOD reports by pay period',
   'Integrante': 'Team member',
   'Mostrando reportes del periodo seleccionado': 'Showing reports for the selected period',
   'Autorizo enviar a Gemini las fechas, horas y descripciones del rango seleccionado. Se excluyen los nombres de empleados; las descripciones podrían mencionar clientes.': 'I authorize sending the selected period dates, hours, and work descriptions to Gemini. Employee names are excluded; descriptions may mention clients.',
