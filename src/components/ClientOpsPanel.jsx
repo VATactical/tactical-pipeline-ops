@@ -17,29 +17,24 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   const { t, locale } = useLanguage()
   const [interactions, setInteractions] = useState([])
   const [syncEvents, setSyncEvents] = useState([])
-  const [offerHistory, setOfferHistory] = useState([])
   const [interaction, setInteraction] = useState(emptyInteraction)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   const reload = async () => {
-    const [interactionResult, offerHistoryResult, syncResult] = await Promise.all([
+    const [interactionResult, syncResult] = await Promise.all([
       supabase.from('client_interactions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(50),
-      supabase.from('client_offer_history').select('*').eq('client_id', client.id).order('changed_at', { ascending: false }).limit(50),
       canViewSyncLog ? supabase.from('ghl_form_imports').select('id,status,action,sync_stage,attempt_count,last_attempt_at,error_message,processed_at,created_at').or('client_id.eq.' + client.id + (client.ghl_contact_id ? ',contact_id.eq.' + client.ghl_contact_id : '')).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [], error: null }),
     ])
     if (interactionResult.error) throw interactionResult.error
-    if (offerHistoryResult.error) throw offerHistoryResult.error
     if (syncResult.error) throw syncResult.error
     setSyncEvents(syncResult.data || [])
     setInteractions(interactionResult.data || [])
-    setOfferHistory(offerHistoryResult.data || [])
   }
 
   useEffect(() => { reload().catch((loadError) => setError(loadError.message)) }, [client.id])
 
-  const currentStageIndex = Math.max(0, stages.findIndex(([key]) => key === client.lifecycle_stage))
   const latestContact = interactions[0]
   const unclaimedInbound = interactions.find((item) => item.direction === 'inbound' && !item.responder_id)
   const memberName = (id) => directory.find((member) => member.id === id)?.full_name || t('Sin responsable')
@@ -74,10 +69,9 @@ export default function ClientOpsPanel({ client, directory = [], canEdit, onRefr
   }
 
   return <section className="content-card client-ops-panel">
-    <div className="section-heading"><div><p className="eyebrow">{t('Control del cliente')}</p><h3>{t('Dossier y avance')}</h3><p className="muted">{t('Revisa la etapa actual y los datos que faltan para avanzar.')}</p></div><span className="lifecycle">{Math.max(0, currentStageIndex + 1)} / {stages.length}</span></div>
+    <div className="section-heading"><div><p className="eyebrow">{t('Control del cliente')}</p><h3>{t('Estado del cliente')}</h3></div></div>
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="form-success">{notice}</p>}
-    <div className="lifecycle-stage-picker"><label>{t('Etapa actual')}<select value={client.lifecycle_stage || 'onboarding'} disabled={!canEdit || saving || client.archived} onChange={(event) => changeStage(event.target.value)}>{stages.map(([key, label], index) => <option key={key} value={key}>{index + 1}. {t(label)}</option>)}</select></label><div className="lifecycle-progress" role="progressbar" aria-valuemin="0" aria-valuemax={stages.length} aria-valuenow={currentStageIndex + 1}><span style={{ width: ((currentStageIndex + 1) / stages.length * 100) + '%' }} /></div></div>
-    <div className="client-sync-log client-offer-history"><div className="section-heading"><div><h4>{t('Historial de ofertas')}</h4><p className="muted">{t('Historial de ofertas: las ofertas anteriores y sus fechas se conservan aquí. El dossier copiado o descargado muestra solo la oferta actual.')}</p></div></div><p><strong>{t('Oferta actual')}:</strong> {client.offer || t('pending')}</p>{offerHistory.length === 0 ? <p className="muted">{t('Sin cambios de oferta registrados.')}</p> : offerHistory.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{entry.new_offer || t('Oferta retirada')}</strong>{entry.previous_offer && <p>{t('Oferta anterior:')} {entry.previous_offer}</p>}<small>{entry.source === 'baseline' ? t('Seguimiento inicial') : entry.changed_by ? memberName(entry.changed_by) : t('Sistema / integración')} · {formatDate(entry.changed_at)}</small></article>)}</div>
+    <div className="lifecycle-stage-picker status-only"><label>{t('Etapa actual')}<select value={client.lifecycle_stage || 'onboarding'} disabled={!canEdit || saving || client.archived} onChange={(event) => changeStage(event.target.value)}>{stages.map(([key, label]) => <option key={key} value={key}>{t(label)}</option>)}</select></label></div>
     {canViewSyncLog && <div className="client-sync-log"><div className="section-heading"><div><h4>{t('Sincronización de onboarding')}</h4><p className="muted">{t('Últimos intentos del formulario de GHL y etapa alcanzada.')}</p></div></div>{syncEvents.length === 0 ? <p className="muted">{t('No hay sincronizaciones registradas para este cliente.')}</p> : syncEvents.map((entry) => <article className="client-contact-row" key={entry.id}><strong>{t(entry.status)} · {t(entry.sync_stage)}</strong><small>{t('Intento')}: {entry.attempt_count} · {formatDate(entry.last_attempt_at || entry.created_at)}{entry.action ? ' · ' + t(entry.action) : ''}</small>{entry.error_message && <p className="form-error">{entry.error_message}</p>}</article>)}</div>}
     <div className="client-contact-summary"><div className="section-heading"><div><h4>{t('Seguimiento del cliente')}</h4><p className="muted">{latestContact ? t('Último contacto') + ': ' + formatDate(latestContact.created_at) + ' · ' + t(latestContact.channel) + ' · ' + memberName(latestContact.responder_id || latestContact.created_by) : t('Aún no hay contactos registrados.')}</p></div></div>{unclaimedInbound && <p className="form-error">{t('Respuesta del cliente sin responsable')}: {unclaimedInbound.summary}</p>}
       <div className="client-contact-list">{interactions.slice(0, 5).map((item) => <article className="client-contact-row" key={item.id}><strong>{t(item.direction)} · {t(item.channel)}</strong><p>{item.summary}</p><small>{memberName(item.responder_id || item.created_by)} · {formatDate(item.created_at)}{item.next_follow_up_at ? ' · ' + t('Próximo seguimiento') + ': ' + formatDate(item.next_follow_up_at) : ''}{item.next_step ? ' · ' + item.next_step : ''}</small></article>)}</div>
