@@ -351,6 +351,10 @@ const translations = {
   'Estado de plataforma': 'Platform status',
   'Revisa la etapa actual y los datos que faltan para avanzar.': 'Review the current stage and the information still needed to move forward.',
   'Estado de plataforma guardado.': 'Platform status saved.',
+  'Descargar mis horas en PDF': 'Download my hours as PDF',
+  'Preparando PDF…': 'Preparing PDF…',
+  'No se pudo descargar el reporte de horas.': 'Could not download the hours report.',
+
 }
 
 const patterns = [
