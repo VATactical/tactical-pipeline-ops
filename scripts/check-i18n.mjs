@@ -39,10 +39,12 @@ const criticalPhrases = [
   'Todos los usuarios',
   'Título (ES)',
   'Control del cliente',
-  'Verificación del dossier',
+  'Estado de plataformas',
+  'Cambiar estado',
+  'Acceso a GoHighLevel',
+  'Método de pago en GHL',
   'Sincronización de onboarding',
   'Motivo del envío atrasado',
-  'No puedes completar un campo vacío.',
   'Datos y accesos',
   'Configuración técnica',
   'Campaña lista',
@@ -85,17 +87,18 @@ if (!adsSource.includes('ad_performance_reports')) violations.push('Client follo
 
 
 const clientOpsSource = readFileSync('src/components/ClientOpsPanel.jsx', 'utf8')
+const clientDetailSource = readFileSync('src/pages/ClientDetailPage.jsx', 'utf8')
 const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.ts', 'utf8')
 const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('client_ops_lifecycle_followups')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
-if (!clientOpsSource.includes('client_field_verifications') || !clientOpsSource.includes('verified_by')) violations.push('Client dossier verification must save status, actor, and time.')
+if (clientOpsSource.includes('client_field_verifications')) violations.push('Client operations must not render the confusing per-field verification panel.')
 if (!clientOpsSource.includes('client_interactions') || !clientOpsSource.includes('next_follow_up_at')) violations.push('Client contact logs must support an owner and next follow-up.')
+if (!clientDetailSource.includes('savePlatformStatus') || !['gbp_access_confirmed', 'google_ads_status', 'ghl_access_confirmed', 'payment_method_confirmed'].every((field) => clientDetailSource.includes(field))) violations.push('Client dossier must expose editable GBP, Google Ads, GHL, and payment statuses.')
 if (!onboardingSource.includes('target_zip_codes: value(payload, "target_zip_codes"') || !onboardingSource.includes('markets: value(payload, "service_areas"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
 if (!onboardingSource.includes('attempt_count') || !onboardingSource.includes('sync_stage')) violations.push('Onboarding sync must keep retry and stage details.')
 if (!lifecycleMigration.includes('reassign_client_code') || !lifecycleMigration.includes('client_code_history')) violations.push('Visible client-code changes must keep a history and stable client IDs.')
 if (!lifecycleMigration.includes('require_eod_late_reason')) violations.push('Database must require a reason for a late EOD.')
 if (!eodSource.includes("DEFAULT_KEVIN_TIME_ZONE = 'America/New_York'") || !eodSource.includes('late_reason: cleanLateReason')) violations.push('EOD must use New York time and persist late reasons.')
 if (!taskProgressServiceSource.includes('next_step: nextStep.trim()')) violations.push('Tasks must persist a next step.')
-const clientDetailSource = readFileSync('src/pages/ClientDetailPage.jsx', 'utf8')
 if (!clientDetailSource.includes('showAllWorkflowSteps') || !clientDetailSource.includes('visibleWorkflowSteps')) violations.push('Client workflow must focus on the current stage and allow opening the full checklist.')
 
 if (violations.length) {
