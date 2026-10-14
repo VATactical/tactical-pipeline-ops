@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 import { formatHoursAndMinutes } from '../utils/timeDuration'
+import { loadOwnEodTimeEntries } from '../services/eodService'
+import { downloadOwnHoursPdf } from '../lib/reportExports'
 
 function addDays(dateString, amount) {
   const date = new Date(`${dateString}T12:00:00Z`)
@@ -23,6 +25,8 @@ export default function WeeklyHoursPanel({ entries, directory, profile, canRevie
   const [month, setMonth] = useState(currentMonth)
   const [period, setPeriod] = useState(currentPeriod)
   const [userId, setUserId] = useState(canReviewAll ? 'all' : profile.id)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
   const { start, end } = getSemiMonthlyRange(month, period)
   const visible = useMemo(() => entries.filter((entry) => entry.work_date >= start && entry.work_date <= end && (userId === 'all' || entry.user_id === userId)), [entries, end, start, userId])
   const total = visible.reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
@@ -37,8 +41,22 @@ export default function WeeklyHoursPanel({ entries, directory, profile, canRevie
   const selectedMember = directory.find((member) => member.id === userId)
   const userLabel = userId === 'all' ? t('Todo el equipo') : selectedMember?.full_name || profile.full_name
 
+  const downloadPersonalReport = async () => {
+    setExporting(true)
+    setExportError('')
+    try {
+      const ownEntries = await loadOwnEodTimeEntries(profile, start, end)
+      await downloadOwnHoursPdf({ entries: ownEntries, startDate: start, endDate: end, userLabel: profile.full_name })
+    } catch {
+      setExportError(t('No se pudo descargar el reporte de horas.'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return <section className="content-card weekly-hours-panel">
-    <div className="section-heading"><div><p className="eyebrow">{t('Resumen quincenal')}</p><h3>{t('Horas registradas en la quincena')}</h3><p className="muted">{start} — {end} · {t('Las horas se registran dentro del reporte EOD diario.')}</p></div></div>
+    <div className="section-heading weekly-hours-heading"><div><p className="eyebrow">{t('Resumen quincenal')}</p><h3>{t('Horas registradas en la quincena')}</h3><p className="muted">{start} — {end} · {t('Las horas se registran dentro del reporte EOD diario.')}</p></div><button className="secondary-button compact-button" type="button" onClick={downloadPersonalReport} disabled={exporting}>{t(exporting ? 'Preparando PDF…' : 'Descargar mis horas en PDF')}</button></div>
+    {exportError && <p className="form-error" role="alert">{exportError}</p>}
     <div className="weekly-hours-filters">
       <label>{t('Mes')}<input aria-label={t('Mes')} type="month" value={month} onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>
       <div className="eod-payroll-period-options" role="group" aria-label={t('Periodo quincenal')}>

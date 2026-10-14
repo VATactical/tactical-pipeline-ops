@@ -131,6 +131,19 @@ export async function loadEodPayrollReports(profile, startDate, endDate) {
   }))
 }
 
+export async function loadOwnEodTimeEntries(profile, startDate, endDate) {
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/
+  if (!profile?.id) throw new Error('No se pudo descargar el reporte de horas.')
+  if (!datePattern.test(startDate) || !datePattern.test(endDate) || startDate > endDate) {
+    throw new Error('Selecciona un rango de fechas válido.')
+  }
+  // Always scope this export to the signed-in profile, including for operations admins.
+  return loadAllRows(() => supabase.from('time_entries').select('id,user_id,work_date,hours,memo,created_at')
+    .eq('user_id', profile.id)
+    .gte('work_date', startDate).lte('work_date', endDate)
+    .order('work_date', { ascending: true }).order('created_at', { ascending: true }))
+}
+
 export async function loadOwnEodState(profile) {
   if (profile?.role === 'superadmin' || !profile?.permissions?.eod_reports) return { required: false }
   const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
