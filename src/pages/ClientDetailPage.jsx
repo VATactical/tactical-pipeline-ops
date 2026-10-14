@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import AdsReportsPanel from '../components/AdsReportsPanel'
@@ -83,6 +83,8 @@ export default function ClientDetailPage() {
   const { locale, t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState(null)
+  const [showPinnedClient, setShowPinnedClient] = useState(false)
+  const clientHeaderRef = useRef(null)
   const [draft, setDraft] = useState(null)
   const [editingSection, setEditingSection] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -139,6 +141,13 @@ export default function ClientDetailPage() {
     setData(result); setDraft(result.client)
   }
   useEffect(() => { refresh().catch((loadError) => setError(loadError.message)) }, [clientId])
+  useEffect(() => {
+    const header = clientHeaderRef.current
+    if (!header || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => setShowPinnedClient(!entry.isIntersecting), { threshold: 0 })
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [data?.client?.id])
   if (!data && !error) return <LoadingScreen />
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
@@ -449,13 +458,14 @@ export default function ClientDetailPage() {
     }
     setError(''); setMessage(t(`Resultado encontrado en ${sections[matchIndex].title}.`)); setHighlightedSection(matchIndex)
     const targetSection = document.getElementById(`dossier-section-${matchIndex}`)
-    if (targetSection) window.scrollTo({ top: window.scrollY + targetSection.getBoundingClientRect().top - 24, behavior: 'smooth' })
+    if (targetSection) window.scrollTo({ top: window.scrollY + targetSection.getBoundingClientRect().top - 88, behavior: 'smooth' })
     window.setTimeout(() => setHighlightedSection((current) => current === matchIndex ? null : current), 2200)
   }
 
   return <div className="page-stack client-dossier-page" data-client-tab={activeTab}>
     <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {t(client.archived ? 'Clientes archivados' : 'Todos los clientes')}</Link>
-    <header className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
+    <header ref={clientHeaderRef} className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
+    {showPinnedClient && <div className="client-name-pin" aria-label={client.business_name}><span className="client-name-pin-code">{client.code}</span><strong>{client.business_name}</strong><span className="client-name-pin-phase">{client.phase}</span><span className={`lifecycle client-name-pin-status ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span></div>}
     <div className="client-sticky-shell">
     <nav className="client-detail-tabs" aria-label={t('Secciones del cliente')}>{tabs.map(([key, label]) => <button key={key} type="button" className={activeTab === key ? 'active' : ''} aria-current={activeTab === key ? 'page' : undefined} onClick={() => selectTab(key)}>{t(label)}</button>)}</nav>
     <form className="dossier-search compact-sticky-search client-tab-section tab-dossier" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
