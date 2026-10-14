@@ -144,7 +144,7 @@ export default function EodReportsPage() {
             description: typeof item === 'string' ? existingEntries[index]?.memo || '' : item.description || existingEntries[index]?.memo || '',
             ...decimalHoursToInputs(typeof item === 'object' && item.hours != null ? item.hours : existingEntries[index]?.hours || ''),
           }))
-          : [{ title: '', description: '', hours: '' }])
+          : [{ title: '', description: '', hours: '', minutes: '' }])
         setNotes(existing.notes || '')
         setLateReason(existing.late_reason || '')
       } else {
