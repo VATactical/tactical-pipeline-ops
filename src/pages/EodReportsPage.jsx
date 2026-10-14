@@ -45,6 +45,15 @@ function sectionDurationHours(section) {
   return (Number(section.hours) || 0) + (Number(section.minutes) || 0) / 60
 }
 
+function formatHoursAndMinutes(decimalHours) {
+  const totalMinutes = Math.max(0, Math.round(Number(decimalHours || 0) * 60))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours && minutes) return `${hours} h ${minutes} min`
+  if (hours) return `${hours} h`
+  return `${minutes} min`
+}
+
 function normalizeManualSection(item) {
   return typeof item === 'string'
     ? { title: item, description: '', hours: null }
@@ -422,7 +431,7 @@ export default function EodReportsPage() {
       <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
       <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '', minutes: '' }])}>+ {t('Agregar sección')}</button></div>
       <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas')}<input type="number" min="0" max="24" step="1" inputMode="numeric" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0" /></label><label>{t('Minutos')}<input type="number" min="0" max="59" step="1" inputMode="numeric" value={section.minutes} onChange={(event) => changeSection(index, 'minutes', event.target.value)} placeholder="0" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
-      <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{totalManualHours.toFixed(2)} h</strong></div>
+      <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{formatHoursAndMinutes(totalManualHours)}</strong></div>
       <label>{t('Resumen general del día')}<textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('Resultados generales, bloqueos o contexto para supervisión…')} /></label>
       <div className="eod-submit-row"><span>{selectedTaskIds.length + manualSections.filter((section) => section.title.trim()).length} {t('actividades serán enviadas.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
     </form>}
