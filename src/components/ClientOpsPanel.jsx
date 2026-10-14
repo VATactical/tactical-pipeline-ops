@@ -43,6 +43,7 @@ function displayFieldValue(value, t) {
   if (value == null || value === '') return t('No hay dato registrado')
   if (typeof value === 'boolean') return t(value ? 'Sí' : 'No')
   if (Array.isArray(value)) return value.length ? value.join(', ') : t('No hay dato registrado')
+  if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
