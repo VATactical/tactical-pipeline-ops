@@ -2148,3 +2148,45 @@ html[data-theme='light'] .client-name-pin {
 html[data-theme='light'] .client-name-pin > strong { color: #18344c; }
 html[data-theme='light'] .client-name-pin-phase { color: #63798d; }
 html[data-theme='light'] .client-name-pin-code { background: #e9f4fb; color: #087cae; }
+
+
+/* Client dossier refinements: clearer separation between sections and visible client identity. */
+.client-dossier-page[data-client-tab="dossier"] .print-dossier {
+  row-gap: 2.75rem;
+}
+.client-dossier-page[data-client-tab="dossier"] .dossier-section {
+  margin-block: .15rem;
+}
+html[data-theme='light'] .client-name-pin {
+  border-color: #42b6dc;
+  background: #ccefff;
+  color: #123b55;
+}
+html[data-theme='light'] .client-name-pin > strong { color: #123b55; }
+html[data-theme='light'] .client-name-pin-phase { color: #245b73; }
+html[data-theme='light'] .client-name-pin-code {
+  background: #a9e5f8;
+  color: #075678;
+}
+html[data-theme='dark'] .client-name-pin {
+  border-color: #20b8e4;
+  background: #0a3b52;
+  color: #e9faff;
+}
+html[data-theme='dark'] .client-name-pin > strong { color: #e9faff; }
+html[data-theme='dark'] .client-name-pin-phase { color: #b2dbea; }
+html[data-theme='dark'] .client-name-pin-code {
+  background: #12536d;
+  color: #baf0ff;
+}
+@media (max-width: 800px) {
+  .client-dossier-page[data-client-tab="dossier"] .print-dossier {
+    row-gap: 1.5rem;
+  }
+}
+
+@media print {
+  .client-dossier-page[data-client-tab="dossier"] .print-dossier {
+    row-gap: 1.5rem;
+  }
+}
