@@ -105,7 +105,7 @@ export default function EodReportsPage() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [reviewFilter, setReviewFilter] = useState('Todos')
-  const [reportViewMode, setReportViewMode] = useState(() => window.localStorage.getItem('tp-ops-eod-view') || 'cards')
+  const [reportGroupMode, setReportGroupMode] = useState('member')
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReport, setExpandedReport] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -115,8 +115,6 @@ export default function EodReportsPage() {
   const [message, setMessage] = useState('')
   const [draftHydrated, setDraftHydrated] = useState(false)
   const draftKey = profile?.id && reportDate ? `tp-ops-eod-draft-${profile.id}-${reportDate}` : ''
-  useEffect(() => { window.localStorage.setItem('tp-ops-eod-view', reportViewMode) }, [reportViewMode])
-
   const refresh = useCallback(async () => {
     setDraftHydrated(false)
     const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
@@ -153,6 +151,7 @@ export default function EodReportsPage() {
       }
       setDraftHydrated(true)
     }
+    return data
   }, [cycle, draftKey, isSuperadmin, profile, reportDate])
 
   useEffect(() => {
@@ -279,14 +278,21 @@ export default function EodReportsPage() {
         || (!state.unread && reviewFilter === state.label)
       return matchesUser && matchesState && matchesPeriod
     }).forEach((report) => {
-      if (!groups.has(report.report_date)) groups.set(report.report_date, [])
-      groups.get(report.report_date).push(report)
+      const key = reportGroupMode === 'date' ? report.report_date : report.user_id || report.profiles?.full_name || 'unknown'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(report)
     })
-    return [...groups.entries()].map(([date, items]) => ({
-      date,
-      items: items.sort((a, b) => (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '')),
-    }))
-  }, [canReviewAll, payrollEnd, payrollStart, profile.id, reports, reviewFilter, userSearch])
+    return [...groups.entries()].map(([key, items]) => {
+      const sortedItems = items.sort((a, b) => b.report_date.localeCompare(a.report_date)
+        || (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || ''))
+      return {
+        key,
+        title: reportGroupMode === 'date' ? key : sortedItems[0]?.profiles?.full_name || t('Usuario'),
+        items: sortedItems,
+        totalHours: sortedItems.reduce((sum, report) => sum + (report.time_entries || []).reduce((total, entry) => total + Number(entry.hours || 0), 0), 0),
+      }
+    }).sort((a, b) => reportGroupMode === 'date' ? b.key.localeCompare(a.key) : a.title.localeCompare(b.title))
+  }, [canReviewAll, payrollEnd, payrollStart, profile.id, reportGroupMode, reports, reviewFilter, t, userSearch])
 
   const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
@@ -301,7 +307,9 @@ export default function EodReportsPage() {
     setActionKey(key); setError(''); setMessage('')
     try {
       await action()
-      await refresh()
+      const refreshed = await refresh()
+      const updatedReport = expandedReport && refreshed?.reports?.find((item) => item.id === expandedReport.id)
+      if (updatedReport) setExpandedReport(updatedReport)
       setMessage(t(success))
       window.dispatchEvent(new CustomEvent('eod-review-updated'))
       return true
@@ -443,29 +451,95 @@ export default function EodReportsPage() {
 
     <section className="content-card eod-report-center">
       <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3>{canReviewAll && <p className="muted">{t('Mostrando reportes del periodo seleccionado')}: {payrollStart} — {payrollEnd}</p>}</div></div>
-      <div className="eod-report-filters"><input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Buscar usuario…"/>{canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option>Todos</option><option>Nuevos</option><option>Revisado</option><option>Requiere seguimiento</option><option>Visto</option></select>}<div className="view-toggle"><button type="button" className={reportViewMode === 'cards' ? 'active' : ''} onClick={() => setReportViewMode('cards')}>Tarjetas</button><button type="button" className={reportViewMode === 'list' ? 'active' : ''} onClick={() => setReportViewMode('list')}>Lista</button></div></div>
-      <div className="report-day-list">{groupedReports.length === 0 && <p className="muted">No hay informes con estos filtros.</p>}{groupedReports.map((group) => <section className="report-day-group" key={group.date}><div className="report-day-heading"><h4>{group.date}</h4><span>{group.items.length} {group.items.length === 1 ? 'reporte' : 'reportes'}</span></div><div className={`report-user-grid ${reportViewMode === 'list' ? 'report-list-view' : ''}`}>{group.items.map((report) => {
-        const reportTimeZone = report.profiles?.timezone || timeZone
-        const state = getReviewState(report, profile.id)
-        return <article className={`report-card eod-review-card report-collapsed ${state.unread ? 'unread' : ''}`} key={report.id}>
-          <div className="eod-report-title"><div><strong data-no-translate>{report.profiles?.full_name || t('Usuario')}</strong><small>{t('Enviado')} {formatMoment(report.submitted_at || report.updated_at, timeZone, locale)}</small></div><span className={`eod-review-status ${state.label.toLowerCase().replaceAll(' ', '-')}`}>{t(state.label)}</span></div>
-          <small className="report-period">{t('Ciclo diario')}: {formatMoment(report.period_start, reportTimeZone, locale)} — {formatMoment(report.period_end, reportTimeZone, locale)} · {reportTimeZone}</small>
-          <p className="eod-activity-count">{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades</p>
-          <p className="eod-hours-total">{t('Horas')}: <strong>{formatHoursAndMinutes((report.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>
-          <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>Abrir reporte completo</button>
-          <ul data-no-translate>{[...(report.completed_tasks || []), ...(report.manual_tasks || [])].map((item, index) => { const section = normalizeManualSection(item); return <li className="formatted-text" key={`${item.id || 'manual'}-${index}`}>{item.client ? `${item.client}: ` : ''}{section.title}</li> })}</ul>
-          {report.late_reason && <div className="eod-notes-block"><strong>{t('Motivo del envío atrasado')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.late_reason)}</p></div>}{report.notes && <div className="eod-notes-block"><strong>{t('Notas')}:</strong><p className="formatted-text" data-no-translate>{reportPreview(report.notes)}</p>{report.notes.trim().length > 200 && <button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button>}</div>}
-          {canReviewAll && <><div className="eod-review-actions"><button className="secondary-button" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Visto')}>Marcar visto</button><button className="secondary-button review-ok" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Revisado')}>Revisado</button><button className="secondary-button review-follow-up" type="button" disabled={actionKey === `review-${report.id}`} onClick={() => updateReview(report, 'Requiere seguimiento')}>Requiere seguimiento</button></div>
-            <form className="eod-comment-form" onSubmit={(event) => submitComment(event, report)}><label>Comentario del supervisor<textarea rows="2" maxLength="2000" value={commentDrafts[report.id] || ''} onChange={(event) => setCommentDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Deja una observación o instrucción…"/></label><button className="primary-button compact-button" disabled={actionKey === `comment-${report.id}` || !commentDrafts[report.id]?.trim()}>{actionKey === `comment-${report.id}` ? 'Guardando…' : 'Agregar comentario'}</button></form></>}
-          {(report.comments || []).length > 0 && <div className="eod-follow-up-summary"><strong>Seguimiento</strong><span>{report.comments.length} {report.comments.length === 1 ? 'seguimiento' : 'seguimientos'}</span><small>{[...new Set(report.comments.map((comment) => comment.author?.full_name || 'Supervisor'))].join(' · ')}</small><button className="text-button" type="button" onClick={() => setExpandedReport(report)}>Ver reporte completo</button></div>}
-          {canReviewAll && (report.reviews || []).length > 0 && <div className="eod-reviewers">{report.reviews.map((review) => <small key={review.id}>{review.reviewer?.full_name || 'Supervisor'}: {review.status}</small>)}</div>}
-        </article>
-      })}</div></section>)}</div>
+      <div className="eod-report-filters">
+        <input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder={t('Buscar usuario…')} />
+        {canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option value="Todos">{t('Todos')}</option><option value="Nuevos">{t('Nuevos')}</option><option value="Revisado">{t('Revisado')}</option><option value="Requiere seguimiento">{t('Requiere seguimiento')}</option><option value="Visto">{t('Visto')}</option></select>}
+        <div className="view-toggle" role="group" aria-label={t('Agrupar reportes')}>
+          <button type="button" className={reportGroupMode === 'member' ? 'active' : ''} aria-pressed={reportGroupMode === 'member'} onClick={() => setReportGroupMode('member')}>{t('Por integrante')}</button>
+          <button type="button" className={reportGroupMode === 'date' ? 'active' : ''} aria-pressed={reportGroupMode === 'date'} onClick={() => setReportGroupMode('date')}>{t('Por fecha')}</button>
+        </div>
+      </div>
+      <div className="report-day-list">
+        {groupedReports.length === 0 && <p className="muted">{t('No hay informes con estos filtros.')}</p>}
+        {groupedReports.map((group) => <section className="report-day-group" key={group.key}>
+          <div className="report-day-heading">
+            <h4 data-no-translate={reportGroupMode === 'member' ? true : undefined}>{group.title}</h4>
+            <span>{group.items.length} {group.items.length === 1 ? t('reporte') : t('reportes')} · {formatHoursAndMinutes(group.totalHours)}</span>
+          </div>
+          <div className="report-user-grid">
+            {group.items.map((report) => {
+              const state = getReviewState(report, profile.id)
+              const totalActivities = (report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)
+              const totalHours = (report.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
+              return <article className={`report-card eod-review-card report-collapsed ${state.unread ? 'unread' : ''}`} key={report.id}>
+                <div className="eod-report-title">
+                  <div>
+                    <strong data-no-translate>{reportGroupMode === 'date' ? report.profiles?.full_name || t('Usuario') : report.report_date}</strong>
+                    <small>{reportGroupMode === 'member' && <>{t('Fecha')}: {report.report_date} · </>}{t('Enviado')} {formatMoment(report.submitted_at || report.updated_at, timeZone, locale)}</small>
+                  </div>
+                  <span className={`eod-review-status ${state.label.toLowerCase().replaceAll(' ', '-')}`}>{t(state.label)}</span>
+                </div>
+                <div className="eod-compact-summary">
+                  <span><strong>{formatHoursAndMinutes(totalHours)}</strong> {t('Horas')}</span>
+                  <span><strong>{totalActivities}</strong> {t('Actividades')}</span>
+                  {(report.comments || []).length > 0 && <span><strong>{report.comments.length}</strong> {t('Seguimientos')}</span>}
+                  {report.late_reason && <span className="eod-late-badge">{t('Envío atrasado')}</span>}
+                </div>
+                <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>{t('Abrir reporte completo')}</button>
+              </article>
+            })}
+          </div>
+        </section>)}
+      </div>
     </section>
     {expandedReport && <div className="eod-report-modal" role="dialog" aria-modal="true" aria-labelledby="expanded-report-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setExpandedReport(null) }}>
       <article className="eod-report-modal-card">
-        <div className="eod-report-modal-header"><div><p className="eyebrow">Reporte EOD completo</p><h2 id="expanded-report-title">{expandedReport.profiles?.full_name || t('Usuario')} · {expandedReport.report_date}</h2><small>{t('Enviado')} {formatMoment(expandedReport.submitted_at || expandedReport.updated_at, timeZone, locale)}</small></div><button className="secondary-button" type="button" onClick={() => setExpandedReport(null)}>Cerrar</button></div>
-        <div className="eod-report-modal-body"><p className="report-period">{t('Ciclo diario')}: {formatMoment(expandedReport.period_start, expandedReport.profiles?.timezone || timeZone, locale)} — {formatMoment(expandedReport.period_end, expandedReport.profiles?.timezone || timeZone, locale)}</p><h3>{t('Actividades')}</h3><ul data-no-translate>{(expandedReport.completed_tasks || []).map((item) => <li className="formatted-text" key={item.id}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>{(expandedReport.manual_tasks || []).length > 0 && <div className="eod-report-sections"><h3>{t('Secciones del trabajo')}</h3>{expandedReport.manual_tasks.map((item, index) => { const section = normalizeManualSection(item); return <article className="eod-report-section" key={`${section.title}-${index}`}><div><strong data-no-translate>{section.title}</strong>{section.description && <p className="formatted-text" data-no-translate>{section.description}</p>}</div>{section.hours != null && <span>{formatHoursAndMinutes(Number(section.hours))}</span>}</article> })}</div>}<p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>{expandedReport.notes && <div className="eod-notes-block"><strong>{t('Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}{(expandedReport.comments || []).length > 0 && <div className="eod-comment-list"><strong>Seguimiento</strong>{expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}><div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div><p className="formatted-text" data-no-translate>{comment.body}</p></article>)}</div>}</div>
+        <div className="eod-report-modal-header">
+          <div>
+            <p className="eyebrow">Reporte EOD completo</p>
+            <h2 id="expanded-report-title">{expandedReport.profiles?.full_name || t('Usuario')} · {expandedReport.report_date}</h2>
+            <small>{t('Enviado')} {formatMoment(expandedReport.submitted_at || expandedReport.updated_at, timeZone, locale)}</small>
+          </div>
+          <button className="secondary-button" type="button" onClick={() => setExpandedReport(null)}>{t('Cerrar')}</button>
+        </div>
+        <div className="eod-report-modal-body">
+          <p className="report-period">{t('Ciclo diario')}: {formatMoment(expandedReport.period_start, expandedReport.profiles?.timezone || timeZone, locale)} — {formatMoment(expandedReport.period_end, expandedReport.profiles?.timezone || timeZone, locale)}</p>
+          {expandedReport.late_reason && <div className="eod-notes-block"><strong>{t('Motivo del envío atrasado')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.late_reason}</p></div>}
+          <h3>{t('Actividades')}</h3>
+          <ul data-no-translate>{(expandedReport.completed_tasks || []).map((item) => <li className="formatted-text" key={item.id}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>
+          {(expandedReport.manual_tasks || []).length > 0 && <div className="eod-report-sections">
+            <h3>{t('Secciones del trabajo')}</h3>
+            {expandedReport.manual_tasks.map((item, index) => {
+              const section = normalizeManualSection(item)
+              return <article className="eod-report-section" key={`${section.title}-${index}`}>
+                <div><strong data-no-translate>{section.title}</strong>{section.description && <p className="formatted-text" data-no-translate>{section.description}</p>}</div>
+                {section.hours != null && <span>{formatHoursAndMinutes(Number(section.hours))}</span>}
+              </article>
+            })}
+          </div>}
+          <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>
+          {expandedReport.notes && <div className="eod-notes-block"><strong>{t('Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
+          {canReviewAll && <section className="eod-modal-review">
+            <h3>{t('Revisión del reporte')}</h3>
+            <div className="eod-review-actions">
+              <button className="secondary-button" type="button" disabled={actionKey === `review-${expandedReport.id}`} onClick={() => updateReview(expandedReport, 'Visto')}>{t('Marcar visto')}</button>
+              <button className="secondary-button review-ok" type="button" disabled={actionKey === `review-${expandedReport.id}`} onClick={() => updateReview(expandedReport, 'Revisado')}>{t('Revisado')}</button>
+              <button className="secondary-button review-follow-up" type="button" disabled={actionKey === `review-${expandedReport.id}`} onClick={() => updateReview(expandedReport, 'Requiere seguimiento')}>{t('Requiere seguimiento')}</button>
+            </div>
+            <form className="eod-comment-form" onSubmit={(event) => submitComment(event, expandedReport)}>
+              <label>{t('Comentario del supervisor')}<textarea rows="2" maxLength="2000" value={commentDrafts[expandedReport.id] || ''} onChange={(event) => setCommentDrafts((current) => ({ ...current, [expandedReport.id]: event.target.value }))} placeholder={t('Deja una observación o instrucción…')} /></label>
+              <button className="primary-button compact-button" disabled={actionKey === `comment-${expandedReport.id}` || !commentDrafts[expandedReport.id]?.trim()}>{actionKey === `comment-${expandedReport.id}` ? t('Guardando…') : t('Agregar comentario')}</button>
+            </form>
+          </section>}
+          {(expandedReport.comments || []).length > 0 && <div className="eod-comment-list">
+            <strong>{t('Seguimiento')}</strong>
+            {expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}>
+              <div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div>
+              <p className="formatted-text" data-no-translate>{comment.body}</p>
+              {canReviewAll && comment.task_id && <button className="secondary-button" type="button" disabled={actionKey === `task-${comment.id}`} onClick={() => convertComment(expandedReport, comment)}>{actionKey === `task-${comment.id}` ? t('Guardando…') : t('Convertir en tarea alta')}</button>}
+            </article>)}
+          </div>}
+        </div>
       </article>
     </div>}
   </div>
