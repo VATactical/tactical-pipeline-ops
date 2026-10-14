@@ -347,6 +347,11 @@ const translations = {
   'created': 'Created',
   'updated': 'Updated',
   'Puedes completar reportes atrasados; explica el motivo si su fecha ya pasó.': 'Late reports are allowed; explain the reason if the work date has passed.',
+  'Editar dato': 'Edit data',
+  'Valor actual': 'Current value',
+  'No hay dato registrado': 'No data recorded',
+  'Dato recibido; falta verificar': 'Data received; verification pending',
+  'Verificado por': 'Verified by',
 }
 
 const patterns = [
