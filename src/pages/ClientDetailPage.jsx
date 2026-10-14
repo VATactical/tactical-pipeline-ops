@@ -167,6 +167,10 @@ export default function ClientDetailPage() {
   const editDossierField = (key) => {
     const index = sections.findIndex((section) => section.fields.some(([, fieldKey]) => fieldKey === key))
     if (index < 0) return
+    if (editingSection != null && editingSection !== index) {
+      setError(t('Guarda o cancela la sección actual antes de editar otra.'))
+      return
+    }
     selectTab('dossier')
     startEditing(index)
     window.setTimeout(() => {
