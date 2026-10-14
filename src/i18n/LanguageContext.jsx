@@ -352,6 +352,7 @@ const translations = {
   'No hay dato registrado': 'No data recorded',
   'Dato recibido; falta verificar': 'Data received; verification pending',
   'Verificado por': 'Verified by',
+  'Guarda o cancela la sección actual antes de editar otra.': 'Save or cancel the current section before editing another one.',
 }
 
 const patterns = [
