@@ -56,7 +56,7 @@ export default function WeeklyHoursPanel({ entries, directory, profile, canRevie
 
   return <section className="content-card weekly-hours-panel">
     <div className="section-heading weekly-hours-heading"><div><p className="eyebrow">{t('Resumen quincenal')}</p><h3>{t('Horas registradas en la quincena')}</h3><p className="muted">{start} — {end} · {t('Las horas se registran dentro del reporte EOD diario.')}</p></div><button className="secondary-button compact-button" type="button" onClick={downloadPersonalReport} disabled={exporting}>{t(exporting ? 'Preparando PDF…' : 'Descargar mis horas en PDF')}</button></div>
-    {exportError && <p className="form-error" role="alert">{exportError}</p>
+    {exportError && <p className="form-error" role="alert">{exportError}</p>}
     <div className="weekly-hours-filters">
       <label>{t('Mes')}<input aria-label={t('Mes')} type="month" value={month} onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>
       <div className="eod-payroll-period-options" role="group" aria-label={t('Periodo quincenal')}>
