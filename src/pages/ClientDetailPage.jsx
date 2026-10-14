@@ -112,6 +112,8 @@ export default function ClientDetailPage() {
   const [taskFormOpen, setTaskFormOpen] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [taskDraft, setTaskDraft] = useState(emptyTaskDraft)
+  const [editingPlatform, setEditingPlatform] = useState(null)
+  const [platformDraft, setPlatformDraft] = useState('')
   const tabs = [
     ['dossier', 'Dossier'],
     ['ads', 'Ads'],
@@ -164,21 +166,6 @@ export default function ClientDetailPage() {
   const missingFields = dossierFields.filter(([, key, type]) => isMissing(client[key], type)).map(([label]) => label)
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
   const startEditing = (index) => { setDraft(client); setEditingSection(index); setMessage(''); setError('') }
-  const editDossierField = (key) => {
-    const index = sections.findIndex((section) => section.fields.some(([, fieldKey]) => fieldKey === key))
-    if (index < 0) return
-    if (editingSection != null && editingSection !== index) {
-      setError(t('Guarda o cancela la sección actual antes de editar otra.'))
-      return
-    }
-    selectTab('dossier')
-    startEditing(index)
-    window.setTimeout(() => {
-      const field = document.getElementById(`dossier-field-${key}`)
-      field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      field?.querySelector('input, select, textarea')?.focus({ preventScroll: true })
-    }, 100)
-  }
   const cancelEditing = () => { setDraft(client); setEditingSection(null) }
   const saveSection = async (section, index) => {
     setSaving(true); setError(''); setMessage('')
@@ -349,6 +336,25 @@ export default function ClientDetailPage() {
     } catch (updateError) { setError(t(updateError.message)) }
     finally { setSaving(false) }
   }
+  const savePlatformStatus = async (item) => {
+    const value = item.kind === 'boolean'
+      ? (platformDraft === '' ? null : platformDraft === 'true')
+      : platformDraft
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, { [item.field]: value })
+      await refresh()
+      setEditingPlatform(null)
+      setMessage(t('Estado de plataforma guardado.'))
+    } catch (updateError) { setError(t(updateError.message)) }
+    finally { setSaving(false) }
+  }
+  const openPlatformEditor = (item) => {
+    const currentValue = client[item.field]
+    setPlatformDraft(item.kind === 'boolean' ? (currentValue == null ? '' : String(currentValue)) : currentValue || 'Pendiente')
+    setEditingPlatform(item.key)
+    setError(''); setMessage('')
+  }
   const pauseAds = async (event) => {
     event.preventDefault()
     const reason = pauseReason.trim()
@@ -501,20 +507,27 @@ export default function ClientDetailPage() {
 
     <section className="content-card client-integration-summary client-tab-section tab-dossier" aria-labelledby="client-integration-summary-title">
       <div className="section-heading"><div><p className="eyebrow">{t('Accesos e integraciones')}</p><h3 id="client-integration-summary-title">{t('Estado de plataformas')}</h3></div><span className="muted">{t('Actualizado en el dossier')}</span></div>
-      <div className="client-integration-summary-grid">
+      <div className="client-integration-summary-grid platform-status-grid">
         {[
-          { key: 'gbp', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative', target: 'dossier-section-3', action: t('Ver en infraestructura') },
-          { key: 'ghl', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative', target: 'dossier-section-8', action: t('Ver datos de finalización') },
-          { key: 'ads', label: t('Google Ads'), value: t(client.google_ads_status || 'Pendiente'), state: String(client.google_ads_status || '').toLowerCase().includes('activ') ? 'positive' : String(client.google_ads_status || '').toLowerCase().includes('paus') ? 'paused' : String(client.google_ads_status || '').toLowerCase().includes('atención') ? 'attention' : 'pending', target: null, action: t('Ver estado de Ads') },
-        ].map((item) => <article className="client-integration-summary-item" key={item.key}>
+          { key: 'gbp', field: 'gbp_access_confirmed', kind: 'boolean', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative' },
+          { key: 'ads', field: 'google_ads_status', kind: 'ads', label: t('Google Ads'), value: t(client.google_ads_status || 'Pendiente'), state: String(client.google_ads_status || '').toLowerCase().includes('activ') ? 'positive' : String(client.google_ads_status || '').toLowerCase().includes('paus') ? 'paused' : String(client.google_ads_status || '').toLowerCase().includes('atención') ? 'attention' : 'pending' },
+          { key: 'ghl', field: 'ghl_access_confirmed', kind: 'boolean', label: t('Acceso a GoHighLevel'), value: client.ghl_access_confirmed == null ? t('Pendiente') : client.ghl_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.ghl_access_confirmed == null ? 'pending' : client.ghl_access_confirmed ? 'positive' : 'negative' },
+          { key: 'payment', field: 'payment_method_confirmed', kind: 'boolean', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative' },
+        ].map((item) => <article className="client-integration-summary-item platform-status-item" key={item.key}>
           <span>{item.label}</span>
           <strong className={item.state}>{item.value}</strong>
-          <button type="button" className="text-button" onClick={() => item.target ? document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : selectTab('ads')}>{item.action} →</button>
+          {editingPlatform === item.key ? <div className="platform-status-editor">
+            <label className="sr-only" htmlFor={`platform-status-${item.key}`}>{t('Estado de plataforma')} · {item.label}</label>
+            <select id={`platform-status-${item.key}`} value={platformDraft} disabled={saving} onChange={(event) => setPlatformDraft(event.target.value)}>
+              {item.kind === 'boolean' ? <><option value="">{t('Pendiente')}</option><option value="true">{t('Acceso confirmado')}</option><option value="false">{t('Sin acceso')}</option></> : <><option value="Pendiente">{t('Pendiente')}</option><option value="Activa">{t('Activa')}</option><option value="Pausada">{t('Pausada')}</option><option value="Requiere atención">{t('Requiere atención')}</option></>}
+            </select>
+            <div className="platform-status-actions"><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => savePlatformStatus(item)}>{saving ? t('Guardando…') : t('Guardar')}</button><button className="text-button" type="button" disabled={saving} onClick={() => setEditingPlatform(null)}>{t('Cancelar')}</button></div>
+          </div> : canEdit && <button type="button" className="secondary-button platform-edit-button" disabled={saving} onClick={() => openPlatformEditor(item)}>{t('Cambiar estado')}</button>}
         </article>)}
       </div>
     </section>
 
-    <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} onEditField={editDossierField} /></div>
+    <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
 
     <section className="content-card client-tab-section tab-notes">
       <div className="section-heading"><div><p className="eyebrow">{t('Notas del cliente')}</p><h3>{t('Contexto compartido')}</h3></div><span className="muted">{notes.length} {t('notas')}</span></div>
