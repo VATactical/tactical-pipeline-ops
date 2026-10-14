@@ -211,7 +211,7 @@ export async function downloadOwnHoursPdf({ entries = [], startDate, endDate, us
     y += cardHeight + 4
   }
   const dateLabel = (date) => {
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return date
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
     return new Intl.DateTimeFormat('en-US', {
       timeZone: 'UTC',
       weekday: 'short',
