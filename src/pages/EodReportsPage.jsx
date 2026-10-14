@@ -450,7 +450,7 @@ export default function EodReportsPage() {
     </section>}
 
     <section className="content-card eod-report-center">
-      <div className="section-heading"><div><p className="eyebrow">Historial</p><h3>{canReviewAll ? 'Reportes recibidos' : 'Mis reportes enviados'}</h3>{canReviewAll && <p className="muted">{t('Mostrando reportes del periodo seleccionado')}: {payrollStart} — {payrollEnd}</p>}</div></div>
+      <div className="section-heading"><div><p className="eyebrow">{t('Historial')}</p><h3>{canReviewAll ? t('Reportes recibidos') : t('Mis reportes enviados')}</h3>{canReviewAll && <p className="muted">{t('Mostrando reportes del periodo seleccionado')}: {payrollStart} — {payrollEnd}</p>}</div></div>
       <div className="eod-report-filters">
         <input className="eod-user-search" type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder={t('Buscar usuario…')} />
         {canReviewAll && <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}><option value="Todos">{t('Todos')}</option><option value="Nuevos">{t('Nuevos')}</option><option value="Revisado">{t('Revisado')}</option><option value="Requiere seguimiento">{t('Requiere seguimiento')}</option><option value="Visto">{t('Visto')}</option></select>}
@@ -496,7 +496,7 @@ export default function EodReportsPage() {
       <article className="eod-report-modal-card">
         <div className="eod-report-modal-header">
           <div>
-            <p className="eyebrow">Reporte EOD completo</p>
+            <p className="eyebrow">{t('Reporte EOD completo')}</p>
             <h2 id="expanded-report-title">{expandedReport.profiles?.full_name || t('Usuario')} · {expandedReport.report_date}</h2>
             <small>{t('Enviado')} {formatMoment(expandedReport.submitted_at || expandedReport.updated_at, timeZone, locale)}</small>
           </div>
@@ -531,12 +531,20 @@ export default function EodReportsPage() {
               <button className="primary-button compact-button" disabled={actionKey === `comment-${expandedReport.id}` || !commentDrafts[expandedReport.id]?.trim()}>{actionKey === `comment-${expandedReport.id}` ? t('Guardando…') : t('Agregar comentario')}</button>
             </form>
           </section>}
+          {canReviewAll && (expandedReport.reviews || []).length > 0 && <div className="eod-review-history">
+            <strong>{t('Historial de revisión')}</strong>
+            {expandedReport.reviews.map((review) => <article key={review.id}>
+              <b data-no-translate>{review.reviewer?.full_name || t('Usuario')}</b>
+              <span>{t(review.status)}</span>
+              <small>{formatMoment(review.updated_at || review.viewed_at, timeZone, locale)}</small>
+            </article>)}
+          </div>}
           {(expandedReport.comments || []).length > 0 && <div className="eod-comment-list">
             <strong>{t('Seguimiento')}</strong>
             {expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}>
               <div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div>
               <p className="formatted-text" data-no-translate>{comment.body}</p>
-              {canReviewAll && comment.task_id && <button className="secondary-button" type="button" disabled={actionKey === `task-${comment.id}`} onClick={() => convertComment(expandedReport, comment)}>{actionKey === `task-${comment.id}` ? t('Guardando…') : t('Convertir en tarea alta')}</button>}
+              {canReviewAll && !comment.task_id && <button className="secondary-button" type="button" disabled={actionKey === `task-${comment.id}`} onClick={() => convertComment(expandedReport, comment)}>{actionKey === `task-${comment.id}` ? t('Guardando…') : t('Convertir en tarea alta')}</button>}
             </article>)}
           </div>}
         </div>
