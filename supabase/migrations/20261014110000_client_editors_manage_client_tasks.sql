@@ -57,7 +57,8 @@ with check (
   )
 );
 
--- Rollback: drop the policy above and recreate
--- "Active users update assigned shared or managed tasks" with the operations-admin,
--- assigned_to, and shared owner_role conditions from migration
+-- Rollback: drop both policies above and recreate the original
+-- "Active users read assigned shared created or managed tasks" policy from
+-- 20260920120000_open_task_assignment_and_slack_channels.sql, and the original
+-- "Active users update assigned shared or managed tasks" policy from
 -- 20260919135459_user_assigned_editable_tasks.sql.
