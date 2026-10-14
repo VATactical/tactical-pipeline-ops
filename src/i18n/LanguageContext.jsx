@@ -6,6 +6,8 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  'Minutos': 'Minutes',
+  'Horas': 'Hours',
   'Mes': 'Month',
   'Periodo quincenal': 'Semi-monthly period',
   'Del 1 al 13': 'Days 1–13',
