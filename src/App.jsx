@@ -36,7 +36,6 @@ const TrainingPage = lazyWithRetry(() => import('./pages/TrainingPage'), 'traini
 const MyAccountPage = lazyWithRetry(() => import('./pages/MyAccountPage'), 'my-account')
 const TeamDirectoryPage = lazyWithRetry(() => import('./pages/TeamDirectoryPage'), 'team-directory')
 const CompanyPage = lazyWithRetry(() => import('./pages/CompanyPage'), 'company')
-const CommunicationsPage = lazyWithRetry(() => import('./pages/CommunicationsPage'), 'communications')
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -64,7 +63,6 @@ export default function App() {
               <Route path="clientes" element={<ClientsPage />} />
               <Route path="clientes/:clientId" element={<ClientDetailPage />} />
               <Route path="tareas" element={<TasksPage />} />
-              <Route path="comunicaciones" element={<CommunicationsPage />} />
               <Route path="training" element={<TrainingPage />} />
               <Route path="mi-cuenta" element={<MyAccountPage />} />
               <Route path="mi-equipo" element={<TeamDirectoryPage />} />
