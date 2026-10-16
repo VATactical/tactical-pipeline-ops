@@ -11,7 +11,7 @@ import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTas
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
     ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de contacto · formulario', 'contact_email', 'email'], ['Correo de negocio · formulario', 'email', 'email'],
-    ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Notas adicionales del formulario', 'onboarding_form_notes'], ['Estado Persona / KYC', 'kyc_status'],
+    ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
     ['Servicios ofrecidos · formulario', 'services'], ['Ofertas o descuentos · formulario', 'offer'], ['KPI mensual objetivo', 'kpi'],
@@ -71,7 +71,7 @@ const fieldLabels = {
 const dossierFields = sections.flatMap((section) => section.fields)
 const clientFormFieldKeys = new Set([
   'business_name', 'legal_name', 'owner_name', 'phone', 'contact_phone', 'contact_email', 'email', 'address',
-  'legal_business_info', 'onboarding_form_notes', 'services', 'offer', 'daily_budget', 'project_type',
+  'legal_business_info', 'services', 'offer', 'daily_budget', 'project_type',
   'ideal_customer_profile', 'markets', 'target_zip_codes', 'timezone', 'needs_website_funnel', 'domain', 'website_url',
   'onboarding_call_language', 'appointment_availability', 'website_build_request', 'website_timeline', 'instagram_needed',
   'gbp_status', 'gbp_email', 'gbp_link', 'available_assets', 'target_launch_date', 'ghl_subaccount_link', 'drive_folder_link',
@@ -528,6 +528,11 @@ export default function ClientDetailPage() {
         </section>
       })}
     </div>
+
+    {client.onboarding_form_notes && <details className="content-card dossier-source-notes client-tab-section tab-dossier">
+      <summary className="section-heading dossier-section-heading"><span className="eyebrow">{t('Ver notas originales del formulario')}</span></summary>
+      <p className="dossier-source-notes-content">{client.onboarding_form_notes}</p>
+    </details>}
 
     <section className="content-card client-integration-summary client-tab-section tab-dossier" aria-labelledby="client-integration-summary-title">
       <div className="section-heading"><div><p className="eyebrow">{t('Accesos e integraciones')}</p><h3 id="client-integration-summary-title">{t('Estado de plataformas')}</h3></div><span className="muted">{t('Actualizado en el dossier')}</span></div>

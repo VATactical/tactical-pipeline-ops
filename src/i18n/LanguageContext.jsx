@@ -289,6 +289,7 @@ const translations = {
   'Correo de contacto · formulario': 'Contact email · form',
   'Correo de negocio · formulario': 'Business email · form',
   'Formulario del cliente': 'Client onboarding form',
+  'Ver notas originales del formulario': 'View original form notes',
   'Gestionado por TP Ops': 'Managed by TP Ops',
   'Preferencias de onboarding': 'Onboarding preferences',
   'Idioma preferido para llamada de onboarding': 'Preferred onboarding-call language',
