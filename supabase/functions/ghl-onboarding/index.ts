@@ -51,16 +51,37 @@ async function nextClientCode(supabase: ReturnType<typeof adminClient>) {
   if (error) throw error;
   return String(data);
 }
+function noteValue(notes: string, label: string, stopBefore: string[] = []) {
+  const normalized = notes.toLowerCase();
+  const start = normalized.indexOf(label.toLowerCase());
+  if (start < 0) return "";
+  const contentStart = start + label.length;
+  let end = notes.length;
+  for (const marker of stopBefore) {
+    const markerIndex = normalized.indexOf(marker.toLowerCase(), contentStart);
+    if (markerIndex >= 0 && markerIndex < end) end = markerIndex;
+  }
+  return notes.slice(contentStart, end).replace(/^\s*:?\s*/, "").replace(/[\s.;]+$/, "").trim();
+}
 function clientChanges(payload: Payload) {
   const businessName = value(payload, "business_name", "businessName", "company_name", "companyName");
   const legalName = value(payload, "registered_business_name", "legal_name", "legalName", "registeredBusinessName");
   const firstName = value(payload, "first_name", "firstName");
   const lastName = value(payload, "last_name", "lastName");
   const fullName = value(payload, "full_name", "fullName", "contact_name") || [firstName, lastName].filter(Boolean).join(" ");
+  const notes = value(payload, "additional_notes", "notes", "additionalNotes");
   const website = value(payload, "website", "website_url", "websiteUrl", "landing_page_url");
-  const wantsWebsite = /would like (a )?website|website included|i need (a website|one)|need a website|necesito.*sitio/i.test(website);
+  const websiteBuildRequest = value(payload, "website_build_request", "website_request", "websiteRequest")
+    || noteValue(notes, "Website request", ["; estimated", "Appointment availability"]);
+  const websiteTimeline = value(payload, "website_timeline", "website_estimated_timeline", "websiteTimeline")
+    || noteValue(notes, "estimated", ["Appointment availability", "The form lists"]);
+  const wantsWebsite = Boolean(websiteBuildRequest) || /would like (a )?website|website included|i need (a website|one)|need a website|necesito.*sitio|fully built.*website|ai website/i.test(website);
   const facebook = value(payload, "facebook", "facebook_page_url", "facebookPageUrl", "facebook_business_info");
   const instagram = value(payload, "instagram", "instagram_url", "instagramUrl");
+  const instagramNeeded = booleanValue(payload, "instagram_needed", "instagram_required", "instagramNeeded")
+    ?? (/\binstagram\s*:\s*(not needed|not required|no)\b/i.test(notes) ? false : /\binstagram\s*:\s*(needed|yes|required)\b/i.test(notes) ? true : null);
+  const budgetValue = value(payload, "daily_budget", "ad_budget", "budget", "dailyBudget");
+  const dailyBudget = budgetValue ? Number(budgetValue.replace(/[^0-9.]/g, "")) || 0 : 0;
   const submittedAt = value(payload, "submitted_at", "submittedAt") || new Date().toISOString();
   const date = Number.isNaN(Date.parse(submittedAt)) ? new Date().toISOString() : new Date(submittedAt).toISOString();
   const fields: Record<string, unknown> = {
@@ -70,19 +91,27 @@ function clientChanges(payload: Payload) {
     contact_email: value(payload, "contact_email", "contactEmail", "personal_email", "personalEmail", "email"),
     contact_phone: value(payload, "personal_phone", "contact_phone", "contactPhone"),
     address: value(payload, "business_address", "address", "street_address", "streetAddress"),
-    timezone: value(payload, "timezone", "time_zone", "timeZone"),
+    timezone: value(payload, "timezone", "time_zone", "timeZone")
+      || noteValue(notes, "The form lists", ["; confirm whether"]),
     services: value(payload, "services", "service_offering", "serviceOffering"),
     offer: value(payload, "offer", "promotion", "campaign_offer"),
     markets: value(payload, "service_areas", "service_area", "markets", "serviceAreas"),
     target_zip_codes: value(payload, "target_zip_codes", "zip_codes", "zip_code", "service_zip_codes", "targetZipCodes", "zipCodes"),
-    daily_budget: value(payload, "daily_budget", "ad_budget", "budget", "dailyBudget"),
-    website_url: wantsWebsite || emptyValue(website) ? "" : website,
+    daily_budget: dailyBudget,
+    website_url: /^https?:\/\//i.test(website) ? website : wantsWebsite ? "" : website,
     needs_website_funnel: wantsWebsite ? true : emptyValue(website) ? null : false,
+    website_build_request: websiteBuildRequest,
+    website_timeline: websiteTimeline,
+    onboarding_call_language: value(payload, "onboarding_call_language", "preferred_onboarding_language", "onboarding_language", "onboardingCallLanguage")
+      || noteValue(notes, "Preferred onboarding-call language", ["Instagram"]),
+    appointment_availability: value(payload, "appointment_availability", "appointmentAvailability", "availability")
+      || noteValue(notes, "Appointment availability", ["The form lists", "EIN was not provided"]),
+    instagram_needed: instagramNeeded,
     facebook_page_url: /^https?:\/\//i.test(facebook) ? facebook : "",
     facebook_business_info: /^https?:\/\//i.test(facebook) ? "" : facebook,
     meta_business_portfolio_id: value(payload, "meta_business_portfolio_id", "business_manager_id", "metaBusinessPortfolioId"),
     meta_ad_account_id: value(payload, "meta_ad_account_id", "ad_account_id", "metaAdAccountId"),
-    instagram_url: instagram,
+    instagram_url: instagramNeeded === false || /^(not needed|not required|no)$/i.test(instagram) ? "" : instagram,
     gbp_email: value(payload, "gbp_email", "google_business_email", "gbpEmail"),
     gbp_link: value(payload, "gbp_link", "google_business_profile_url", "googleBusinessProfileUrl"),
     gbp_status: value(payload, "gbp_status", "google_business_profile_status", "googleBusinessProfileStatus"),
@@ -95,7 +124,9 @@ function clientChanges(payload: Payload) {
     target_launch_date: value(payload, "target_launch_date", "launch_date", "targetLaunchDate"),
     available_assets: value(payload, "assets", "available_assets", "campaign_materials"),
     onboarding_form_notes: value(payload, "additional_notes", "notes", "additionalNotes"),
-    legal_business_info: value(payload, "ein", "tax_id") ? "Received" : "",
+    legal_business_info: value(payload, "ein", "tax_id")
+      ? "Received"
+      : /\bein (was )?not provided\b/i.test(notes) ? "Not provided" : "",
     status: "ONBOARDING", phase: "Intake received",
     intake_form_completed: true, intake_form_completed_at: date, intake_source: "ghl_form",
     ghl_contact_id: value(payload, "contact_id", "contactId"),
