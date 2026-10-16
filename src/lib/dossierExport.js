@@ -3,7 +3,7 @@ const pending = (value) => {
   return String(value)
 }
 const yesNo = (value) => value ? 'YES' : 'NO'
-const money = (value) => value == null || value === '' ? 'Pending' : `$${Number(value).toLocaleString('en-US')}`
+const money = (value) => value == null || value === '' || Number(value) <= 0 ? 'Pending' : `${Number(value).toLocaleString('en-US')}`
 const date = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : 'Pending'
 const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : 'Pending'
 
@@ -44,6 +44,8 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Website / Funnel Required: ${client.needs_website_funnel == null ? 'Pending' : yesNo(client.needs_website_funnel)}
 • Existing Domain: ${pending(client.domain)}
 • Website / Funnel URL: ${pending(client.website_url)}
+• Website Build Request: ${pending(client.website_build_request)}
+• Website Delivery Estimate: ${pending(client.website_timeline)}
 • Google Business Profile Status: ${pending(client.gbp_status)}
 • Google Business Profile Email: ${pending(client.gbp_email)}
 • Google Business Profile Link: ${pending(client.gbp_link)}
@@ -53,6 +55,10 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 [WHEN — TIMELINE & STATUS]
 
 • Onboarding Date: ${date(client.onboarding_date)}
+• Preferred Onboarding-Call Language: ${pending(client.onboarding_call_language)}
+• Client Appointment Availability: ${pending(client.appointment_availability)}
+• Business Timezone Verified: ${client.timezone_verified == null ? 'Pending' : yesNo(client.timezone_verified)}
+• Instagram Account Needed: ${client.instagram_needed == null ? 'Pending' : yesNo(client.instagram_needed)}
 • Target Ad Launch Date: ${date(client.target_launch_date)}
 • Current Lifecycle Status: ${pending(client.status)}
 • A2P Status: ${pending(client.a2p_status)}
