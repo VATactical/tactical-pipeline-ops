@@ -98,7 +98,7 @@ function clientChanges(payload: Payload) {
     markets: value(payload, "service_areas", "service_area", "markets", "serviceAreas"),
     target_zip_codes: value(payload, "target_zip_codes", "zip_codes", "zip_code", "service_zip_codes", "targetZipCodes", "zipCodes"),
     daily_budget: dailyBudget,
-    website_url: wantsWebsite || emptyValue(website) ? "" : website,
+    website_url: /^https?:\/\//i.test(website) ? website : wantsWebsite ? "" : website,
     needs_website_funnel: wantsWebsite ? true : emptyValue(website) ? null : false,
     website_build_request: websiteBuildRequest,
     website_timeline: websiteTimeline,
