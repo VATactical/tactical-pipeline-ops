@@ -67,6 +67,7 @@ function clientChanges(payload: Payload) {
     legal_name: legalName, business_name: businessName || legalName, owner_name: fullName,
     phone: value(payload, "business_phone", "businessPhone", "phone"),
     email: value(payload, "business_email", "businessEmail", "email"),
+    contact_email: value(payload, "contact_email", "contactEmail", "personal_email", "personalEmail", "email"),
     contact_phone: value(payload, "personal_phone", "contact_phone", "contactPhone"),
     address: value(payload, "business_address", "address", "street_address", "streetAddress"),
     timezone: value(payload, "timezone", "time_zone", "timeZone"),
@@ -79,7 +80,6 @@ function clientChanges(payload: Payload) {
     needs_website_funnel: wantsWebsite ? true : emptyValue(website) ? null : false,
     facebook_page_url: /^https?:\/\//i.test(facebook) ? facebook : "",
     facebook_business_info: /^https?:\/\//i.test(facebook) ? "" : facebook,
-    facebook_access_confirmed: booleanValue(payload, "facebook_access_confirmed", "meta_access_confirmed", "facebookAccessConfirmed"),
     meta_business_portfolio_id: value(payload, "meta_business_portfolio_id", "business_manager_id", "metaBusinessPortfolioId"),
     meta_ad_account_id: value(payload, "meta_ad_account_id", "ad_account_id", "metaAdAccountId"),
     instagram_url: instagram,
@@ -93,13 +93,10 @@ function clientChanges(payload: Payload) {
     ad_strategy: value(payload, "ad_strategy", "campaign_strategy", "adStrategy"),
     ideal_customer_profile: value(payload, "ideal_customer_profile", "target_audience", "idealCustomerProfile"),
     target_launch_date: value(payload, "target_launch_date", "launch_date", "targetLaunchDate"),
-    payment_method_confirmed: booleanValue(payload, "payment_method_confirmed", "payment_method_on_file", "paymentMethodConfirmed"),
-    meta_campaign_live: booleanValue(payload, "meta_campaign_live", "campaign_live", "metaCampaignLive"),
     available_assets: value(payload, "assets", "available_assets", "campaign_materials"),
     onboarding_form_notes: value(payload, "additional_notes", "notes", "additionalNotes"),
     legal_business_info: value(payload, "ein", "tax_id") ? "Received" : "",
     status: "ONBOARDING", phase: "Intake received",
-    next_action: "Review onboarding form and complete missing dossier fields",
     intake_form_completed: true, intake_form_completed_at: date, intake_source: "ghl_form",
     ghl_contact_id: value(payload, "contact_id", "contactId"),
     ghl_location_id: value(payload, "location_id", "locationId"),
@@ -112,7 +109,7 @@ async function findClient(supabase: ReturnType<typeof adminClient>, payload: Pay
   const locationId = value(payload, "location_id", "locationId");
   const contactId = value(payload, "contact_id", "contactId");
   const businessEmail = value(payload, "business_email", "businessEmail", "email");
-  const personalEmail = value(payload, "personal_email", "personalEmail");
+  const personalEmail = value(payload, "personal_email", "personalEmail", "contact_email", "contactEmail", "email");
   const legalName = value(payload, "registered_business_name", "legal_name", "legalName", "registeredBusinessName");
   const businessName = value(payload, "business_name", "businessName", "company_name", "companyName");
   const unique = async (column: string, match: string) => {
@@ -220,7 +217,7 @@ Deno.serve(async (request: Request) => {
       const safeChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => {
         const current = existing[key];
         return current === null || current === "" || emptyValue(text(current)) || key.startsWith("ghl_")
-          || ["intake_form_completed", "intake_form_completed_at", "intake_source", "phase", "next_action", "updated_at"].includes(key);
+          || ["intake_form_completed", "intake_form_completed_at", "intake_source", "updated_at"].includes(key);
       }));
       const { data, error } = await supabase.from("clients").update(safeChanges).eq("id", existing.id).select("*").single();
       if (error) throw error;

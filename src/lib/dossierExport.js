@@ -20,6 +20,7 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Owner Name: ${pending(client.owner_name)}
 • Business Phone: ${pending(client.phone)}
 • Contact Phone: ${pending(client.contact_phone)}
+• Contact Email: ${pending(client.contact_email)}
 • Business Email: ${pending(client.email)}
 • Physical Business Address: ${pending(client.address)}
 • Primary Market: ${pending(client.markets)}

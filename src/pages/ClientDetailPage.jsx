@@ -10,7 +10,7 @@ import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTas
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de negocio · formulario', 'email', 'email'],
+    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de contacto · formulario', 'contact_email', 'email'], ['Correo de negocio · formulario', 'email', 'email'],
     ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Notas adicionales del formulario', 'onboarding_form_notes'], ['Estado Persona / KYC', 'kyc_status'],
   ] },
   { title: 'Qué · Oferta y objetivos', fields: [
@@ -61,6 +61,14 @@ const fieldLabels = {
   archived_by: 'Usuario que archivó',
 }
 const dossierFields = sections.flatMap((section) => section.fields)
+const clientFormFieldKeys = new Set([
+  'business_name', 'legal_name', 'owner_name', 'phone', 'contact_phone', 'contact_email', 'email', 'address',
+  'legal_business_info', 'onboarding_form_notes', 'services', 'offer', 'daily_budget', 'project_type',
+  'ideal_customer_profile', 'markets', 'target_zip_codes', 'timezone', 'needs_website_funnel', 'domain', 'website_url',
+  'gbp_status', 'gbp_email', 'gbp_link', 'available_assets', 'target_launch_date', 'ghl_subaccount_link', 'drive_folder_link',
+  'facebook_page_url', 'instagram_url', 'meta_business_portfolio_id', 'meta_ad_account_id', 'meta_pixel_id',
+  'landing_page_url', 'facebook_business_info', 'meta_assets_info', 'ad_strategy',
+])
 const isMissing = (value, type) => type === 'boolean' ? value == null : type === 'number' ? value == null || value === '' || Number(value) <= 0 : value == null || value === '' || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
 const displayValue = (value, type) => {
   if (type === 'boolean') return value == null ? 'Pendiente' : value ? 'Sí' : 'No'
@@ -506,7 +514,7 @@ export default function ClientDetailPage() {
         const lastUpdate = auditLog.find((entry) => entry.changed_fields?.some((field) => sectionKeys.includes(field)))
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{section.title}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
-          <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" id={`dossier-field-${key}`} key={key}><span>{label}</span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option>CRUISE CONTROL</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
+          <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" id={`dossier-field-${key}`} key={key}><span>{label}<small className="dossier-field-source">{t(clientFormFieldKeys.has(key) ? 'Formulario del cliente' : 'Gestionado por TP Ops')}</small></span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option>CRUISE CONTROL</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
           <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
