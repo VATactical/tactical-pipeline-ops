@@ -525,11 +525,11 @@ export default function ClientDetailPage() {
       <div className="client-integration-summary-grid platform-status-grid">
         {[
           { key: 'gbp', field: 'gbp_access_confirmed', kind: 'boolean', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative' },
-          { key: 'metaPayment', field: 'meta_payment_method_confirmed', kind: 'boolean', label: t('Método de pago en Meta'), value: client.meta_payment_method_confirmed == null ? t('Pendiente') : client.meta_payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.meta_payment_method_confirmed == null ? 'pending' : client.meta_payment_method_confirmed ? 'positive' : 'negative' },
-          { key: 'payment', field: 'payment_method_confirmed', kind: 'boolean', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative' },
+          { key: 'metaPayment', field: 'meta_payment_method_confirmed', kind: 'boolean', label: t('Método de pago en Meta'), value: client.meta_payment_method_confirmed == null ? t('Pendiente') : client.meta_payment_method_confirmed ? t('Agregado') : t('No agregado'), mark: client.meta_payment_method_confirmed == null ? '—' : client.meta_payment_method_confirmed ? '✓' : '✕', state: client.meta_payment_method_confirmed == null ? 'pending' : client.meta_payment_method_confirmed ? 'positive' : 'negative' },
+          { key: 'payment', field: 'payment_method_confirmed', kind: 'boolean', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), mark: client.payment_method_confirmed == null ? '—' : client.payment_method_confirmed ? '✓' : '✕', state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative' },
         ].map((item) => <article className="client-integration-summary-item platform-status-item" key={item.key}>
           <span>{item.label}</span>
-          <strong className={item.state}>{item.value}</strong>
+          <strong className={item.state}>{item.mark && <span aria-hidden="true">{item.mark} </span>}{item.value}</strong>
           {editingPlatform === item.key ? <div className="platform-status-editor">
             <label className="sr-only" htmlFor={`platform-status-${item.key}`}>{t('Estado de plataforma')} · {item.label}</label>
             <select id={`platform-status-${item.key}`} value={platformDraft} disabled={saving} onChange={(event) => setPlatformDraft(event.target.value)}>
