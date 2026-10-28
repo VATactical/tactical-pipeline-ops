@@ -157,8 +157,6 @@ export default function TeamPage() {
   if (loading) return <LoadingScreen />
   const activeMembers = team.profiles.filter((member) => member.active)
   const inactiveMembers = team.profiles.filter((member) => !member.active)
-  const directionPermissions = new Set(['clients_create', 'clients_edit', 'tasks_create', 'eod_reports', 'operations_admin', 'users_manage', 'sensitive_credentials_view'])
-
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{t('Administración del equipo')}</p><h2>{t('Usuarios, departamentos y funciones')}</h2><p className="muted">{t('Cada correo identifica una cuenta. Las funciones determinan el departamento; sus permisos se comparten dentro del departamento.')}</p></div><span className="status-pill">{activeMembers.length} {t('usuarios activos')}</span></header>
     {error && <p className="form-error" role="alert">{t(error)}</p>}{message && <p className="form-success" role="status">{message}</p>}
