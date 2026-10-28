@@ -64,7 +64,7 @@ function TeamMemberCard({
         <label>{t('Nombre')}<input value={member.full_name || ''} onChange={(event) => onChange(member.id, 'full_name', event.target.value)} /></label>
         <label>{t('Zona horaria')}<select value={member.timezone || 'America/Managua'} onChange={(event) => onChange(member.id, 'timezone', event.target.value)}>{timezones.map((zone) => <option value={zone} key={zone}>{zone}</option>)}</select></label>
         <label>{t('Slack')}<input value={member.slack_contact || ''} onChange={(event) => onChange(member.id, 'slack_contact', event.target.value)} placeholder="@username or link" /></label>
-        <label>WhatsApp<input value={member.whatsapp_contact || ''} onChange={(event) => onChange(member.id, 'whatsapp_contact', event.target.value)} placeholder="Number or link" /></label>
+        <label>{t('WhatsApp')}<input value={member.whatsapp_contact || ''} onChange={(event) => onChange(member.id, 'whatsapp_contact', event.target.value)} placeholder="Number or link" /></label>
       </div>
       {isOwnSuperadmin
         ? <p className="muted">{t('Dirección permanece reservada al superadmin actual.')}</p>
@@ -167,7 +167,7 @@ export default function TeamPage() {
         <label>{t('Correo')}<input type="email" value={form.email} onChange={(event) => setFormField('email', event.target.value)} required /></label>
         <label>{t('Contraseña')}<div className="inline-password"><input type={showPassword ? 'text' : 'password'} minLength="10" value={form.password} onChange={(event) => setFormField('password', event.target.value)} required /><button type="button" className="text-button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? t('Ocultar') : t('Ver')}</button></div></label>
         <label>{t('Zona horaria')}<select value={form.timezone} onChange={(event) => setFormField('timezone', event.target.value)}>{timezones.map((zone) => <option value={zone} key={zone}>{zone}</option>)}</select></label>
-        <label>Slack<input value={form.slackContact} onChange={(event) => setFormField('slackContact', event.target.value)} placeholder="@username or link" /></label>
+        <label>{t('Slack')}<input value={form.slackContact} onChange={(event) => setFormField('slackContact', event.target.value)} placeholder="@username or link" /></label>
         <label>WhatsApp<input value={form.whatsappContact} onChange={(event) => setFormField('whatsappContact', event.target.value)} placeholder="Number or link" /></label>
         <div className="wide"><span className="field-label">{t('Departamento y función')}</span><RolePicker departments={team.departments} departmentRoles={team.departmentRoles} selectedIds={form.departmentRoleIds} onToggle={toggleFormRole} locale={locale} t={t} /></div>
         <div className="wide"><button className="primary-button compact-button" disabled={saving || !form.departmentRoleIds.length}>{saving ? t('Creando…') : t('Crear usuario')}</button></div>
