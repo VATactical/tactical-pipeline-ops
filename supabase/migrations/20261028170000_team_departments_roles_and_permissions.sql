@@ -72,7 +72,35 @@ CREATE POLICY "Active team reads department roles"
 
 CREATE POLICY "Users read their own team assignments; superadmins read all"
   ON public.profile_department_roles FOR SELECT TO authenticated
-  USING (profile_id = (SELECT auth.uid()) OR (SELECT private.is_superadmin()));
+  USING ((profile_id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL) OR (SELECT private.is_superadmin()));
+
+-- Disabled profiles lose application access even if an old access token still exists.
+DROP POLICY "Users read own profile; superadmins read all" ON public.profiles;
+CREATE POLICY "Users read own active profile; superadmins read all"
+  ON public.profiles FOR SELECT TO authenticated
+  USING ((id = (SELECT auth.uid()) AND active) OR (SELECT private.is_superadmin()));
+
+DROP POLICY "Users update their own profile" ON public.profiles;
+CREATE POLICY "Active users update their own profile"
+  ON public.profiles FOR UPDATE TO authenticated
+  USING (id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL)
+  WITH CHECK (id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL);
+
+DROP POLICY "Team records own dossier events" ON public.client_dossier_events;
+CREATE POLICY "Active team records own dossier events"
+  ON public.client_dossier_events FOR INSERT TO authenticated
+  WITH CHECK (actor_id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL);
+
+DROP POLICY "Users read own note receipts" ON public.note_reads;
+CREATE POLICY "Active users read own note receipts"
+  ON public.note_reads FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL);
+
+DROP POLICY "Users refresh own note receipts" ON public.note_reads;
+CREATE POLICY "Active users refresh own note receipts"
+  ON public.note_reads FOR UPDATE TO authenticated
+  USING (user_id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL)
+  WITH CHECK (user_id = (SELECT auth.uid()) AND (SELECT private.current_app_role()) IS NOT NULL);
 
 CREATE TABLE IF NOT EXISTS private.profile_team_access_backup (
   profile_id uuid PRIMARY KEY,
