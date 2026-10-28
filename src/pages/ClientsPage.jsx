@@ -15,13 +15,14 @@ function ClientIntegrationIndicators({ client }) {
   const { t } = useLanguage()
   const gbpLabel = client.gbp_access_confirmed === true ? 'Acceso confirmado' : client.gbp_access_confirmed === false ? 'Sin acceso' : 'Pendiente'
   const gbpTone = client.gbp_access_confirmed === true ? 'positive' : client.gbp_access_confirmed === false ? 'negative' : 'pending'
-  const paymentAdded = client.payment_method_confirmed === true
-  const googleAdsStatus = client.google_ads_status || 'Pendiente'
-  const googleAdsTone = googleAdsStatus === 'Activa' ? 'positive' : googleAdsStatus === 'Pausada' ? 'paused' : googleAdsStatus === 'Requiere atención' ? 'attention' : 'pending'
+  const metaPayment = client.meta_payment_method_confirmed
+  const metaPaymentLabel = metaPayment == null ? 'Pendiente' : metaPayment ? 'Agregado' : 'No agregado'
+  const metaPaymentTone = metaPayment == null ? 'pending' : metaPayment ? 'positive' : 'negative'
+  const ghlPaymentAdded = client.payment_method_confirmed === true
   return <div className="client-integration-indicators" aria-label={t('Accesos e integraciones')}>
     <span className={`integration-pill ${gbpTone}`} title={`${t('Acceso GBP')}: ${t(gbpLabel)}`}><b>GBP</b><span>{t(gbpLabel)}</span></span>
-    <span className={`integration-pill ${paymentAdded ? 'positive' : 'pending'}`} title={`${t('Pago GHL')}: ${t(paymentAdded ? 'Agregado' : 'Pendiente')}`}><b>GHL</b><span>{t('Pago GHL')}: {t(paymentAdded ? 'Agregado' : 'Pendiente')}</span></span>
-    <span className={`integration-pill ${googleAdsTone}`} title={`${t('Google Ads')}: ${t(googleAdsStatus)}`}><b>Ads</b><span>{t(googleAdsStatus)}</span></span>
+    <span className={`integration-pill ${metaPaymentTone}`} title={`${t('Método de pago en Meta')}: ${t(metaPaymentLabel)}`}><b>Meta</b><span>{t('Método de pago')}: {t(metaPaymentLabel)}</span></span>
+    <span className={`integration-pill ${ghlPaymentAdded ? 'positive' : 'pending'}`} title={`${t('Método de pago en GHL')}: ${t(ghlPaymentAdded ? 'Agregado' : 'Pendiente')}`}><b>GHL</b><span>{t('Método de pago')}: {t(ghlPaymentAdded ? 'Agregado' : 'Pendiente')}</span></span>
   </div>
 }
 
@@ -31,6 +32,7 @@ export default function ClientsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [clients, setClients] = useState([])
   const [blockedIds, setBlockedIds] = useState(new Set())
+  const [openTicketCounts, setOpenTicketCounts] = useState(new Map())
   const [tasks, setTasks] = useState([])
   const [steps, setSteps] = useState([])
   const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
@@ -54,7 +56,10 @@ export default function ClientsPage() {
       if (queryError) setError(queryError.message)
       else {
         setClients(clientsResult.data || [])
-        setBlockedIds(new Set((blockersResult.data || []).map((item) => item.client_id)))
+        const ticketCounts = new Map()
+        for (const blocker of blockersResult.data || []) ticketCounts.set(blocker.client_id, (ticketCounts.get(blocker.client_id) || 0) + 1)
+        setOpenTicketCounts(ticketCounts)
+        setBlockedIds(new Set(ticketCounts.keys()))
         setTasks(tasksResult.data || [])
         setSteps(stepsResult.data || [])
       }
@@ -82,7 +87,7 @@ export default function ClientsPage() {
     if (filters.sort === 'Estado') return a.status.localeCompare(b.status) || naturalCode(a.code) - naturalCode(b.code)
     if (filters.sort === 'Actualización reciente') return new Date(b.updated_at) - new Date(a.updated_at)
     return naturalCode(a.code) - naturalCode(b.code)
-  }), [visibleClients, blockedIds, filters, tasks])
+  }), [visibleClients, blockedIds, filters, tasks, openTicketCounts])
   const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.service || filters.priority !== 'Todas' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
   const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
   const toggleArchiveView = () => { clearFilters(); setSearchParams(showArchived ? {} : { vista: 'archivados' }) }
@@ -114,26 +119,26 @@ export default function ClientsPage() {
       </div>
       <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span><div className="view-toggle"><button type="button" className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}>Tarjetas</button><button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>Lista</button>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
     </section>
-    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{viewMode === 'list' && <div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>{t('Accesos e integraciones')}</span><span>Tareas</span><span /></div>}{filtered.map((client) => {
+    {filtered.length ? <section className={viewMode === 'list' ? 'client-list-view' : 'client-grid'}>{viewMode === 'list' && <div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>{t('Accesos e integraciones')}</span><span>{t('Tickets abiertos')}</span><span /></div>}{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
-      const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
+      const openTicketCount = openTicketCounts.get(client.id) || 0
       const clientSteps = steps.filter((step) => step.client_id === client.id)
       const progress = clientSteps.length ? Math.round(clientSteps.filter((step) => step.completed).length / clientSteps.length * 100) : 0
       if (viewMode === 'list') return <Link className={`client-list-row ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-list-name"><span className="client-code">{client.code}</span><strong>{client.business_name}</strong></div>
         <span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>
         <div className="client-list-progress"><strong>{progress}%</strong><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
-        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>{t('Deadline')}</span><b>{client.target_launch_date || t('Sin fecha')}</b></div>
         <ClientIntegrationIndicators client={client} />
-        <span className="client-list-tasks">{clientTasks.length} tareas</span><span className="row-arrow">→</span>
+        <span className={`client-list-tickets ${openTicketCount > 0 ? 'has-open-tickets' : ''}`} title={t('Tickets registrados en TP Ops')}><strong>{openTicketCount}</strong> {t(openTicketCount === 1 ? 'ticket abierto' : 'tickets abiertos')}</span><span className="row-arrow">→</span>
       </Link>
       return <Link className={`client-card ${blocked || client.status === 'ADS PAUSED' ? 'has-alert' : ''} ${client.archived ? 'archived-card' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><span className="client-code">{client.code}</span><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <h3>{client.business_name}</h3><p>Propietario del cliente: {client.owner_name || 'Pendiente'}</p>
-        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div>
+        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>{t('Deadline')}</span><b>{client.target_launch_date || t('Sin fecha')}</b></div>
         <ClientIntegrationIndicators client={client} />
         <div className="client-progress"><div><span>Progreso</span><b>{progress}%</b></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
-        <div className="client-signals"><span>{clientTasks.length} tareas pendientes</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}{blocked && !client.archived && <span className="blocked">Bloqueo abierto</span>}</div>
+        <div className="client-signals"><span title={t('Tickets registrados en TP Ops')}><strong>{openTicketCount}</strong> {t(openTicketCount === 1 ? 'ticket abierto' : 'tickets abiertos')}</span>{client.archived && <span className="archived">Archivado · {client.archive_reason}</span>}{client.status === 'ADS PAUSED' && !client.archived && <span className="paused">ADS pausados · {client.ads_pause_reason}</span>}</div>
         <span className="card-link">Ver expediente →</span>
       </Link>
     })}</section> : <section className="content-card empty-state"><h3>{showArchived ? 'No hay clientes archivados' : 'No encontramos clientes'}</h3><p className="muted">{showArchived ? 'Los clientes que salgan de la operación aparecerán aquí.' : 'Cambia o limpia los filtros para ver más resultados.'}</p><button className="secondary-button" onClick={clearFilters}>Limpiar filtros</button></section>}
