@@ -61,7 +61,7 @@ function parseEodReportNotes(value) {
   const priorityResult = priorityBlock.match(/^Priority result: (Yes, mostly|Yes|Mostly|Partially|No)$/m)?.[1] || ''
   const priorityStatus = priorityResult === 'Yes, mostly' ? 'Mostly' : priorityResult
   const priorityDetails = priorityBlock.replace(/^Priority result:.*(?:\r?\n)Priority details:\n?/, '').trim()
-  const score = text.match(/Productivity Score: (\d+)\/10/)?.[1] || ''
+  const score = text.match(/Productivity Score: (\d+)\/(?:5|10)/)?.[1] || ''
   return {
     priorityStatus,
     priorityDetails,
@@ -84,7 +84,7 @@ function buildEodReportText({ reportDate, reportStructure, manualSections, total
     'Wins from today\n' + reportStructure.wins.trim(),
     'One lesson or improvement\n' + reportStructure.lesson.trim(),
     'Any issues to carry into tomorrow?\n' + reportStructure.carryover.trim(),
-    'Productivity Score: ' + (reportStructure.productivityScore || '—') + '/10',
+    'Productivity Score: ' + (reportStructure.productivityScore || '—') + '/5',
     'Hours logged\nTotal: ' + formatHoursAndMinutes(totalHours) + '\n' + (workLog.join('\n') || '-'),
   ].join('\n\n')
 }
@@ -159,8 +159,6 @@ export default function EodReportsPage() {
   const [geminiLoading, setGeminiLoading] = useState(false)
   const geminiRequestId = useRef(0)
   const payrollRequestId = useRef(0)
-  const [completedTasks, setCompletedTasks] = useState([])
-  const [selectedTaskIds, setSelectedTaskIds] = useState([])
   const [reports, setReports] = useState([])
   const [directory, setDirectory] = useState([])
   const [timeEntries, setTimeEntries] = useState([])
@@ -184,7 +182,6 @@ export default function EodReportsPage() {
   const refresh = useCallback(async () => {
     setDraftHydrated(false)
     const data = await loadEodData(profile, { windowStart: cycle.start.toISOString(), windowEnd: cycle.end.toISOString() })
-    setCompletedTasks(data.completedTasks)
     setReports(data.reports)
     setDirectory(data.directory)
     setTimeEntries(data.timeEntries)
@@ -193,8 +190,6 @@ export default function EodReportsPage() {
       const existing = data.reports.find((item) => item.user_id === profile.id && item.report_date === reportDate)
       if (existing) {
         if (draftKey) window.localStorage.removeItem(draftKey)
-        const existingIds = new Set((existing.completed_tasks || []).map((item) => item.id))
-        setSelectedTaskIds(data.completedTasks.filter((task) => existingIds.has(task.id)).map((task) => task.id))
         const existingEntries = existing.time_entries || []
         setManualSections(existing.manual_tasks?.length
           ? existing.manual_tasks.map((item, index) => ({
@@ -208,7 +203,6 @@ export default function EodReportsPage() {
       } else {
         let savedDraft = null
         try { savedDraft = draftKey ? JSON.parse(window.localStorage.getItem(draftKey) || 'null') : null } catch { savedDraft = null }
-        setSelectedTaskIds(savedDraft?.selectedTaskIds?.filter((id) => data.completedTasks.some((task) => task.id === id)) || data.completedTasks.map((task) => task.id))
         setManualSections(savedDraft?.manualSections?.length
           ? savedDraft.manualSections.map(normalizeHoursInput)
           : [{ title: '', description: '', hours: '', minutes: '' }])
@@ -228,8 +222,8 @@ export default function EodReportsPage() {
 
   useEffect(() => {
     if (!draftHydrated || !composerOpen || !draftKey || isSuperadmin) return
-    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, reportStructure, lateReason, savedAt: new Date().toISOString() }))
-  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, reportStructure, lateReason, selectedTaskIds])
+    window.localStorage.setItem(draftKey, JSON.stringify({ manualSections, reportStructure, lateReason, savedAt: new Date().toISOString() }))
+  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, reportStructure, lateReason])
 
   useEffect(() => {
     if (!expandedReport) return undefined
@@ -360,18 +354,8 @@ export default function EodReportsPage() {
     }).sort((a, b) => reportGroupMode === 'date' ? b.key.localeCompare(a.key) : a.title.localeCompare(b.title))
   }, [canReviewAll, payrollEnd, payrollStart, profile.id, reportGroupMode, reports, reviewFilter, t, userSearch])
 
-  const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
   const changeReportField = (key, value) => setReportStructure((current) => ({ ...current, [key]: value }))
-  const copyEodReportForSlack = async () => {
-    try {
-      await navigator.clipboard.writeText(slackReportPreview)
-      setError('')
-      setMessage(t('Reporte copiado para Slack.'))
-    } catch {
-      setError(t('No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.'))
-    }
-  }
   const normalizeSectionMinutes = (index) => setManualSections((current) => current.map((item, itemIndex) => {
     if (itemIndex !== index) return item
     const normalized = normalizeHoursAndMinutes(item.hours, item.minutes)
@@ -383,7 +367,7 @@ export default function EodReportsPage() {
     reportStructure.priorityStatus && reportStructure.priorityDetails.trim() && reportStructure.wins.trim()
       && reportStructure.lesson.trim() && reportStructure.carryover.trim()
       && Number.isInteger(Number(reportStructure.productivityScore))
-      && Number(reportStructure.productivityScore) >= 1 && Number(reportStructure.productivityScore) <= 10,
+      && Number(reportStructure.productivityScore) >= 1 && Number(reportStructure.productivityScore) <= 5,
   )
   const reportHoursValid = activeManualSections.length > 0 && totalManualHours > 0 && totalManualHours <= 24
     && activeManualSections.every((section) => section.title.trim() && section.description.trim()
@@ -391,13 +375,6 @@ export default function EodReportsPage() {
       && Number.isInteger(Number(section.minutes || 0)) && Number(section.minutes || 0) >= 0 && Number(section.minutes || 0) <= 59
       && !(Number(section.hours || 0) === 24 && Number(section.minutes || 0) > 0))
   const isEodReportReady = reportStructureComplete && reportHoursValid
-  const slackReportPreview = useMemo(() => buildEodReportText({
-    reportDate,
-    reportStructure,
-    manualSections: activeManualSections,
-    totalHours: totalManualHours,
-  }), [activeManualSections, reportDate, reportStructure, totalManualHours])
-
   const runAction = async (key, action, success) => {
     setActionKey(key); setError(''); setMessage('')
     try {
@@ -463,20 +440,13 @@ export default function EodReportsPage() {
     }
     setSaving(true)
     try {
-      const selectedTasks = completedTasks.filter((task) => selectedTaskIds.includes(task.id)).map((task) => ({
-        id: task.id,
-        title: task.title,
-        client: task.clients ? `${task.clients.code} · ${task.clients.business_name}` : 'General',
-        status_note: task.status_note || '',
-        completed_at: task.completed_at,
-      }))
       await saveEodReport({
         profileId: profile.id,
         reportDate,
         complianceDate: reportDate,
         periodStart: cycle.start.toISOString(),
         periodEnd: cycle.end.toISOString(),
-        completedTasks: selectedTasks,
+        completedTasks: [],
         manualTasks: activeSections.map((section) => ({
           title: section.title,
           description: section.description,
@@ -545,7 +515,7 @@ export default function EodReportsPage() {
         </article>
         <article className="eod-work-section">
           <div className="eod-work-section-heading"><strong>{t('Puntuación de productividad')}</strong></div>
-          <label>{t('Puntuación del 1 al 10')}<select required value={reportStructure.productivityScore} onChange={(event) => changeReportField('productivityScore', event.target.value)}><option value="">{t('Selecciona una puntuación')}</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score}/10</option>)}</select></label>
+          <label>{t('Puntuación del 1 al 5')}<select required value={reportStructure.productivityScore} onChange={(event) => changeReportField('productivityScore', event.target.value)}><option value="">{t('Selecciona una puntuación')}</option>{Array.from({ length: 5 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score}/5</option>)}</select></label>
         </article>
       </div>
       <div className="section-heading">
@@ -554,8 +524,6 @@ export default function EodReportsPage() {
       </div>
       <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Actividad')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Cliente o actividad')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder="C4 · Crystal Flowers · TKT-023" /></label><label>{t('Horas')}<input type="number" min="0" max="24" step="1" inputMode="numeric" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0" /></label><label>{t('Minutos')}<input type="number" min="0" step="1" inputMode="numeric" value={section.minutes} onChange={(event) => changeSection(index, 'minutes', event.target.value)} onBlur={() => normalizeSectionMinutes(index)} placeholder="0" /></label></div><label>{t('Trabajo realizado')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe la entrega, ticket o próximo paso…')} /></label></article>)}</div>
       <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{formatHoursAndMinutes(totalManualHours)}</strong></div>
-      <details className="eod-linked-tasks"><summary>{t('Vincular tareas completadas de TP Ops (opcional)')} · {selectedTaskIds.length}/{completedTasks.length}</summary><p className="muted">{t('Las tareas vinculadas quedan dentro del reporte de TP Ops; la vista para Slack incluye el registro de horas.')}</p><div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? task.clients.code + ' · ' + task.clients.business_name : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div></details>
-      <div className="eod-slack-preview"><strong>{t('Vista previa para Slack')}</strong><p className="muted">{t('Los encabezados están en inglés; escribe tus respuestas en inglés. Enviar guarda el reporte y las horas en TP Ops; copia el texto para publicarlo en #eod-reports.')}</p><code data-no-translate>{slackReportPreview}</code><div><button className="secondary-button" type="button" disabled={!isEodReportReady} onClick={copyEodReportForSlack}>{t('Copiar reporte para Slack')}</button></div></div>
       <div className="eod-submit-row"><span>{isEodReportReady ? t('Total de horas') + ': ' + formatHoursAndMinutes(totalManualHours) : t('Completa el formato y agrega las horas para enviar.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
     </form>}
     {!canSubmit && !canReviewAll && <section className="content-card"><p className="muted">Tu usuario no tiene permiso para generar informes EOD.</p></section>}
