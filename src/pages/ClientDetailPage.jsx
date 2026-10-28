@@ -136,7 +136,6 @@ export default function ClientDetailPage() {
     ['dossier', 'Dossier'],
     ['ads', 'Ads'],
     ['notes', 'Notas'],
-    ['tasks', 'Tareas'],
     ['audit', 'Auditoría'],
   ]
   const requestedTab = searchParams.get('tab')
