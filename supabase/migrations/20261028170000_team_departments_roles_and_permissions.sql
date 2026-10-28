@@ -2,6 +2,27 @@
 -- Existing profile.role and profile.permissions remain as compatibility caches for current RLS policies.
 -- Rollback snapshot permits restoring pre-migration access assignments and account states.
 
+-- New Auth identities have no access until the admin assigns a department role.
+CREATE OR REPLACE FUNCTION private.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role, permissions, active)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    coalesce(NEW.raw_user_meta_data ->> 'full_name', split_part(NEW.email, '@', 1)),
+    'onboarding_media',
+    '{}'::jsonb,
+    false
+  );
+  RETURN NEW;
+END;
+$function$;
+
 CREATE TABLE IF NOT EXISTS public.departments (
   id text PRIMARY KEY,
   name_es text NOT NULL,
