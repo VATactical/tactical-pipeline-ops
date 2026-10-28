@@ -26,7 +26,7 @@ function ClientIntegrationIndicators({ client }) {
   return <div className="client-integration-indicators" aria-label={t('Accesos e integraciones')}>
     <span className={`integration-pill ${gbpTone}`} title={`${t('Acceso GBP')}: ${t(gbpLabel)}`}><b>GBP</b><span>{t(gbpLabel)}</span></span>
     <span className={`integration-pill ${metaPaymentTone}`} title={`${t('Método de pago en Meta')}: ${t(metaPaymentLabel)}`} aria-label={`${t('Método de pago en Meta')}: ${t(metaPaymentLabel)}`}><b>Meta</b><span aria-hidden="true">{metaPaymentMark}</span></span>
-    <span className={`integration-pill ${ghlPaymentAdded ? 'positive' : 'pending'}`} title={`${t('Método de pago en GHL')}: ${t(ghlPaymentAdded ? 'Agregado' : 'Pendiente')}`}><b>GHL</b><span>{t('Método de pago')}: {t(ghlPaymentAdded ? 'Agregado' : 'Pendiente')}</span></span>
+    <span className={`integration-pill ${ghlPaymentTone}`} title={`${t('Método de pago en GHL')}: ${t(ghlPaymentLabel)}`} aria-label={`${t('Método de pago en GHL')}: ${t(ghlPaymentLabel)}`}><b>GHL</b><span aria-hidden="true">{ghlPaymentMark}</span></span>
   </div>
 }
 
