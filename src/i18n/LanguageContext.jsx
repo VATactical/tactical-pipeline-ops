@@ -39,6 +39,8 @@ const translations = {
   "Verificar zona horaria": "Verify timezone",
   "Servicios pendientes": "Services missing",
   "Oferta pendiente": "Offer missing",
+  "Rendimiento por cliente": "Performance by client",
+  "Todos los clientes tuvieron actividad reciente.": "All clients have been updated recently.",
   "Meta · últimos 7 días": "Meta · last 7 days",
   "No se pudieron cargar los reportes de Meta.": "Meta reports could not be loaded.",
   "Cargando reportes…": "Loading reports…",
