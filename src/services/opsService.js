@@ -124,6 +124,16 @@ export async function deleteClientTask(taskId) {
   const { error } = await supabase.from('tasks').delete().eq('id', taskId)
   if (error) throw error
 }
+export async function deleteArchivedClient(clientId) {
+  const { data, error } = await supabase.from('clients')
+    .delete()
+    .eq('id', clientId)
+    .eq('archived', true)
+    .select('id')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('Solo se pueden eliminar clientes archivados.')
+}
 
 export async function updateTaskStatus(taskId, status) {
   const { error } = await supabase.from('tasks').update({ status: normalizeStatus(status) }).eq('id', taskId)
