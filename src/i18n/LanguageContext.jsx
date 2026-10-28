@@ -106,7 +106,6 @@ const translations = {
   'User Admin': 'User Admin',
   'Superadmin': 'Superadmin',
   'Roles': 'Roles',
-  'Crear clientes': 'Create clients',
   'Editar clientes': 'Edit clients',
   'Enviar reportes EOD': 'Submit EOD reports',
   'Administrar operaciones de clientes': 'Manage client operations',
