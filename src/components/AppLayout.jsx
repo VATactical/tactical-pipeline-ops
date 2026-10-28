@@ -101,7 +101,6 @@ export default function AppLayout() {
         <nav id="main-navigation" className={mobileMenuOpen ? 'mobile-open' : ''} aria-label="Navegación principal">
           <NavLink to="/" end>Panel</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
-          <NavLink to="/tareas">Tareas</NavLink>
           <NavLink to="/tickets">{t('Tickets')}</NavLink>
           <NavLink to="/training">Training</NavLink>
           <NavLink to="/mi-equipo">Mi equipo</NavLink>
