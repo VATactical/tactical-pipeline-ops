@@ -44,6 +44,33 @@ SET active = false, permissions = '{}'::jsonb
 WHERE lower(email) IN ('icawnicmedia@gmail.com', 'olamiposiogunkolade@gmail.com')
   AND active;
 
+CREATE TABLE IF NOT EXISTS private.department_role_roster_backup (
+  department_role_id text PRIMARY KEY,
+  title_es text NOT NULL,
+  title_en text NOT NULL,
+  description_es text NOT NULL,
+  description_en text NOT NULL,
+  active boolean NOT NULL,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO private.department_role_roster_backup (
+  department_role_id, title_es, title_en, description_es, description_en, active
+)
+SELECT id, title_es, title_en, description_es, description_en, active
+FROM public.department_roles
+WHERE id IN (
+  'ops_lead',
+  'onboarding_specialist',
+  'funnels_websites_a2p',
+  'automation_integrations',
+  'google_gbp_specialist',
+  'video_editor',
+  'media_buyer_meta',
+  'a2p_intake'
+)
+ON CONFLICT (department_role_id) DO NOTHING;
+
 UPDATE public.department_roles
 SET title_es = 'Operaciones / CSM / Community Manager',
     title_en = 'Operations / CSM / Community Manager',
