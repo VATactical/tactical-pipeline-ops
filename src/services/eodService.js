@@ -227,6 +227,8 @@ export async function loadUnreadEodCount(profile) {
 
 export async function saveEodReport({ profileId, reportDate, complianceDate = reportDate, periodStart, periodEnd, completedTasks, manualTasks, timeEntries, notes, lateReason = '' }) {
   const cleanLateReason = lateReason.trim()
+  const productivityScore = notes.match(/Productivity Score:\\s*(\\d+)\\/5/)?.[1]
+  if (!productivityScore || Number(productivityScore) < 1 || Number(productivityScore) > 5) throw new Error('La puntuación de productividad debe estar entre 1 y 5.')
   if (reportDate < getDateInTimeZone(new Date(), DEFAULT_KEVIN_TIME_ZONE) && !cleanLateReason) {
     throw new Error('Explica por qué estás enviando este EOD atrasado.')
   }
