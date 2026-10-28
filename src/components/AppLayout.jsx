@@ -7,10 +7,10 @@ import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
 import TeamAvatar from './TeamAvatar'
 
 const roleLabels = {
-  onboarding_media: 'Onboarding & Media',
-  automation_funnels: 'Automations & Funnels',
+  onboarding_media: 'Integrante del equipo',
+  automation_funnels: 'GHL / Tecnología y Automatizaciones',
   superadmin: 'Superadmin',
-  user_admin: 'User Admin',
+  user_admin: 'Operaciones / CSM',
 }
 
 export default function AppLayout() {
@@ -112,7 +112,7 @@ export default function AppLayout() {
         </nav>
 
         <div className={`user-card${mobileMenuOpen ? ' mobile-open' : ''}`}>
-          <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{roleLabels[profile?.role] || 'Sin rol asignado'}</span></div></div>
+          <div className="user-card-identity"><TeamAvatar avatarId={profile?.avatar_url} size="small" label={profile?.full_name || 'Avatar'} /><div><strong>{profile?.full_name || user?.email}</strong><span>{t(roleLabels[profile?.role] || 'Sin rol asignado')}</span></div></div>
           <LanguageToggle compact />
           <button className="theme-toggle" type="button" aria-pressed={theme === 'light'} onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}><span aria-hidden="true">{theme === 'dark' ? '☀' : '◐'}</span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</button>
           <NavLink className="account-link" to="/mi-cuenta">Mi cuenta</NavLink>
