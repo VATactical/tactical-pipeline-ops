@@ -8,7 +8,7 @@ create table if not exists public.tickets (
   priority text not null default 'Medium'
     check (priority in ('Low', 'Medium', 'High', 'Urgent')),
   assigned_to uuid references public.profiles(id) on delete set null,
-  created_by uuid not null references public.profiles(id) on delete set null,
+  created_by uuid references public.profiles(id) on delete set null,
   next_follow_up date,
   needs_confirmation boolean not null default false,
   created_at timestamptz not null default now(),
@@ -49,7 +49,8 @@ alter table public.ticket_clients enable row level security;
 alter table public.ticket_updates enable row level security;
 
 revoke all on public.tickets, public.ticket_clients, public.ticket_updates from anon;
-grant select, insert, update, delete on public.tickets, public.ticket_clients to authenticated;
+grant select, insert, update on public.tickets to authenticated;
+grant select, insert, delete on public.ticket_clients to authenticated;
 grant select, insert on public.ticket_updates to authenticated;
 
 drop policy if exists "Active team reads tickets" on public.tickets;
@@ -79,19 +80,9 @@ create policy "Ticket owner or operations admin updates tickets" on public.ticke
   )
   with check (
     (select private.current_app_role()) is not null
-    and (
-      created_by = (select auth.uid())
-      or assigned_to = (select auth.uid())
-      or (select private.has_permission('operations_admin'))
-    )
+    and updated_by = (select auth.uid())
     and (assigned_to is null or (select private.is_active_profile(assigned_to)))
-    and (updated_by is null or updated_by = (select auth.uid()))
   );
-
-drop policy if exists "Superadmin deletes tickets" on public.tickets;
-create policy "Superadmin deletes tickets" on public.tickets
-  for delete to authenticated
-  using ((select private.is_superadmin()));
 
 drop policy if exists "Active team reads ticket clients" on public.ticket_clients;
 create policy "Active team reads ticket clients" on public.ticket_clients
@@ -152,3 +143,79 @@ create policy "Active team adds ticket updates" on public.ticket_updates
         )
     )
   );
+
+create or replace function public.create_ticket_with_clients(
+  p_ticket_number text,
+  p_title text,
+  p_description text,
+  p_status text,
+  p_priority text,
+  p_assigned_to uuid,
+  p_next_follow_up date,
+  p_needs_confirmation boolean,
+  p_client_ids text[]
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_ticket_id uuid;
+  v_requested_count integer;
+  v_found_count integer;
+  v_status text;
+  v_author_name text;
+begin
+  if (select private.current_app_role()) is null then
+    raise exception 'Active team profile required';
+  end if;
+
+  select count(distinct requested.client_id)
+    into v_requested_count
+    from unnest(coalesce(p_client_ids, '{}'::text[])) as requested(client_id);
+
+  select count(*)
+    into v_found_count
+    from public.clients c
+    where c.id = any(coalesce(p_client_ids, '{}'::text[]))
+      and c.archived is false;
+
+  if v_requested_count < 1 or v_found_count <> v_requested_count then
+    raise exception 'Select at least one active client';
+  end if;
+
+  insert into public.tickets (
+    ticket_number, title, description, status, priority, assigned_to,
+    created_by, next_follow_up, needs_confirmation, updated_by
+  )
+  values (
+    trim(p_ticket_number), trim(p_title), coalesce(p_description, ''),
+    p_status, p_priority, p_assigned_to, (select auth.uid()),
+    p_next_follow_up, coalesce(p_needs_confirmation, false), (select auth.uid())
+  )
+  returning id, status into v_ticket_id, v_status;
+
+  insert into public.ticket_clients (
+    ticket_id, client_id, client_code_snapshot, business_name_snapshot
+  )
+  select v_ticket_id, c.id, c.code, c.business_name
+  from public.clients c
+  where c.id = any(coalesce(p_client_ids, '{}'::text[]))
+    and c.archived is false
+  on conflict (ticket_id, client_code_snapshot) do nothing;
+
+  select coalesce(nullif(trim(p.full_name), ''), 'Team member')
+    into v_author_name
+    from public.profiles p
+    where p.id = (select auth.uid());
+
+  insert into public.ticket_updates (ticket_id, author_id, author_name, body, status_after)
+  values (v_ticket_id, (select auth.uid()), coalesce(v_author_name, 'Team member'), 'Ticket created', v_status);
+
+  return v_ticket_id;
+end;
+$$;
+
+revoke all on function public.create_ticket_with_clients(text, text, text, text, text, uuid, date, boolean, text[]) from public, anon;
+grant execute on function public.create_ticket_with_clients(text, text, text, text, text, uuid, date, boolean, text[]) to authenticated;
