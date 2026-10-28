@@ -141,16 +141,27 @@ Deno.serve(async (request) => {
     if (!validTimezone(timezone)) return json({ error: 'Zona horaria inválida.' }, 400)
     if (slackContact.length > 300 || whatsappContact.length > 300) return json({ error: 'El contacto es demasiado largo.' }, 400)
 
+    const { data: currentProfile, error: currentProfileError } = await admin.from('profiles')
+      .select('active').eq('id', userId).single()
+    if (currentProfileError || !currentProfile) return json({ error: currentProfileError?.message || 'Usuario no encontrado.' }, 404)
+
+    // Temporarily disable the account while its inherited permissions are replaced.
+    const { error: lockError } = await admin.from('profiles').update({ active: false }).eq('id', userId)
+    if (lockError) return json({ error: lockError.message }, 400)
+
+    const { error: assignmentError } = await admin.rpc('admin_set_profile_department_roles', {
+      p_profile_id: userId, p_role_ids: departmentRoleIds,
+    })
+    if (assignmentError) {
+      await admin.from('profiles').update({ active: currentProfile.active }).eq('id', userId)
+      return json({ error: assignmentError.message }, 400)
+    }
+
     const { error: profileError } = await admin.from('profiles').update({
       full_name: fullName, active: body.active !== false, timezone,
       slack_contact: slackContact, whatsapp_contact: whatsappContact,
     }).eq('id', userId)
     if (profileError) return json({ error: profileError.message }, 400)
-
-    const { error: assignmentError } = await admin.rpc('admin_set_profile_department_roles', {
-      p_profile_id: userId, p_role_ids: departmentRoleIds,
-    })
-    if (assignmentError) return json({ error: assignmentError.message }, 400)
 
     const { data: profile, error: resultError } = await admin.from('profiles')
       .select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at')
