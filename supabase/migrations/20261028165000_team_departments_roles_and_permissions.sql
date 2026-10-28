@@ -117,17 +117,17 @@ ON CONFLICT (profile_id) DO NOTHING;
 INSERT INTO public.departments (id, name_es, name_en, legacy_app_role, permissions, sort_order)
 VALUES
   ('direction', 'Dirección', 'Direction', 'superadmin',
-    '{"clients_create":true,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":true,"sensitive_credentials_view":true,"operations_admin":true}'::jsonb, 1),
-  ('operations_csm', 'Operaciones / CSM', 'Operations / CSM', 'onboarding_media',
-    '{"clients_create":true,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":true}'::jsonb, 2),
+    '{"clients_create":true,"clients_edit":true,"clients_delete_archived":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":true,"sensitive_credentials_view":true,"operations_admin":true}'::jsonb, 1),
+  ('operations_csm', 'Operaciones / CSM', 'Operations / CSM', 'user_admin',
+    '{"clients_create":true,"clients_edit":true,"clients_delete_archived":false,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":true}'::jsonb, 2),
   ('onboarding_csm', 'Onboarding (CSM)', 'Onboarding (CSM)', 'onboarding_media',
-    '{"clients_create":true,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":true}'::jsonb, 3),
+    '{"clients_create":true,"clients_edit":true,"clients_delete_archived":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":true}'::jsonb, 3),
   ('ghl_tech_automation', 'GHL / Tecnología y Automatizaciones', 'GHL / Tech & Automations', 'automation_funnels',
-    '{"clients_create":false,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 4),
+    '{"clients_create":false,"clients_edit":true,"clients_delete_archived":false,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 4),
   ('media_buying_meta', 'Media Buying (Meta)', 'Media Buying (Meta)', 'onboarding_media',
-    '{"clients_create":false,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 5),
+    '{"clients_create":false,"clients_edit":true,"clients_delete_archived":false,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 5),
   ('google_gbp', 'Google / GBP', 'Google / GBP', 'onboarding_media',
-    '{"clients_create":false,"clients_edit":true,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 6),
+    '{"clients_create":false,"clients_edit":true,"clients_delete_archived":false,"tasks_create":true,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 6),
   ('video_editing', 'Edición de video', 'Video Editing', 'onboarding_media',
     '{"clients_create":false,"clients_edit":false,"tasks_create":false,"calendar_manage":false,"eod_reports":true,"users_manage":false,"sensitive_credentials_view":false,"operations_admin":false}'::jsonb, 7)
 ON CONFLICT (id) DO UPDATE SET
@@ -137,6 +137,11 @@ ON CONFLICT (id) DO UPDATE SET
   permissions = EXCLUDED.permissions,
   sort_order = EXCLUDED.sort_order,
   active = true;
+
+DROP POLICY "Onboarding deletes archived clients" ON public.clients;
+CREATE POLICY "Onboarding deletes archived clients"
+  ON public.clients FOR DELETE TO authenticated
+  USING (archived IS TRUE AND (SELECT private.has_permission('clients_delete_archived')));
 
 INSERT INTO public.department_roles (id, department_id, title_es, title_en, description_es, description_en, sort_order)
 VALUES
