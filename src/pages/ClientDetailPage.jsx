@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import AdsReportsPanel from '../components/AdsReportsPanel'
 import ClientOpsPanel from '../components/ClientOpsPanel'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
-import { createAssignedTask, createClientNote, deleteClientNote, deleteClientTask, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateTaskDetails, updateWorkflowStep } from '../services/opsService'
+import { createAssignedTask, createClientNote, deleteArchivedClient, deleteClientNote, deleteClientTask, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateTaskDetails, updateWorkflowStep } from '../services/opsService'
 
 const sections = [
   { title: 'Quién · Perfil comercial', fields: [
@@ -96,6 +96,7 @@ const emptyTaskDraft = { title: '', details: '', nextStep: '', assignedTo: '', p
 
 export default function ClientDetailPage() {
   const { clientId } = useParams()
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const { locale, t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -317,6 +318,7 @@ export default function ClientDetailPage() {
   }
 
   const canManageArchive = ['superadmin', 'user_admin'].includes(profile?.role) || Boolean(profile?.permissions?.operations_admin)
+  const canDeleteArchived = profile?.role === 'onboarding_media' && client.archived
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
   const canManageNotes = canCreateNotes
   const canManageTasks = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
@@ -441,6 +443,21 @@ export default function ClientDetailPage() {
     } catch (restoreError) { setError(t(restoreError.message)) }
     finally { setSaving(false) }
   }
+  const permanentlyDeleteArchivedClient = async () => {
+    if (!canDeleteArchived) return
+    const code = window.prompt(t('Escribe el código del cliente para confirmar que quieres eliminar permanentemente el cliente y su historial relacionado.'))
+    if (code === null) return
+    if (code.trim().toUpperCase() !== String(client.code).toUpperCase()) {
+      setError(t('El código no coincide. El cliente no se eliminó.'))
+      return
+    }
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await deleteArchivedClient(clientId)
+      navigate('/clientes?vista=archivados')
+    } catch (deleteError) { setError(t(deleteError.message)) }
+    finally { setSaving(false) }
+  }
   const launchDate = client.target_launch_date ? new Date(`${client.target_launch_date}T23:59:59`) : null
   const launchOverdue = launchDate && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && launchDate < new Date()
   const slackChannelUrl = /^https?:\/\//i.test(client.slack_channel_link || '') ? client.slack_channel_link : ''
@@ -485,7 +502,7 @@ export default function ClientDetailPage() {
     </form>}
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     {archiveOpen && <form className="content-card client-archive-form client-tab-section tab-dossier" onSubmit={archiveClient}><div><p className="eyebrow">Salida de la operación</p><h3>Archivar cliente</h3><p className="muted">El dossier y el historial se conservarán fuera de los clientes activos.</p></div><label>Motivo<select value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} required><option value="">Seleccionar…</option><option>Contrato finalizado</option><option>Cancelación del cliente</option><option>Falta de pago</option><option>Campaña terminada</option><option>Otro</option></select></label><label>Nota final opcional<textarea rows="4" maxLength="2000" value={archiveNote} onChange={(event) => setArchiveNote(event.target.value)} placeholder="Contexto de la salida, pendientes o condiciones para regresar…" /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(false); setArchiveReason(''); setArchiveNote('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Archivando…' : 'Confirmar archivo'}</button></div></form>}
-    {client.archived && <section className="content-card client-archive-summary client-tab-section tab-dossier"><div><p className="eyebrow">Cliente archivado</p><h3 data-no-translate>{client.archive_reason}</h3>{client.archive_note && <p data-no-translate>{client.archive_note}</p>}<small>{client.archived_at ? t(`Archivado el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}`) : ''}</small></div>{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}</section>}
+    {client.archived && <section className="content-card client-archive-summary client-tab-section tab-dossier"><div><p className="eyebrow">Cliente archivado</p><h3 data-no-translate>{client.archive_reason}</h3>{client.archive_note && <p data-no-translate>{client.archive_note}</p>}<small>{client.archived_at ? t(`Archivado el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.archived_at))}`) : ''}</small></div><div className="section-actions">{canManageArchive && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canDeleteArchived && <button className="danger-button compact-button" type="button" disabled={saving} onClick={permanentlyDeleteArchivedClient}>{saving ? t('Eliminando…') : t('Eliminar definitivamente')}</button>}</div></section>}
     {pauseOpen && <form className="content-card ads-pause-form client-tab-section tab-ads" onSubmit={pauseAds}><div><p className="eyebrow">Pausar campaña</p><h3>¿Por qué se pausarán los ADS?</h3><p className="muted">El motivo quedará visible en el cliente y en el historial.</p></div><label>Motivo de pausa<textarea rows="4" maxLength="2000" value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} placeholder="Ej. CPL alto, método de pago rechazado o esperando aprobación del cliente…" required /></label><div className="section-actions"><button className="secondary-button" type="button" disabled={saving} onClick={() => { setPauseOpen(false); setPauseReason('') }}>Cancelar</button><button className="danger-button" disabled={saving}>{saving ? 'Pausando…' : 'Confirmar pausa'}</button></div></form>}
     <div className="client-ops-summary-grid client-tab-section tab-dossier">
       <section className="content-card compact-summary-card"><p className="eyebrow">Próxima acción</p><h3>{client.next_action || 'Sin acción'}</h3></section>
