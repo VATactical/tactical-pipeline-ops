@@ -222,7 +222,7 @@ const translations = {
   '¿Qué asuntos debes llevar a mañana? Incluye bloqueo y responsable…': 'What needs to carry over to tomorrow? Include the blocker and owner…',
   'Indica el próximo paso y quién lo resolverá; escribe None si no hay pendientes…': 'Enter the next step and who will resolve it; write None if there are no issues…',
   'Puntuación de productividad': 'Productivity Score',
-  'Puntuación del 1 al 10': 'Score from 1 to 10',
+  'Puntuación del 1 al 10': 'Score from 1 to 10', 'Puntuación del 1 al 5': 'Productivity score from 1 to 5', 'La puntuación de productividad debe estar entre 1 y 5.': 'The productivity score must be between 1 and 5.',
   'Selecciona una puntuación': 'Select a score',
   'Horas del reporte': 'Hours for this report',
   'Registro de horas y trabajo': 'Work and time log',
