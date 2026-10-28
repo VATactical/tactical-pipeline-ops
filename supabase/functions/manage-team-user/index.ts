@@ -103,7 +103,7 @@ Deno.serve(async (request) => {
       if (createError || !created.user) return json({ error: createError?.message || 'No se pudo crear el usuario.' }, 400)
 
       const { error: profileError } = await admin.from('profiles').update({
-        email, full_name: fullName, active: true, timezone,
+        email, full_name: fullName, active: false, timezone,
         slack_contact: slackContact, whatsapp_contact: whatsappContact,
       }).eq('id', created.user.id)
       if (profileError) {
@@ -117,6 +117,12 @@ Deno.serve(async (request) => {
       if (assignmentError) {
         await admin.auth.admin.deleteUser(created.user.id)
         return json({ error: assignmentError.message }, 400)
+      }
+      const { error: activationError } = await admin.from('profiles')
+        .update({ active: true }).eq('id', created.user.id)
+      if (activationError) {
+        await admin.auth.admin.deleteUser(created.user.id)
+        return json({ error: activationError.message }, 400)
       }
       const { data: profile, error: resultError } = await admin.from('profiles')
         .select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at')
