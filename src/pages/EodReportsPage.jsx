@@ -23,6 +23,72 @@ function formatMoment(value, timeZone, locale) {
   return new Intl.DateTimeFormat(locale, { timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
+function emptyEodStructure() {
+  return { priorityStatus: '', priorityDetails: '', wins: '', lesson: '', carryover: '', productivityScore: '' }
+}
+
+const reportSectionHeadings = [
+  'Did you complete your top 3 priorities?',
+  'Wins from today',
+  'One lesson or improvement',
+  'Any issues to carry into tomorrow?',
+  'Productivity Score:',
+  'Hours logged',
+]
+
+function isStructuredEodReport(value) {
+  const text = String(value || '')
+  return text.startsWith('EOD Report for - ') && text.includes('Did you complete your top 3 priorities?') && text.includes('Hours logged')
+}
+
+function parseEodReportNotes(value) {
+  const text = String(value || '').trim()
+  if (!isStructuredEodReport(text)) return { ...emptyEodStructure(), wins: text }
+  const getSection = (heading) => {
+    const marker = heading + '\n'
+    const headingIndex = text.indexOf(marker)
+    if (headingIndex < 0) return ''
+    const start = headingIndex + marker.length
+    const nextHeadings = reportSectionHeadings
+      .map((item) => text.indexOf(item + '\n', start))
+      .filter((index) => index >= 0)
+    const inlineScore = text.indexOf('Productivity Score:', start)
+    if (inlineScore >= 0) nextHeadings.push(inlineScore)
+    const end = nextHeadings.length ? Math.min(...nextHeadings) : text.length
+    return text.slice(start, end).trim()
+  }
+  const priorityBlock = getSection('Did you complete your top 3 priorities?')
+  const priorityResult = priorityBlock.match(/^Priority result: (Yes, mostly|Yes|Mostly|Partially|No)$/m)?.[1] || ''
+  const priorityStatus = priorityResult === 'Yes, mostly' ? 'Mostly' : priorityResult
+  const priorityDetails = priorityBlock.replace(/^Priority result:.*(?:\r?\n)Priority details:\n?/, '').trim()
+  const score = text.match(/Productivity Score: (\d+)\/10/)?.[1] || ''
+  return {
+    priorityStatus,
+    priorityDetails,
+    wins: getSection('Wins from today'),
+    lesson: getSection('One lesson or improvement'),
+    carryover: getSection('Any issues to carry into tomorrow?'),
+    productivityScore: score,
+  }
+}
+
+function buildEodReportText({ reportDate, reportStructure, manualSections, totalHours }) {
+  const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', dateStyle: 'long' }).format(new Date(reportDate + 'T12:00:00Z'))
+  const outcome = { Yes: 'Yes', Mostly: 'Yes, mostly', Partially: 'Partially', No: 'No' }[reportStructure.priorityStatus] || 'Pending'
+  const workLog = manualSections
+    .filter((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes)
+    .map((section) => '- ' + section.title.trim() + ' — ' + formatHoursAndMinutes(sectionDurationHours(section)) + '\n  ' + section.description.trim())
+  return [
+    'EOD Report for - ' + dateLabel,
+    'Did you complete your top 3 priorities?\nPriority result: ' + outcome + '\nPriority details:\n' + reportStructure.priorityDetails.trim(),
+    'Wins from today\n' + reportStructure.wins.trim(),
+    'One lesson or improvement\n' + reportStructure.lesson.trim(),
+    'Any issues to carry into tomorrow?\n' + reportStructure.carryover.trim(),
+    'Productivity Score: ' + (reportStructure.productivityScore || '—') + '/10',
+    'Hours logged\nTotal: ' + formatHoursAndMinutes(totalHours) + '\n' + (workLog.join('\n') || '-'),
+  ].join('\n\n')
+}
+
 function reportPreview(value, limit = 200) {
   const text = String(value || '').trim()
   return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text
@@ -100,7 +166,7 @@ export default function EodReportsPage() {
   const [timeEntries, setTimeEntries] = useState([])
   const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), timeZone))
   const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '', minutes: '' }])
-  const [notes, setNotes] = useState('')
+  const [reportStructure, setReportStructure] = useState(emptyEodStructure)
   const [lateReason, setLateReason] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
   const [userSearch, setUserSearch] = useState('')
@@ -137,7 +203,7 @@ export default function EodReportsPage() {
             ...decimalHoursToInputs(typeof item === 'object' && item.hours != null ? item.hours : existingEntries[index]?.hours || ''),
           }))
           : [{ title: '', description: '', hours: '', minutes: '' }])
-        setNotes(existing.notes || '')
+        setReportStructure(parseEodReportNotes(existing.notes))
         setLateReason(existing.late_reason || '')
       } else {
         let savedDraft = null
@@ -146,7 +212,7 @@ export default function EodReportsPage() {
         setManualSections(savedDraft?.manualSections?.length
           ? savedDraft.manualSections.map(normalizeHoursInput)
           : [{ title: '', description: '', hours: '', minutes: '' }])
-        setNotes(savedDraft?.notes || '')
+        setReportStructure(savedDraft?.reportStructure || parseEodReportNotes(savedDraft?.notes))
         setLateReason(savedDraft?.lateReason || '')
       }
       setDraftHydrated(true)
@@ -162,8 +228,8 @@ export default function EodReportsPage() {
 
   useEffect(() => {
     if (!draftHydrated || !composerOpen || !draftKey || isSuperadmin) return
-    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, notes, lateReason, savedAt: new Date().toISOString() }))
-  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, notes, lateReason, selectedTaskIds])
+    window.localStorage.setItem(draftKey, JSON.stringify({ selectedTaskIds, manualSections, reportStructure, lateReason, savedAt: new Date().toISOString() }))
+  }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, reportStructure, lateReason, selectedTaskIds])
 
   useEffect(() => {
     if (!expandedReport) return undefined
@@ -296,12 +362,41 @@ export default function EodReportsPage() {
 
   const toggleTask = (taskId) => setSelectedTaskIds((current) => current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId])
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
+  const changeReportField = (key, value) => setReportStructure((current) => ({ ...current, [key]: value }))
+  const copyEodReportForSlack = async () => {
+    try {
+      await navigator.clipboard.writeText(slackReportPreview)
+      setError('')
+      setMessage(t('Reporte copiado para Slack.'))
+    } catch {
+      setError(t('No se pudo copiar automáticamente. Selecciona el texto y cópialo manualmente.'))
+    }
+  }
   const normalizeSectionMinutes = (index) => setManualSections((current) => current.map((item, itemIndex) => {
     if (itemIndex !== index) return item
     const normalized = normalizeHoursAndMinutes(item.hours, item.minutes)
     return normalized ? { ...item, ...normalized } : item
   }))
   const totalManualHours = useMemo(() => manualSections.reduce((sum, section) => sum + sectionDurationHours(section), 0), [manualSections])
+  const activeManualSections = useMemo(() => manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes), [manualSections])
+  const reportStructureComplete = Boolean(
+    reportStructure.priorityStatus && reportStructure.priorityDetails.trim() && reportStructure.wins.trim()
+      && reportStructure.lesson.trim() && reportStructure.carryover.trim()
+      && Number.isInteger(Number(reportStructure.productivityScore))
+      && Number(reportStructure.productivityScore) >= 1 && Number(reportStructure.productivityScore) <= 10,
+  )
+  const reportHoursValid = activeManualSections.length > 0 && totalManualHours > 0 && totalManualHours <= 24
+    && activeManualSections.every((section) => section.title.trim() && section.description.trim()
+      && Number.isInteger(Number(section.hours || 0)) && Number(section.hours || 0) >= 0 && Number(section.hours || 0) <= 24
+      && Number.isInteger(Number(section.minutes || 0)) && Number(section.minutes || 0) >= 0 && Number(section.minutes || 0) <= 59
+      && !(Number(section.hours || 0) === 24 && Number(section.minutes || 0) > 0))
+  const isEodReportReady = reportStructureComplete && reportHoursValid
+  const slackReportPreview = useMemo(() => buildEodReportText({
+    reportDate,
+    reportStructure,
+    manualSections: activeManualSections,
+    totalHours: totalManualHours,
+  }), [activeManualSections, reportDate, reportStructure, totalManualHours])
 
   const runAction = async (key, action, success) => {
     setActionKey(key); setError(''); setMessage('')
@@ -354,8 +449,16 @@ export default function EodReportsPage() {
   const submit = async (event) => {
     event.preventDefault(); setError(''); setMessage('')
     const activeSections = manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes)
-    if (activeSections.some((section) => !section.title.trim() || !section.description.trim() || !(sectionDurationHours(section) > 0) || !Number.isInteger(Number(section.hours || 0)) || Number(section.hours || 0) < 0 || Number(section.hours || 0) > 24 || !Number.isInteger(Number(section.minutes || 0)) || Number(section.minutes || 0) < 0 || Number(section.minutes || 0) > 59 || (Number(section.hours || 0) === 24 && Number(section.minutes || 0) > 0))) {
-      setError(t('Cada sección necesita título, descripción y horas.'))
+    if (!reportStructureComplete) {
+      setError(t('Completa las secciones del formato EOD y el puntaje de productividad.'))
+      return
+    }
+    if (!activeSections.length) {
+      setError(t('Agrega al menos un registro de trabajo con horas.'))
+      return
+    }
+    if (activeSections.some((section) => !section.title.trim() || !section.description.trim() || !(sectionDurationHours(section) > 0) || !Number.isInteger(Number(section.hours || 0)) || Number(section.hours || 0) < 0 || Number(section.hours || 0) > 24 || !Number.isInteger(Number(section.minutes || 0)) || Number(section.minutes || 0) < 0 || Number(section.minutes || 0) > 59 || (Number(section.hours || 0) === 24 && Number(section.minutes || 0) > 0)) || totalManualHours > 24) {
+      setError(t('Cada registro necesita título, descripción y una duración válida; el total diario no puede superar 24 horas.'))
       return
     }
     setSaving(true)
@@ -383,7 +486,7 @@ export default function EodReportsPage() {
           hours: sectionDurationHours(section),
           memo: `${section.title.trim()}${section.description.trim() ? `: ${section.description.trim()}` : ''}`,
         })),
-        notes,
+        notes: buildEodReportText({ reportDate, reportStructure, manualSections: activeSections, totalHours: totalManualHours }),
         lateReason,
       })
       await refresh()
@@ -416,15 +519,45 @@ export default function EodReportsPage() {
 
     */}
     {canSubmit && composerOpen && <form className="content-card eod-form" onSubmit={submit}>
-      <div className="section-heading"><div><p className="eyebrow">{t('Checklist de actividades')}</p><h3>{selectedTaskIds.length} {t('de')} {completedTasks.length} {t('tareas seleccionadas')}</h3><p className="muted">{t('Un reporte por día. Puedes completar el de ayer hasta hoy.')}</p></div><div className="eod-report-date"><label>{t('Fecha del reporte')}<input type="date" value={reportDate} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength={1000} rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</div>{completedTasks.length > 0 && <button className="text-button" type="button" onClick={() => setSelectedTaskIds(selectedTaskIds.length === completedTasks.length ? [] : completedTasks.map((task) => task.id))}>{selectedTaskIds.length === completedTasks.length ? t('Desmarcar todas') : t('Seleccionar todas')}</button>}</div>
-      <div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo. Puedes agregar actividades manualmente.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? `${task.clients.code} · ${task.clients.business_name}` : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div>
-      <div className="section-heading"><div><p className="eyebrow">{t('Trabajo adicional')}</p><h3>{t('Secciones del trabajo')}</h3><p className="muted">{t('Añade cada bloque con su título, descripción y horas. El total se calcula automáticamente.')}</p></div><button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '', minutes: '' }])}>+ {t('Agregar sección')}</button></div>
-      <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Sección')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Título de la sección')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder={t('Ej. A2P Compliance')} /></label><label>{t('Horas')}<input type="number" min="0" max="24" step="1" inputMode="numeric" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0" /></label><label>{t('Minutos')}<input type="number" min="0" step="1" inputMode="numeric" value={section.minutes} onChange={(event) => changeSection(index, 'minutes', event.target.value)} onBlur={() => normalizeSectionMinutes(index)} placeholder="0" /></label></div><label>{t('Descripción')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe qué se completó, con quién o en qué clientes…')} /></label></article>)}</div>
+      <div className="section-heading">
+        <div><p className="eyebrow">{t('Preparación del reporte')}</p><h3>{t('Informe EOD estructurado')}</h3><p className="muted">{t('Completa el formato del equipo y registra el tiempo dedicado a cada actividad.')}</p></div>
+        <div className="eod-report-date"><label>{t('Fecha del reporte')}<input type="date" value={reportDate} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength="1000" rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</div>
+      </div>
+      <div className="eod-section-list">
+        <article className="eod-work-section">
+          <div className="eod-work-section-heading"><strong>{t('Prioridades principales')}</strong></div>
+          <div className="eod-section-fields">
+            <label>{t('¿Completaste tus 3 prioridades principales?')}<select required value={reportStructure.priorityStatus} onChange={(event) => changeReportField('priorityStatus', event.target.value)}><option value="">{t('Selecciona el resultado')}</option><option value="Yes">{t('Sí')}</option><option value="Mostly">{t('Mayormente')}</option><option value="Partially">{t('Parcialmente')}</option><option value="No">{t('No')}</option></select></label>
+          </div>
+          <label>{t('Escribe tus tres prioridades y qué quedó pendiente…')}<textarea required rows="3" maxLength="3000" value={reportStructure.priorityDetails} onChange={(event) => changeReportField('priorityDetails', event.target.value)} placeholder={t('Indica cada prioridad, si se completó y qué sigue…')} /></label>
+        </article>
+        <article className="eod-work-section">
+          <div className="eod-work-section-heading"><strong>{t('Logros de hoy')}</strong></div>
+          <label>{t('Describe resultados concretos por cliente. Incluye código, nombre, ticket y responsable del siguiente paso…')}<textarea required rows="4" maxLength="5000" value={reportStructure.wins} onChange={(event) => changeReportField('wins', event.target.value)} placeholder="C4 · Crystal Flowers — TKT-023 — Completed the landing page; Juan owns approval." /></label>
+        </article>
+        <article className="eod-work-section">
+          <div className="eod-work-section-heading"><strong>{t('Una lección o mejora')}</strong></div>
+          <label>{t('¿Qué aprendiste o qué mejorarás mañana?')}<textarea required rows="3" maxLength="3000" value={reportStructure.lesson} onChange={(event) => changeReportField('lesson', event.target.value)} placeholder={t('Escribe una mejora concreta o None si no aplica…')} /></label>
+        </article>
+        <article className="eod-work-section">
+          <div className="eod-work-section-heading"><strong>{t('Pendientes para mañana')}</strong></div>
+          <label>{t('¿Qué asuntos debes llevar a mañana? Incluye bloqueo y responsable…')}<textarea required rows="3" maxLength="3000" value={reportStructure.carryover} onChange={(event) => changeReportField('carryover', event.target.value)} placeholder={t('Indica el próximo paso y quién lo resolverá; escribe None si no hay pendientes…')} /></label>
+        </article>
+        <article className="eod-work-section">
+          <div className="eod-work-section-heading"><strong>{t('Puntuación de productividad')}</strong></div>
+          <label>{t('Puntuación del 1 al 10')}<select required value={reportStructure.productivityScore} onChange={(event) => changeReportField('productivityScore', event.target.value)}><option value="">{t('Selecciona una puntuación')}</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score}/10</option>)}</select></label>
+        </article>
+      </div>
+      <div className="section-heading">
+        <div><p className="eyebrow">{t('Horas del reporte')}</p><h3>{t('Registro de horas y trabajo')}</h3><p className="muted">{t('Agrega cada actividad con cliente, resultado y duración. Las horas quedan vinculadas al reporte para nómina.')}</p></div>
+        <button className="secondary-button" type="button" onClick={() => setManualSections((current) => [...current, { title: '', description: '', hours: '', minutes: '' }])}>+ {t('Agregar sección')}</button>
+      </div>
+      <div className="eod-section-list">{manualSections.map((section, index) => <article className="eod-work-section" key={index}><div className="eod-work-section-heading"><strong>{t('Actividad')} {index + 1}</strong>{manualSections.length > 1 && <button className="text-button" type="button" onClick={() => setManualSections((current) => current.filter((_, itemIndex) => itemIndex !== index))}>{t('Quitar')}</button>}</div><div className="eod-section-fields"><label>{t('Cliente o actividad')}<input maxLength="160" value={section.title} onChange={(event) => changeSection(index, 'title', event.target.value)} placeholder="C4 · Crystal Flowers · TKT-023" /></label><label>{t('Horas')}<input type="number" min="0" max="24" step="1" inputMode="numeric" value={section.hours} onChange={(event) => changeSection(index, 'hours', event.target.value)} placeholder="0" /></label><label>{t('Minutos')}<input type="number" min="0" step="1" inputMode="numeric" value={section.minutes} onChange={(event) => changeSection(index, 'minutes', event.target.value)} onBlur={() => normalizeSectionMinutes(index)} placeholder="0" /></label></div><label>{t('Trabajo realizado')}<textarea rows="3" maxLength="2000" value={section.description} onChange={(event) => changeSection(index, 'description', event.target.value)} placeholder={t('Describe la entrega, ticket o próximo paso…')} /></label></article>)}</div>
       <div className="eod-hours-summary"><span>{t('Total de horas')}</span><strong>{formatHoursAndMinutes(totalManualHours)}</strong></div>
-      <label>{t('Resumen general del día')}<textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('Resultados generales, bloqueos o contexto para supervisión…')} /></label>
-      <div className="eod-submit-row"><span>{selectedTaskIds.length + manualSections.filter((section) => section.title.trim()).length} {t('actividades serán enviadas.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
+      <details className="eod-linked-tasks"><summary>{t('Vincular tareas completadas de TP Ops (opcional)')} · {selectedTaskIds.length}/{completedTasks.length}</summary><p className="muted">{t('Las tareas vinculadas quedan dentro del reporte de TP Ops; la vista para Slack incluye el registro de horas.')}</p><div className="eod-checklist">{completedTasks.length === 0 && <p className="muted">{t('No completaste tareas registradas durante este ciclo.')}</p>}{completedTasks.map((task) => <label className="eod-check" key={task.id}><input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span><strong data-no-translate>{task.title}</strong><small><span data-no-translate>{task.clients ? task.clients.code + ' · ' + task.clients.business_name : t('Tarea general')}</span> · {formatMoment(task.completed_at, timeZone, locale)}</small>{task.status_note && <small className="task-status-note" data-no-translate>{task.status_note}</small>}</span></label>)}</div></details>
+      <div className="eod-slack-preview"><strong>{t('Vista previa para Slack')}</strong><p className="muted">{t('Los encabezados están en inglés; escribe tus respuestas en inglés. Enviar guarda el reporte y las horas en TP Ops; copia el texto para publicarlo en #eod-reports.')}</p><code data-no-translate>{slackReportPreview}</code><div><button className="secondary-button" type="button" disabled={!isEodReportReady} onClick={copyEodReportForSlack}>{t('Copiar reporte para Slack')}</button></div></div>
+      <div className="eod-submit-row"><span>{isEodReportReady ? t('Total de horas') + ': ' + formatHoursAndMinutes(totalManualHours) : t('Completa el formato y agrega las horas para enviar.')}</span><button className="primary-button compact-button" disabled={saving}>{saving ? t('Enviando…') : t('Enviar reporte')}</button></div>
     </form>}
-
     {!canSubmit && !canReviewAll && <section className="content-card"><p className="muted">Tu usuario no tiene permiso para generar informes EOD.</p></section>}
 
     <WeeklyHoursPanel entries={timeEntries} directory={directory} profile={profile} canReviewAll={canReviewAll} currentDate={reportDate} />
@@ -507,18 +640,18 @@ export default function EodReportsPage() {
           {expandedReport.late_reason && <div className="eod-notes-block"><strong>{t('Motivo del envío atrasado')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.late_reason}</p></div>}
           <h3>{t('Actividades')}</h3>
           <ul data-no-translate>{(expandedReport.completed_tasks || []).map((item) => <li className="formatted-text" key={item.id}>{item.client ? `${item.client}: ` : ''}{item.title}</li>)}</ul>
-          {(expandedReport.manual_tasks || []).length > 0 && <div className="eod-report-sections">
+          {!isStructuredEodReport(expandedReport.notes) && (expandedReport.manual_tasks || []).length > 0 && <div className="eod-report-sections">
             <h3>{t('Secciones del trabajo')}</h3>
             {expandedReport.manual_tasks.map((item, index) => {
               const section = normalizeManualSection(item)
-              return <article className="eod-report-section" key={`${section.title}-${index}`}>
+              return <article className="eod-report-section" key={section.title + '-' + index}>
                 <div><strong data-no-translate>{section.title}</strong>{section.description && <p className="formatted-text" data-no-translate>{section.description}</p>}</div>
                 {section.hours != null && <span>{formatHoursAndMinutes(Number(section.hours))}</span>}
               </article>
             })}
           </div>}
-          <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>
-          {expandedReport.notes && <div className="eod-notes-block"><strong>{t('Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
+          {!isStructuredEodReport(expandedReport.notes) && <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>}
+          {expandedReport.notes && <div className="eod-notes-block"><strong>{t(isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
           {canReviewAll && <section className="eod-modal-review">
             <h3>{t('Revisión del reporte')}</h3>
             <div className="eod-review-actions">
