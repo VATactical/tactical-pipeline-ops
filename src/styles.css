@@ -2313,3 +2313,18 @@ html[data-theme='light'] .dashboard-issue-tags i { border-color: #ead49a; backgr
 html[data-theme='light'] .dashboard-data-note.error { color: #a53f4f; }
 html[data-theme='light'] .dashboard-age { background: #fff8df; color: #795b06; }
 html[data-theme='light'] .dashboard-age.critical { background: #fff1f2; color: #a53f4f; }
+
+
+/* Dashboard client cards: keep every nested panel readable in light mode */
+html[data-theme='light'] .dossier-meta span { background: #edf3f7; color: #40576d; }
+html[data-theme='light'] .dossier-meta .danger-text { background: #fff1f2; color: #9a3040; }
+html[data-theme='light'] .dossier-meta .pause-text { background: #f4eafd; color: #62308c; }
+html[data-theme='light'] .process-pending { border-color: #c9dce8; background: #f3f8fb; }
+html[data-theme='light'] .process-pending > strong { color: #087cae; }
+html[data-theme='light'] .process-pending p { color: #263d52; }
+html[data-theme='light'] .process-pending small { color: #60758a; }
+html[data-theme='light'] .next-step { border-color: #d6e1eb; }
+html[data-theme='light'] .next-step > span { color: #60758a; }
+html[data-theme='light'] .next-step p { color: #344b61; }
+html[data-theme='light'] .card-link { color: #087cae; }
+html[data-theme='light'] .complete-note { color: #176a3d; }
