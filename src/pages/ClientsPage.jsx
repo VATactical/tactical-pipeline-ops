@@ -5,6 +5,7 @@ import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { createClient } from '../services/opsService'
+import { loadTicketWorkspace } from '../services/ticketService'
 
 const requiredFields = ['legal_name', 'owner_name', 'phone', 'contact_phone', 'email', 'address', 'target_zip_codes', 'legal_business_info', 'services', 'offer', 'domain', 'website_url', 'gbp_status', 'onboarding_date', 'target_launch_date', 'ad_strategy', 'ghl_subaccount_link', 'drive_folder_link', 'facebook_business_info', 'meta_assets_info', 'retell_agent_id', 'make_scenario_link', 'slack_channel_link']
 const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL']
@@ -37,9 +38,8 @@ export default function ClientsPage() {
   const [clients, setClients] = useState([])
   const [blockedIds, setBlockedIds] = useState(new Set())
   const [openTicketCounts, setOpenTicketCounts] = useState(new Map())
-  const [tasks, setTasks] = useState([])
   const [steps, setSteps] = useState([])
-  const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
+  const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', blockers: 'Todos', sort: 'Código' })
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ code: '', business_name: '', legal_name: '', owner_name: '', assigned_role: 'onboarding_media', status: 'ONBOARDING' })
   const [saving, setSaving] = useState(false)
@@ -48,21 +48,22 @@ export default function ClientsPage() {
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
 
   useEffect(() => {
-    runWithSessionRetry(() => Promise.all([
+    Promise.all([runWithSessionRetry(() => Promise.all([
       supabase.from('clients').select('*'),
       supabase.from('blockers').select('client_id').eq('resolved', false),
-      supabase.from('tasks').select('client_id, status, priority'),
       supabase.from('client_workflow_steps').select('client_id, completed'),
-    ])).then(([clientsResult, blockersResult, tasksResult, stepsResult]) => {
-      const queryError = clientsResult.error || blockersResult.error || tasksResult.error || stepsResult.error
+    ])), loadTicketWorkspace()]).then(([[clientsResult, blockersResult, stepsResult], ticketWorkspace]) => {
+      const queryError = clientsResult.error || blockersResult.error || stepsResult.error
       if (queryError) setError(queryError.message)
       else {
         setClients(clientsResult.data || [])
         const ticketCounts = new Map()
-        for (const blocker of blockersResult.data || []) ticketCounts.set(blocker.client_id, (ticketCounts.get(blocker.client_id) || 0) + 1)
+        for (const ticket of ticketWorkspace.tickets || []) {
+          if (ticket.status === 'Resolved' || ticket.status === 'Closed') continue
+          for (const client of ticket.clients || []) ticketCounts.set(client.id, (ticketCounts.get(client.id) || 0) + 1)
+        }
         setOpenTicketCounts(ticketCounts)
-        setBlockedIds(new Set(ticketCounts.keys()))
-        setTasks(tasksResult.data || [])
+        setBlockedIds(new Set((blockersResult.data || []).map((blocker) => blocker.client_id)))
         setSteps(stepsResult.data || [])
       }
     }).catch((loadError) => setError(loadError.message)).finally(() => setLoading(false))
@@ -79,19 +80,17 @@ export default function ClientsPage() {
     const matchesStatus = filters.status === 'Todos' || client.status === filters.status
     const matchesOwner = filters.owner === 'Todos' || client.assigned_role === filters.owner
     const matchesService = !filters.service.trim() || client.services.toLowerCase().includes(filters.service.trim().toLowerCase())
-    const clientTasks = tasks.filter((task) => task.client_id === client.id && task.status !== 'Completada')
-    const matchesPriority = filters.priority === 'Todas' || clientTasks.some((task) => task.priority === filters.priority)
     const blocked = blockedIds.has(client.id)
     const matchesBlocker = filters.blockers === 'Todos' || (filters.blockers === 'Con bloqueos' ? blocked : !blocked)
-    return matchesSearch && matchesStatus && matchesOwner && matchesService && matchesPriority && matchesBlocker
+    return matchesSearch && matchesStatus && matchesOwner && matchesService && matchesBlocker
   }).sort((a, b) => {
     if (filters.sort === 'Nombre') return a.business_name.localeCompare(b.business_name)
     if (filters.sort === 'Estado') return a.status.localeCompare(b.status) || naturalCode(a.code) - naturalCode(b.code)
     if (filters.sort === 'Actualización reciente') return new Date(b.updated_at) - new Date(a.updated_at)
     return naturalCode(a.code) - naturalCode(b.code)
-  }), [visibleClients, blockedIds, filters, tasks, openTicketCounts])
-  const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.service || filters.priority !== 'Todas' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
-  const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', priority: 'Todas', blockers: 'Todos', sort: 'Código' })
+  }), [visibleClients, blockedIds, filters, openTicketCounts])
+  const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
+  const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', blockers: 'Todos', sort: 'Código' })
   const toggleArchiveView = () => { clearFilters(); setSearchParams(showArchived ? {} : { vista: 'archivados' }) }
   const canCreate = Boolean(profile?.permissions?.clients_create)
   const submitClient = async (event) => {
@@ -115,7 +114,6 @@ export default function ClientsPage() {
         <label className="search-control">Buscar<input type="search" placeholder="Cliente, código, propietario o ciudad…" value={filters.search} onChange={(event) => setFilter('search', event.target.value)} /></label>
         <label>Responsable<select value={filters.owner} onChange={(event) => setFilter('owner', event.target.value)}><option value="Todos">Todos</option><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option><option value="superadmin">Kevin</option></select></label>
         <label>Servicio<input value={filters.service} onChange={(event) => setFilter('service', event.target.value)} placeholder="Roofing, painting…" /></label>
-        <label>Prioridad<select value={filters.priority} onChange={(event) => setFilter('priority', event.target.value)}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Media</option><option>Baja</option></select></label>
         <label>Bloqueos<select value={filters.blockers} onChange={(event) => setFilter('blockers', event.target.value)}><option>Todos</option><option>Con bloqueos</option><option>Sin bloqueos</option></select></label>
         <label>Ordenar<select value={filters.sort} onChange={(event) => setFilter('sort', event.target.value)}><option>Código</option><option>Actualización reciente</option><option>Nombre</option><option>Estado</option></select></label>
       </div>

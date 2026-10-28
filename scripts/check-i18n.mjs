@@ -86,7 +86,7 @@ if (!eodSource.includes('Number(productivityScore) > 5')) violations.push('EOD s
 const dashboardSource = readFileSync('src/pages/DashboardPage.jsx', 'utf8')
 const adsSource = readFileSync('src/services/adsReportService.js', 'utf8')
 if (!eodSource.includes('replace_eod_time_entries')) violations.push('EOD must persist weekly manual time atomically.')
-if (!dashboardSource.includes('markGeneralNoteSeen') || !dashboardSource.includes('convertGeneralNoteToTask')) violations.push('Communications must support seen receipts and task conversion.')
+if (!dashboardSource.includes('markGeneralNoteSeen') || !dashboardSource.includes('loadTicketWorkspace') || dashboardSource.includes('convertGeneralNoteToTask')) violations.push('Dashboard communications must support seen receipts and ticket follow-up, without converting notes into tasks.')
 if (!adsSource.includes('ad_performance_reports')) violations.push('Client follow-up must persist dated ADS reports.')
 
 
