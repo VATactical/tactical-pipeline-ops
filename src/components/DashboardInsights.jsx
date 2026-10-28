@@ -5,13 +5,13 @@ import { useLanguage } from '../i18n/LanguageContext'
 
 const accessFields = [
   ['facebook_access_confirmed', 'Facebook'],
-  ['ad_account_access_confirmed', 'Ad account'],
+  ['ad_account_access_confirmed', 'Cuenta de anuncios'],
   ['pixel_access_confirmed', 'Pixel'],
   ['gbp_access_confirmed', 'GBP'],
   ['ghl_access_confirmed', 'GHL'],
   ['domain_access_confirmed', 'Dominio'],
-  ['meta_payment_method_confirmed', 'Pago Meta'],
-  ['payment_method_confirmed', 'Pago GHL'],
+  ['meta_payment_method_confirmed', 'Método de pago Meta'],
+  ['payment_method_confirmed', 'Método de pago GHL'],
 ]
 
 const pendingPattern = /pendiente|pending|confirmar|confirm|verificar|verify|bloquead|rechazad|por definir/i
@@ -128,8 +128,8 @@ function DossierQuality({ clients, t }) {
   </section>
 }
 
-function MetaPerformance({ clients, reports, loading, error, locale, t }) {
-  const fromDate = addDays(dateInZone(new Date(), 'America/New_York'), -6)
+function MetaPerformance({ clients, reports, loading, error, locale, timeZone, t }) {
+  const fromDate = addDays(dateInZone(new Date(), timeZone), -6)
   const grouped = new Map()
   for (const report of reports) {
     if (report.report_date < fromDate) continue
@@ -168,7 +168,7 @@ function MetaPerformance({ clients, reports, loading, error, locale, t }) {
   </section>
 }
 
-function StaleClients({ clients, tasks, blockers, locale, t }) {
+function StaleClients({ clients, tasks, blockers, t }) {
   const now = Date.now()
   const rows = clients
     .map((client) => ({
@@ -277,8 +277,8 @@ export default function DashboardInsights({ clients = [], tasks = [], blockers =
     <div className="dashboard-insight-grid">
       <AccessMatrix clients={clients} t={t} />
       <DossierQuality clients={clients} t={t} />
-      <MetaPerformance clients={clients} reports={reports} loading={reportsLoading} error={Boolean(reportsError)} locale={locale} t={t} />
-      <StaleClients clients={clients} tasks={tasks} blockers={blockers} locale={locale} t={t} />
+      <MetaPerformance clients={clients} reports={reports} loading={reportsLoading} error={Boolean(reportsError)} locale={locale} timeZone={timeZone} t={t} />
+      <StaleClients clients={clients} tasks={tasks} blockers={blockers} t={t} />
     </div>
   </section>
 }
