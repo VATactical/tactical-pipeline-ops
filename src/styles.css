@@ -446,7 +446,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
   .dossier-overview-grid { grid-template-columns: 1fr; }
 }
 
-/* Optional light workspace theme. Dark remains the default. */
+/* Light workspace theme. */
 html[data-theme='light'] { color-scheme: light; background: #f4f7fb; color: #182536; }
 html[data-theme='light'] body { background: #f4f7fb; color: #182536; }
 html[data-theme='light'] .main-content { background: radial-gradient(circle at 90% 0, #dcecf8 0, transparent 30%), #f4f7fb; }
@@ -2282,3 +2282,34 @@ html[data-theme='dark'] .client-name-pin-code {
   .dashboard-issue-row, .dashboard-stale-row { align-items: flex-start; }
   .dashboard-issue-tags { max-width: 48%; }
 }
+
+
+/* Executive dashboard light-theme contrast */
+html[data-theme='light'] .dashboard-insight-card { color: #182536; }
+html[data-theme='light'] .dashboard-insight-card .section-heading a { color: #087cae; }
+html[data-theme='light'] .dashboard-access-table th,
+html[data-theme='light'] .dashboard-performance-table th { color: #60758a; }
+html[data-theme='light'] .dashboard-access-table td,
+html[data-theme='light'] .dashboard-performance-table td,
+html[data-theme='light'] .dashboard-issue-row,
+html[data-theme='light'] .dashboard-stale-row { border-color: #dbe5ed; }
+html[data-theme='light'] .dashboard-client-link > span,
+html[data-theme='light'] .dashboard-client-link:hover strong { color: #087cae; }
+html[data-theme='light'] .dashboard-status { color: #536b80; }
+html[data-theme='light'] .dashboard-status.live { color: #176a3d; }
+html[data-theme='light'] .dashboard-access-mark.confirmed { color: #176a3d; background: #e9f9f0; }
+html[data-theme='light'] .dashboard-access-mark.pending { color: #a53f4f; background: #fff1f2; }
+html[data-theme='light'] .dashboard-access-mark.unknown { color: #60758a; background: #edf3f7; }
+html[data-theme='light'] .dashboard-mini-progress { background: #d9e6ef; }
+html[data-theme='light'] .dashboard-access-table td small,
+html[data-theme='light'] .dashboard-footnote,
+html[data-theme='light'] .dashboard-issue-client small,
+html[data-theme='light'] .dashboard-stale-main small,
+html[data-theme='light'] .dashboard-empty-state p,
+html[data-theme='light'] .dashboard-data-note { color: #60758a; }
+html[data-theme='light'] .dashboard-issue-row:hover,
+html[data-theme='light'] .dashboard-stale-row:hover { background: #f3f9fc; }
+html[data-theme='light'] .dashboard-issue-tags i { border-color: #ead49a; background: #fff8df; color: #795b06; }
+html[data-theme='light'] .dashboard-data-note.error { color: #a53f4f; }
+html[data-theme='light'] .dashboard-age { background: #fff8df; color: #795b06; }
+html[data-theme='light'] .dashboard-age.critical { background: #fff1f2; color: #a53f4f; }
