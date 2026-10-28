@@ -14,6 +14,7 @@ const permissionLabels = {
   tasks_create: 'Crear tareas',
   eod_reports: 'Enviar reportes EOD',
   operations_admin: 'Administrar operaciones de clientes',
+  clients_delete_archived: 'Eliminar clientes archivados',
   users_manage: 'Administrar usuarios',
   sensitive_credentials_view: 'Ver credenciales sensibles',
 }
