@@ -133,15 +133,7 @@ create policy "Active team adds ticket updates" on public.ticket_updates
   with check (
     (select private.current_app_role()) is not null
     and author_id = (select auth.uid())
-    and exists (
-      select 1 from public.tickets t
-      where t.id = ticket_id
-        and (
-          t.created_by = (select auth.uid())
-          or t.assigned_to = (select auth.uid())
-          or (select private.has_permission('operations_admin'))
-        )
-    )
+    and exists (select 1 from public.tickets t where t.id = ticket_id)
   );
 
 create or replace function public.create_ticket_with_clients(
