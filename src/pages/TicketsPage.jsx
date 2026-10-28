@@ -95,6 +95,8 @@ export default function TicketsPage() {
 
   const selectedTicket = tickets.find((ticket) => ticket.id === selectedId) || null
 
+  const canEditTicket = Boolean(selectedTicket && (profile?.permissions?.operations_admin || selectedTicket.assigned_to === profile?.id || selectedTicket.created_by === profile?.id))
+
   useEffect(() => {
     if (!selectedTicket) { setDraft(null); return }
     setDraft({
@@ -271,6 +273,8 @@ export default function TicketsPage() {
               : <span key={client.code}>{client.code} · {client.businessName}</span>)}</div>
 
             <form className="ticket-detail-form" onSubmit={handleSave}>
+              {!canEditTicket && <p className="ticket-permission-note">{t('Solo el responsable, quien creó el ticket o un administrador de operaciones puede editarlo.')}</p>}
+              <fieldset disabled={!canEditTicket}>
               <label>{t('Asunto')}<input required maxLength={240} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
               <label>{t('Descripción')}<textarea rows="4" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
               <div className="ticket-field-row">
@@ -283,7 +287,8 @@ export default function TicketsPage() {
               </div>
               <label className="ticket-confirmation-flag"><input type="checkbox" checked={draft.needs_confirmation} onChange={(event) => setDraft({ ...draft, needs_confirmation: event.target.checked })} />{t('Detalles por confirmar')}</label>
               {draft.needs_confirmation && <p className="ticket-warning-note">{t('Confirma los detalles antes de cerrar el ticket.')}</p>}
-              <button className="primary-button" type="submit" disabled={saving}>{saving ? t('Guardando…') : t('Guardar cambios')}</button>
+              <button className="primary-button" type="submit" disabled={saving || !canEditTicket}>{saving ? t('Guardando…') : t('Guardar cambios')}</button>
+              </fieldset>
             </form>
 
             <form className="ticket-update-form" onSubmit={handleAddUpdate}>
