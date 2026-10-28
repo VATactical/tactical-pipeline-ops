@@ -350,16 +350,6 @@ export default function ClientDetailPage() {
       setMessage(t('Google Docs marcado como actualizado.'))
     } catch (updateError) { setError(t(updateError.message)) }
   }
-  const saveGoogleAdsStatus = async (event) => {
-    const googleAdsStatus = event.target.value
-    setSaving(true); setError(''); setMessage('')
-    try {
-      await updateClient(clientId, { google_ads_status: googleAdsStatus })
-      await refresh()
-      setMessage(t('Estado de Google Ads guardado.'))
-    } catch (updateError) { setError(t(updateError.message)) }
-    finally { setSaving(false) }
-  }
   const savePlatformStatus = async (item) => {
     const value = item.kind === 'boolean'
       ? (platformDraft === '' ? null : platformDraft === 'true')
@@ -505,10 +495,6 @@ export default function ClientDetailPage() {
     {client.status === 'ADS PAUSED' && <section className="content-card ads-pause-summary client-tab-section tab-ads"><div><p className="eyebrow">ADS PAUSED</p><h3>Campaña pausada</h3><p data-no-translate>{client.ads_pause_reason}</p><small>{client.ads_paused_at ? t(`Pausada el ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(client.ads_paused_at))}`) : ''}</small></div>{canEdit && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}</section>}
     {adStatusEvents.length > 0 && <section className="content-card client-tab-section tab-ads"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p data-no-translate>{event.note}</p><small><span data-no-translate>{event.actor_name}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
     <div className="client-tab-section tab-ads">
-      <section className="content-card google-ads-status-card">
-        <div className="section-heading"><div><p className="eyebrow">{t('Google Ads')}</p><h3>{t('Estado de Google Ads')}</h3></div><span className={`google-ads-status-badge ${String(client.google_ads_status || 'Pendiente').toLowerCase().replaceAll(' ', '-')}`}>{t(client.google_ads_status || 'Pendiente')}</span></div>
-        {canEdit && <label className="google-ads-status-control">{t('Actualizar estado')}<select value={client.google_ads_status || 'Pendiente'} disabled={saving} onChange={saveGoogleAdsStatus}><option value="Pendiente">{t('Pendiente')}</option><option value="Activa">{t('Activa')}</option><option value="Pausada">{t('Pausada')}</option><option value="Requiere atención">{t('Requiere atención')}</option></select></label>}
-      </section>
       <section className="metric-grid compact ads-metrics-grid"><article className="metric-card blue"><span>Gasto</span><strong>{'$'}{client.spend}</strong><small>registrado</small></article><article className="metric-card green"><span>Leads</span><strong>{client.leads}</strong><small>recibidos</small></article><article className="metric-card amber"><span>Citas</span><strong>{client.appointments}</strong><small>agendadas</small></article></section>
       <AdsReportsPanel client={client} canEdit={canEdit} />
     </div>
@@ -539,8 +525,7 @@ export default function ClientDetailPage() {
       <div className="client-integration-summary-grid platform-status-grid">
         {[
           { key: 'gbp', field: 'gbp_access_confirmed', kind: 'boolean', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative' },
-          { key: 'ads', field: 'google_ads_status', kind: 'ads', label: t('Google Ads'), value: t(client.google_ads_status || 'Pendiente'), state: String(client.google_ads_status || '').toLowerCase().includes('activ') ? 'positive' : String(client.google_ads_status || '').toLowerCase().includes('paus') ? 'paused' : String(client.google_ads_status || '').toLowerCase().includes('atención') ? 'attention' : 'pending' },
-          { key: 'ghl', field: 'ghl_access_confirmed', kind: 'boolean', label: t('Acceso a GoHighLevel'), value: client.ghl_access_confirmed == null ? t('Pendiente') : client.ghl_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.ghl_access_confirmed == null ? 'pending' : client.ghl_access_confirmed ? 'positive' : 'negative' },
+          { key: 'metaPayment', field: 'meta_payment_method_confirmed', kind: 'boolean', label: t('Método de pago en Meta'), value: client.meta_payment_method_confirmed == null ? t('Pendiente') : client.meta_payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.meta_payment_method_confirmed == null ? 'pending' : client.meta_payment_method_confirmed ? 'positive' : 'negative' },
           { key: 'payment', field: 'payment_method_confirmed', kind: 'boolean', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative' },
         ].map((item) => <article className="client-integration-summary-item platform-status-item" key={item.key}>
           <span>{item.label}</span>
@@ -548,7 +533,7 @@ export default function ClientDetailPage() {
           {editingPlatform === item.key ? <div className="platform-status-editor">
             <label className="sr-only" htmlFor={`platform-status-${item.key}`}>{t('Estado de plataforma')} · {item.label}</label>
             <select id={`platform-status-${item.key}`} value={platformDraft} disabled={saving} onChange={(event) => setPlatformDraft(event.target.value)}>
-              {item.kind === 'boolean' ? (item.key === 'payment' ? <><option value="">{t('Pendiente')}</option><option value="true">{t('Agregado')}</option><option value="false">{t('No agregado')}</option></> : <><option value="">{t('Pendiente')}</option><option value="true">{t('Acceso confirmado')}</option><option value="false">{t('Sin acceso')}</option></>) : <><option value="Pendiente">{t('Pendiente')}</option><option value="Activa">{t('Activa')}</option><option value="Pausada">{t('Pausada')}</option><option value="Requiere atención">{t('Requiere atención')}</option></>}
+              {item.kind === 'boolean' ? (['payment', 'metaPayment'].includes(item.key) ? <><option value="">{t('Pendiente')}</option><option value="true">{t('Agregado')}</option><option value="false">{t('No agregado')}</option></> : <><option value="">{t('Pendiente')}</option><option value="true">{t('Acceso confirmado')}</option><option value="false">{t('Sin acceso')}</option></>) : <><option value="Pendiente">{t('Pendiente')}</option><option value="Activa">{t('Activa')}</option><option value="Pausada">{t('Pausada')}</option><option value="Requiere atención">{t('Requiere atención')}</option></>}
             </select>
             <div className="platform-status-actions"><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => savePlatformStatus(item)}>{saving ? t('Guardando…') : t('Guardar')}</button><button className="text-button" type="button" disabled={saving} onClick={() => setEditingPlatform(null)}>{t('Cancelar')}</button></div>
           </div> : canEdit && <button type="button" className="secondary-button platform-edit-button" disabled={saving} onClick={() => openPlatformEditor(item)}>{t('Cambiar estado')}</button>}
