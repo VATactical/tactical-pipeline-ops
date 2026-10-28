@@ -6,6 +6,7 @@ const LanguageContext = createContext(null)
 const validLanguages = new Set(['es', 'en'])
 
 const translations = {
+  "Solo el responsable, quien creó el ticket o un administrador de operaciones puede editarlo.": "Only the assignee, creator, or operations admin can edit this ticket.",
   "Seguimiento de clientes": "Client follow-up",
   "Registra el responsable, estado y próximo seguimiento de cada ticket.": "Track an owner, status, and next follow-up for every ticket.",
   "Nuevo ticket": "New ticket",
