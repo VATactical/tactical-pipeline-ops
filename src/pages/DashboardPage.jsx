@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
+import DashboardInsights from '../components/DashboardInsights'
 import { useLanguage } from '../i18n/LanguageContext'
 import { downloadCommunicationsPdf } from '../lib/reportExports'
 import { loadCompanySettings } from '../services/companyService'
@@ -145,6 +146,7 @@ function SuperadminDashboard({ data, blockers, onCreated, eodCompliance }) {
   return <>
     <ClientStatusCards clients={data.clients} />
     <EodComplianceCard summary={eodCompliance} />
+    <DashboardInsights clients={data.clients} tasks={data.tasks} blockers={blockers} timeZone={data.profile?.timezone || 'America/Managua'} />
     <section className="metric-grid compact" aria-label="Alertas operativas">
       <article className="metric-card red"><span>Tareas atrasadas</span><strong>{overdue.length}</strong><small>requieren seguimiento</small></article>
       <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
