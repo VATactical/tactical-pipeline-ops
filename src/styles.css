@@ -2456,3 +2456,16 @@ html[data-theme='dark'] .eod-paste-import-panel { border-color: #29455b; backgro
 html[data-theme='dark'] .eod-paste-import-panel label { color: #c4d7e8; }
 html[data-theme='dark'] .eod-paste-import-panel textarea { border-color: #36536c; background: #0a1420; color: #e5edf5; }
 @media (max-width: 600px) { .eod-paste-actions { justify-content: stretch; } .eod-paste-actions button { flex: 1 1 100%; } }
+
+
+/* Keep the sign-in page readable when the rest of TP Ops uses the light theme. */
+.login-intro { color: #d7e4f2; }
+.login-intro h1, .login-card h2 { color: #f5f9fd; }
+.login-intro .eyebrow, .login-card .eyebrow { color: #51d2ff; }
+.login-intro > p:last-child { color: #b4c7db; }
+.login-card { color: #d7e4f2; }
+.login-card > .muted { color: #b4c7db; }
+.login-card form > label { color: #dce9f6; }
+html[data-theme='light'] .login-intro .eyebrow,
+html[data-theme='light'] .login-card .eyebrow { color: #51d2ff; }
+html[data-theme='light'] .login-card > .muted { color: #b4c7db; }
