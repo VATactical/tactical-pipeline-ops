@@ -225,6 +225,13 @@ export default function EodReportsPage() {
 
   useEffect(() => {
     if (!draftHydrated || !composerOpen || !draftKey || isSuperadmin) return
+    const hasDraft = manualSections.some((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes)
+      || Object.values(reportStructure).some((value) => String(value || '').trim())
+      || Boolean(lateReason.trim())
+    if (!hasDraft) {
+      window.localStorage.removeItem(draftKey)
+      return
+    }
     window.localStorage.setItem(draftKey, JSON.stringify({ manualSections, reportStructure, lateReason, savedAt: new Date().toISOString() }))
   }, [composerOpen, draftHydrated, draftKey, isSuperadmin, manualSections, reportStructure, lateReason])
 
@@ -439,6 +446,9 @@ export default function EodReportsPage() {
   }))
   const totalManualHours = useMemo(() => manualSections.reduce((sum, section) => sum + sectionDurationHours(section), 0), [manualSections])
   const activeManualSections = useMemo(() => manualSections.filter((section) => section.title.trim() || section.description.trim() || section.hours || section.minutes), [manualSections])
+  const hasReportDraft = activeManualSections.length > 0
+    || Object.values(reportStructure).some((value) => String(value || '').trim())
+    || Boolean(lateReason.trim() || pastedReportText.trim())
   const reportStructureComplete = Boolean(
     reportStructure.priorityStatus && reportStructure.priorityDetails.trim() && reportStructure.wins.trim()
       && reportStructure.lesson.trim() && reportStructure.carryover.trim()
@@ -486,6 +496,18 @@ export default function EodReportsPage() {
     () => convertEodCommentToTask({ report, comment }),
     'Seguimiento convertido en tarea de prioridad alta.',
   )
+
+  const clearReportDraft = () => {
+    if (!window.confirm(t('¿Seguro que quieres limpiar los campos del reporte actual?'))) return
+    setManualSections([{ title: '', description: '', hours: '', minutes: '' }])
+    setReportStructure(emptyEodStructure())
+    setLateReason('')
+    setPastedReportText('')
+    setPasteReportOpen(false)
+    if (draftKey) window.localStorage.removeItem(draftKey)
+    setError('')
+    setMessage(t('Formulario limpio. Puedes empezar de nuevo.'))
+  }
 
   const openComposer = () => {
     setCycleReference(new Date())
@@ -570,9 +592,12 @@ export default function EodReportsPage() {
         <div className="eod-report-date"><label>{t('Fecha del reporte')}<input type="date" value={reportDate} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength="1000" rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</div>
       </div>
       <section className="eod-paste-import">
-        <button className="secondary-button" type="button" aria-expanded={pasteReportOpen} onClick={() => setPasteReportOpen((open) => !open)}>
-          {pasteReportOpen ? t('Cerrar pegado') : t('Pegar reporte completo')}
-        </button>
+        <div className="eod-draft-actions">
+          <button className="secondary-button" type="button" aria-expanded={pasteReportOpen} onClick={() => setPasteReportOpen((open) => !open)}>
+            {pasteReportOpen ? t('Cerrar pegado') : t('Pegar reporte completo')}
+          </button>
+          <button className="text-button" type="button" disabled={!hasReportDraft} onClick={clearReportDraft}>{t('Limpiar formulario')}</button>
+        </div>
         {pasteReportOpen && <div className="eod-paste-import-panel">
           <p className="muted">{t('Gemini identificará los apartados y los colocará en el borrador. El texto se envía para analizarlo; revisa y corrige los campos antes de enviar. Las horas no se inventan y puedes seguir registrándolas manualmente.')}</p>
           <label>{t('Reporte completo')}<textarea rows="6" maxLength="20000" value={pastedReportText} onChange={(event) => setPastedReportText(event.target.value)} placeholder={t('Pega aquí el texto completo del reporte…')} /></label>
