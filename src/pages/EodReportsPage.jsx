@@ -164,6 +164,9 @@ export default function EodReportsPage() {
   const [timeEntries, setTimeEntries] = useState([])
   const [complianceDate, setComplianceDate] = useState(() => getDateInTimeZone(new Date(), timeZone))
   const [manualSections, setManualSections] = useState([{ title: '', description: '', hours: '', minutes: '' }])
+  const [pasteReportOpen, setPasteReportOpen] = useState(false)
+  const [pastedReportText, setPastedReportText] = useState('')
+  const [parsingReport, setParsingReport] = useState(false)
   const [reportStructure, setReportStructure] = useState(emptyEodStructure)
   const [lateReason, setLateReason] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
@@ -356,6 +359,79 @@ export default function EodReportsPage() {
 
   const changeSection = (index, key, value) => setManualSections((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
   const changeReportField = (key, value) => setReportStructure((current) => ({ ...current, [key]: value }))
+  const parsePastedReport = async () => {
+    const reportText = pastedReportText.trim()
+    if (!reportText) {
+      setError(t('Pega aquí el reporte completo antes de analizarlo.'))
+      return
+    }
+    setParsingReport(true)
+    setError('')
+    setMessage('')
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('parse-eod-report', { body: { reportText } })
+      if (invokeError) throw invokeError
+      if (data?.error) throw new Error(data.error)
+      if (!data?.report || typeof data.report !== 'object') throw new Error('No se pudieron reconocer los campos del reporte.')
+
+      const parsed = data.report
+      const validStatuses = ['Yes', 'Mostly', 'Partially', 'No']
+      const parsedScore = Number(parsed.productivityScore)
+      const scoreIsValid = Number.isInteger(parsedScore) && parsedScore >= 1 && parsedScore <= 10
+      const nextStructure = {
+        priorityStatus: validStatuses.includes(parsed.priorityStatus) ? parsed.priorityStatus : reportStructure.priorityStatus,
+        priorityDetails: String(parsed.priorityDetails || '').trim() || reportStructure.priorityDetails,
+        wins: String(parsed.wins || '').trim() || reportStructure.wins,
+        lesson: String(parsed.lesson || '').trim() || reportStructure.lesson,
+        carryover: String(parsed.carryover || '').trim() || reportStructure.carryover,
+        productivityScore: scoreIsValid ? String(parsedScore) : reportStructure.productivityScore,
+      }
+      setReportStructure(nextStructure)
+
+      const parsedActivities = Array.isArray(data.activities)
+        ? data.activities.slice(0, 20).map((activity) => ({
+          title: String(activity?.title || '').trim().slice(0, 160),
+          description: String(activity?.description || '').trim().slice(0, 2000),
+          hours: String(activity?.hours ?? ''),
+          minutes: String(activity?.minutes ?? ''),
+        })).filter((activity) => activity.title || activity.description || activity.hours || activity.minutes)
+        : []
+      let nextActivities = manualSections
+      if (parsedActivities.length) {
+        const currentActivities = manualSections.filter((activity) => activity.title.trim() || activity.description.trim() || activity.hours || activity.minutes)
+        if (!currentActivities.length) nextActivities = parsedActivities
+        else {
+          const additions = parsedActivities.filter((activity) => !currentActivities.some((current) =>
+            current.title.toLowerCase() === activity.title.toLowerCase()
+            && current.description.toLowerCase() === activity.description.toLowerCase()))
+          nextActivities = [...currentActivities, ...additions]
+        }
+        setManualSections(nextActivities)
+      }
+
+      const importedDate = String(parsed.reportDate || '')
+      const validImportedDate = /^\d{4}-\d{2}-\d{2}$/.test(importedDate)
+        && !Number.isNaN(new Date(importedDate + 'T12:00:00Z').getTime())
+        && importedDate <= currentReportDate
+      if (validImportedDate && importedDate !== reportDate && profile?.id) {
+        window.localStorage.setItem(`tp-ops-eod-draft-${profile.id}-${importedDate}`, JSON.stringify({
+          reportStructure: nextStructure,
+          manualSections: nextActivities,
+          lateReason: '',
+        }))
+        selectReportDate(importedDate)
+      }
+      setPasteReportOpen(false)
+      setPastedReportText('')
+      setMessage(t(parsedActivities.length
+        ? 'Campos rellenados. Revisa el borrador editable antes de enviarlo.'
+        : 'Campos rellenados. Revisa el borrador y agrega las horas manualmente.'))
+    } catch (parseError) {
+      setError(t(parseError.message || 'No se pudo analizar el reporte.'))
+    } finally {
+      setParsingReport(false)
+    }
+  }
   const normalizeSectionMinutes = (index) => setManualSections((current) => current.map((item, itemIndex) => {
     if (itemIndex !== index) return item
     const normalized = normalizeHoursAndMinutes(item.hours, item.minutes)
@@ -493,6 +569,19 @@ export default function EodReportsPage() {
         <div><p className="eyebrow">{t('Preparación del reporte')}</p><h3>{t('Informe EOD estructurado')}</h3><p className="muted">{t('Completa el formato del equipo y registra el tiempo dedicado a cada actividad.')}</p></div>
         <div className="eod-report-date"><label>{t('Fecha del reporte')}<input type="date" value={reportDate} max={currentReportDate} onChange={(event) => selectReportDate(event.target.value)} /></label><small>{t('La hora se registra automáticamente al enviarlo.')}</small>{reportDate < currentReportDate && <label className="eod-late-reason">{t('Motivo del envío atrasado')}<textarea required maxLength="1000" rows={2} value={lateReason} onChange={(event) => setLateReason(event.target.value)} placeholder={t('Explica brevemente por qué el reporte se envía después de su fecha.')} /></label>}</div>
       </div>
+      <section className="eod-paste-import">
+        <button className="secondary-button" type="button" aria-expanded={pasteReportOpen} onClick={() => setPasteReportOpen((open) => !open)}>
+          {pasteReportOpen ? t('Cerrar pegado') : t('Pegar reporte completo')}
+        </button>
+        {pasteReportOpen && <div className="eod-paste-import-panel">
+          <p className="muted">{t('Gemini identificará los apartados y los colocará en el borrador. El texto se envía para analizarlo; revisa y corrige los campos antes de enviar. Las horas no se inventan y puedes seguir registrándolas manualmente.')}</p>
+          <label>{t('Reporte completo')}<textarea rows="6" maxLength="20000" value={pastedReportText} onChange={(event) => setPastedReportText(event.target.value)} placeholder={t('Pega aquí el texto completo del reporte…')} /></label>
+          <div className="eod-paste-actions">
+            <button className="secondary-button" type="button" onClick={() => { setPasteReportOpen(false); setPastedReportText('') }}>{t('Cancelar')}</button>
+            <button className="primary-button compact-button" type="button" disabled={parsingReport || !pastedReportText.trim()} onClick={parsePastedReport}>{parsingReport ? t('Analizando reporte…') : t('Analizar y rellenar borrador')}</button>
+          </div>
+        </div>}
+      </section>
       <div className="eod-section-list">
         <article className="eod-work-section">
           <div className="eod-work-section-heading"><strong>{t('Prioridades principales')}</strong></div>
