@@ -167,6 +167,7 @@ export default function EodReportsPage() {
   const [pasteReportOpen, setPasteReportOpen] = useState(false)
   const [pastedReportText, setPastedReportText] = useState('')
   const [parsingReport, setParsingReport] = useState(false)
+  const [parseError, setParseError] = useState('')
   const [reportStructure, setReportStructure] = useState(emptyEodStructure)
   const [lateReason, setLateReason] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
@@ -369,15 +370,23 @@ export default function EodReportsPage() {
   const parsePastedReport = async () => {
     const reportText = pastedReportText.trim()
     if (!reportText) {
-      setError(t('Pega aquí el reporte completo antes de analizarlo.'))
+      setParseError(t('Pega aquí el reporte completo antes de analizarlo.'))
       return
     }
     setParsingReport(true)
+    setParseError('')
     setError('')
     setMessage('')
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('parse-eod-report', { body: { reportText } })
-      if (invokeError) throw invokeError
+      if (invokeError) {
+        let responseError = ''
+        try {
+          const body = await invokeError.context?.json?.()
+          responseError = typeof body?.error === 'string' ? body.error : ''
+        } catch { /* Fall back to the invocation error message below. */ }
+        throw new Error(responseError || invokeError.message || 'No se pudo analizar el reporte.')
+      }
       if (data?.error) throw new Error(data.error)
       if (!data?.report || typeof data.report !== 'object') throw new Error('No se pudieron reconocer los campos del reporte.')
 
@@ -433,8 +442,8 @@ export default function EodReportsPage() {
       setMessage(t(parsedActivities.length
         ? 'Campos rellenados. Revisa el borrador editable antes de enviarlo.'
         : 'Campos rellenados. Revisa el borrador y agrega las horas manualmente.'))
-    } catch (parseError) {
-      setError(t(parseError.message || 'No se pudo analizar el reporte.'))
+    } catch (analysisError) {
+      setParseError(t(analysisError.message || 'No se pudo analizar el reporte.'))
     } finally {
       setParsingReport(false)
     }
@@ -600,7 +609,9 @@ export default function EodReportsPage() {
         </div>
         {pasteReportOpen && <div className="eod-paste-import-panel">
           <p className="muted">{t('Gemini identificará los apartados y los colocará en el borrador. El texto se envía para analizarlo; revisa y corrige los campos antes de enviar. Las horas no se inventan y puedes seguir registrándolas manualmente.')}</p>
-          <label>{t('Reporte completo')}<textarea rows="6" maxLength="20000" value={pastedReportText} onChange={(event) => setPastedReportText(event.target.value)} placeholder={t('Pega aquí el texto completo del reporte…')} /></label>
+          {parsingReport && <p className="eod-parse-status" role="status">{t('Analizando reporte…')}</p>}
+          {parseError && <p className="form-error eod-parse-error" role="alert">{parseError}</p>}
+          <label>{t('Reporte completo')}<textarea rows="6" maxLength="20000" value={pastedReportText} onChange={(event) => { setPastedReportText(event.target.value); setParseError('') }} placeholder={t('Pega aquí el texto completo del reporte…')} /></label>
           <div className="eod-paste-actions">
             <button className="secondary-button" type="button" onClick={() => { setPasteReportOpen(false); setPastedReportText('') }}>{t('Cancelar')}</button>
             <button className="primary-button compact-button" type="button" disabled={parsingReport || !pastedReportText.trim()} onClick={parsePastedReport}>{parsingReport ? t('Analizando reporte…') : t('Analizar y rellenar borrador')}</button>

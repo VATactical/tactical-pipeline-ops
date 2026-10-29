@@ -19,9 +19,15 @@ const safeText = (value: unknown, max: number) => typeof value === "string" ? va
 function outputText(response: Record<string, unknown>) {
   if (typeof response.output_text === "string") return response.output_text.trim();
   const outputs = Array.isArray(response.outputs) ? response.outputs as Record<string, unknown>[] : [];
-  return outputs.map((output) => {
+  const legacyText = outputs.map((output) => {
     if (typeof output.text === "string") return output.text;
     const content = Array.isArray(output.content) ? output.content as Record<string, unknown>[] : [];
+    return content.filter((part) => typeof part.text === "string").map((part) => String(part.text)).join("\n");
+  }).join("\n").trim();
+  if (legacyText) return legacyText;
+  const steps = Array.isArray(response.steps) ? response.steps as Record<string, unknown>[] : [];
+  return steps.filter((step) => step.type === "model_output").map((step) => {
+    const content = Array.isArray(step.content) ? step.content as Record<string, unknown>[] : [];
     return content.filter((part) => typeof part.text === "string").map((part) => String(part.text)).join("\n");
   }).join("\n").trim();
 }
@@ -103,17 +109,42 @@ Deno.serve(async (request: Request) => {
     ].join(" ");
 
     const prompt = "Extract the EOD fields from this source text.\n\nSOURCE REPORT:\n" + JSON.stringify(reportText);
-    const geminiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        system_instruction: systemInstruction,
-        response_format: { type: "text", mime_type: "application/json", schema: reportSchema },
-      }),
-    });
-    if (!geminiResponse.ok) return json({ error: "Gemini no pudo analizar el reporte. Inténtalo de nuevo." }, 502);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 40000);
+    let geminiResponse: Response;
+    try {
+      geminiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          input: prompt,
+          system_instruction: systemInstruction,
+          generation_config: { thinking_level: "low", max_output_tokens: 4096 },
+          response_format: { type: "text", mime_type: "application/json", schema: reportSchema },
+        }),
+      });
+    } catch (requestError) {
+      if (requestError instanceof DOMException && requestError.name === "AbortError") {
+        return json({ error: "Gemini tardó demasiado. El texto sigue en el formulario; vuelve a intentar." }, 504);
+      }
+      throw requestError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!geminiResponse.ok) {
+      const upstream = await geminiResponse.json().catch(() => ({})) as Record<string, unknown>;
+      const detail = upstream.error && typeof upstream.error === "object"
+        ? upstream.error as Record<string, unknown>
+        : {};
+      console.error("Gemini EOD parse request failed", {
+        status: geminiResponse.status,
+        code: safeText(detail.code, 80),
+        message: safeText(detail.message, 240),
+      });
+      return json({ error: "Gemini rechazó el análisis. Verifica la configuración de Gemini e inténtalo de nuevo." }, 502);
+    }
     const result = await geminiResponse.json() as Record<string, unknown>;
     let extracted: Record<string, unknown>;
     try {

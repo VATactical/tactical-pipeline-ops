@@ -2513,3 +2513,69 @@ html[data-theme='light'] .weekly-day-card .weekly-day-more:hover {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+
+
+/* Trello-style detail card for the biweekly hours calendar. */
+.weekly-day-modal {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgb(8 20 31 / 58%);
+  backdrop-filter: blur(2px);
+}
+.weekly-day-modal-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(100%, 740px);
+  max-height: min(84vh, 900px);
+  overflow: hidden;
+  border: 1px solid #d4e0ea;
+  border-radius: 14px;
+  background: #fff;
+  color: #182536;
+  box-shadow: 0 24px 64px rgb(6 20 36 / 30%);
+}
+.weekly-day-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.1rem 1.2rem;
+  border-bottom: 1px solid #dce5ed;
+}
+.weekly-day-modal-header h3 { margin: 0 0 .35rem; color: #182536; }
+.weekly-day-modal-header p:last-child { margin: 0; color: #60758a; font-size: .85rem; }
+.weekly-day-modal-header p strong { color: #087cae; }
+.weekly-day-modal-list { display: grid; gap: .7rem; padding: 1rem 1.2rem 1.2rem; overflow-y: auto; }
+.weekly-day-detail-entry {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: .8rem;
+  padding: .85rem;
+  border: 1px solid #dce5ed;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.weekly-day-detail-entry > div { display: grid; align-content: start; gap: .3rem; }
+.weekly-day-detail-entry > div strong { color: #087cae; white-space: nowrap; }
+.weekly-day-detail-entry > div small { color: #60758a; font-size: .72rem; }
+.weekly-day-detail-entry p { margin: 0; color: #263d52; line-height: 1.55; overflow-wrap: anywhere; }
+.eod-draft-actions { align-items: center; }
+.eod-parse-status { margin: 0; padding: .55rem .7rem; border-radius: 8px; background: #eaf7fc; color: #075d83; font-size: .8rem; font-weight: 700; }
+.eod-parse-error { margin: 0; }
+html[data-theme='dark'] .weekly-day-modal-card { border-color: #29455b; background: #0e1c2b; color: #e5edf5; }
+html[data-theme='dark'] .weekly-day-modal-header { border-color: #29455b; }
+html[data-theme='dark'] .weekly-day-modal-header h3 { color: #e5edf5; }
+html[data-theme='dark'] .weekly-day-modal-header p:last-child { color: #9bb0c3; }
+html[data-theme='dark'] .weekly-day-detail-entry { border-color: #29455b; background: #122436; }
+html[data-theme='dark'] .weekly-day-detail-entry p { color: #d7e5f2; }
+html[data-theme='dark'] .eod-parse-status { background: #143649; color: #b9eaff; }
+@media (max-width: 560px) {
+  .weekly-day-modal { padding: .6rem; }
+  .weekly-day-modal-header { padding: .85rem; }
+  .weekly-day-modal-list { padding: .75rem; }
+  .weekly-day-detail-entry { grid-template-columns: minmax(0, 1fr); gap: .45rem; }
+}
