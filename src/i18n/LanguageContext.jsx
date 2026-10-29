@@ -495,7 +495,7 @@ const translations = {
   'Solo se pueden eliminar clientes archivados.': 'Only archived clients can be deleted.',
   'Deadline': 'Deadline',
   'Seguimiento de tickets': 'Ticket follow-up', 'Los tickets se gestionan en Tickets': 'Tickets are managed in Tickets', 'Asignados a mí': 'Assigned to me', 'Seguimientos programados': 'Scheduled follow-ups', 'Mis próximos seguimientos': 'My upcoming follow-ups', 'No tienes tickets abiertos asignados.': 'You have no open tickets assigned.', 
-  'Puntuación del 1 al 5': 'Productivity score from 1 to 5', 'La puntuación de productividad debe estar entre 1 y 5.': 'The productivity score must be between 1 and 5.',
+  'La puntuación de productividad debe estar entre 1 y 10.': 'The productivity score must be between 1 and 10.',
   'Tickets abiertos': 'Open tickets',
   'Tickets registrados en TP Ops': 'Tickets tracked in TP Ops',
   'Tickets': 'Tickets',

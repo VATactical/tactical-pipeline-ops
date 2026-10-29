@@ -84,7 +84,7 @@ function buildEodReportText({ reportDate, reportStructure, manualSections, total
     'Wins from today\n' + reportStructure.wins.trim(),
     'One lesson or improvement\n' + reportStructure.lesson.trim(),
     'Any issues to carry into tomorrow?\n' + reportStructure.carryover.trim(),
-    'Productivity Score: ' + (reportStructure.productivityScore || '—') + '/5',
+    'Productivity Score: ' + (reportStructure.productivityScore || '—') + '/10',
     'Hours logged\nTotal: ' + formatHoursAndMinutes(totalHours) + '\n' + (workLog.join('\n') || '-'),
   ].join('\n\n')
 }
@@ -367,7 +367,7 @@ export default function EodReportsPage() {
     reportStructure.priorityStatus && reportStructure.priorityDetails.trim() && reportStructure.wins.trim()
       && reportStructure.lesson.trim() && reportStructure.carryover.trim()
       && Number.isInteger(Number(reportStructure.productivityScore))
-      && Number(reportStructure.productivityScore) >= 1 && Number(reportStructure.productivityScore) <= 5,
+      && Number(reportStructure.productivityScore) >= 1 && Number(reportStructure.productivityScore) <= 10,
   )
   const reportHoursValid = activeManualSections.length > 0 && totalManualHours > 0 && totalManualHours <= 24
     && activeManualSections.every((section) => section.title.trim() && section.description.trim()
@@ -515,7 +515,7 @@ export default function EodReportsPage() {
         </article>
         <article className="eod-work-section">
           <div className="eod-work-section-heading"><strong>{t('Puntuación de productividad')}</strong></div>
-          <label>{t('Puntuación del 1 al 5')}<select required value={reportStructure.productivityScore} onChange={(event) => changeReportField('productivityScore', event.target.value)}><option value="">{t('Selecciona una puntuación')}</option>{Array.from({ length: 5 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score}/5</option>)}</select></label>
+          <label>{t('Puntuación del 1 al 10')}<select required value={reportStructure.productivityScore} onChange={(event) => changeReportField('productivityScore', event.target.value)}><option value="">{t('Selecciona una puntuación')}</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score}/10</option>)}</select></label>
         </article>
       </div>
       <div className="section-heading">
