@@ -2443,3 +2443,16 @@ html[data-theme='light'] .complete-note { color: #176a3d; }
   .eod-compliance-list { grid-template-columns: minmax(0, 1fr); }
   .eod-compliance-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 }
+
+
+/* Optional EOD paste importer */
+.eod-paste-import { display: grid; justify-items: start; gap: .65rem; margin: -.3rem 0 1rem; }
+.eod-paste-import-panel { display: grid; gap: .65rem; width: 100%; padding: .85rem; border: 1px solid #bdd7e7; border-radius: 10px; background: #f4f9fc; }
+.eod-paste-import-panel > p { margin: 0; font-size: .8rem; line-height: 1.5; }
+.eod-paste-import-panel label { display: grid; gap: .35rem; color: #31536c; font-size: .76rem; font-weight: 700; }
+.eod-paste-import-panel textarea { width: 100%; min-height: 135px; padding: .7rem; border: 1px solid #cbd8e3; border-radius: 9px; background: #fff; color: #182536; resize: vertical; }
+.eod-paste-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; }
+html[data-theme='dark'] .eod-paste-import-panel { border-color: #29455b; background: #0e1c2b; }
+html[data-theme='dark'] .eod-paste-import-panel label { color: #c4d7e8; }
+html[data-theme='dark'] .eod-paste-import-panel textarea { border-color: #36536c; background: #0a1420; color: #e5edf5; }
+@media (max-width: 600px) { .eod-paste-actions { justify-content: stretch; } .eod-paste-actions button { flex: 1 1 100%; } }
