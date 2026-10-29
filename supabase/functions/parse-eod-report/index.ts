@@ -110,7 +110,7 @@ Deno.serve(async (request: Request) => {
       "Keep enough detail for an operations teammate to follow up; do not compress away distinct clients, ticket references, or blockers.",
     ].join(" ");
 
-    const prompt = "Extract the EOD fields from this source text.\\n\\nSOURCE REPORT:\\n" + JSON.stringify(reportText);
+    const prompt = "Extract the EOD fields from this source text.\n\nSOURCE REPORT:\n" + JSON.stringify(reportText);
     const requestGemini = async (modelName: string) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 18000);
