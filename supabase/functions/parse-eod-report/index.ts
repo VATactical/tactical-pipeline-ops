@@ -11,7 +11,7 @@ const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 const validDate = (value: unknown) => {
-  if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return "";
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
   const date = new Date(value + "T00:00:00.000Z");
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : "";
 };
@@ -69,7 +69,7 @@ Deno.serve(async (request: Request) => {
       global: { headers: { Authorization: authorization } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const token = authorization.replace(/^Bearer\\s+/i, "");
+    const token = authorization.replace(/^Bearer\s+/i, "");
     const { data: userData, error: authError } = await caller.auth.getUser(token);
     if (authError || !userData.user) return json({ error: "Sesión inválida." }, 401);
     const { data: profile, error: profileError } = await caller.from("profiles")
@@ -134,8 +134,8 @@ Deno.serve(async (request: Request) => {
     };
     const activities = Array.isArray(extracted.activities) ? extracted.activities.slice(0, 20).map((activity) => {
       const row = activity && typeof activity === "object" ? activity as Record<string, unknown> : {};
-      const hours = /^\\d{1,2}$/.test(String(row.hours || "")) && Number(row.hours) <= 24 ? String(Number(row.hours)) : "";
-      const minutes = /^\\d{1,2}$/.test(String(row.minutes || "")) && Number(row.minutes) <= 59 ? String(Number(row.minutes)) : "";
+      const hours = /^\d{1,2}$/.test(String(row.hours || "")) && Number(row.hours) <= 24 ? String(Number(row.hours)) : "";
+      const minutes = /^\d{1,2}$/.test(String(row.minutes || "")) && Number(row.minutes) <= 59 ? String(Number(row.minutes)) : "";
       return {
         title: safeText(row.title, 160),
         description: safeText(row.description, 2000),
