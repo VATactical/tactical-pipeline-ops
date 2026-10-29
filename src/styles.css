@@ -2506,3 +2506,10 @@ html[data-theme='light'] .weekly-day-card .weekly-day-more:hover {
   border-color: #78b9d3;
   background: #e8f5fa;
 }
+
+.weekly-day-card:not(.expanded) p > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
