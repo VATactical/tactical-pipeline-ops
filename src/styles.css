@@ -2469,3 +2469,40 @@ html[data-theme='dark'] .eod-paste-import-panel textarea { border-color: #36536c
 html[data-theme='light'] .login-intro .eyebrow,
 html[data-theme='light'] .login-card .eyebrow { color: #51d2ff; }
 html[data-theme='light'] .login-card > .muted { color: #b4c7db; }
+
+
+/* Keep EOD cards compact until a reviewer expands the daily activity list. */
+.eod-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+.weekly-day-card .weekly-day-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-top: .65rem;
+  padding: .35rem .65rem;
+  border: 1px solid #2a526d;
+  border-radius: 8px;
+  background: #10283a;
+  color: #67d7fb;
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.weekly-day-card .weekly-day-more:hover {
+  border-color: #48c9ff;
+  background: #14344a;
+}
+html[data-theme='light'] .weekly-day-card .weekly-day-more {
+  border-color: #c7dce8;
+  background: #f1f8fb;
+  color: #087cae;
+}
+html[data-theme='light'] .weekly-day-card .weekly-day-more:hover {
+  border-color: #78b9d3;
+  background: #e8f5fa;
+}
