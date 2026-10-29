@@ -49,7 +49,7 @@ const criticalPhrases = [
   'Configuración técnica',
   'Campaña lista',
   'Próximo paso',
-  'Puntuación del 1 al 5',
+  'Puntuación del 1 al 10',
 ]
 for (const phrase of criticalPhrases) {
   if (!languageSource.includes(`'${phrase}':`)) violations.push(`Missing critical English translation: ${phrase}`)
@@ -81,8 +81,8 @@ if (!tasksSource.includes('updateTaskDetails')) {
 
 const eodSource = readFileSync('src/services/eodService.js', 'utf8')
 const eodPageSource = readFileSync('src/pages/EodReportsPage.jsx', 'utf8')
-if (!eodPageSource.includes('productivityScore) <= 5') || !eodPageSource.includes('Array.from({ length: 5 }') || !eodPageSource.includes("+ '/5'")) violations.push('EOD productivity score must be limited and displayed from 1 to 5.')
-if (!eodSource.includes('Number(productivityScore) > 5')) violations.push('EOD save must reject productivity scores above 5.')
+if (!eodPageSource.includes('productivityScore) <= 10') || !eodPageSource.includes('Array.from({ length: 10 }') || !eodPageSource.includes("+ '/10'")) violations.push('EOD productivity score must be limited and displayed from 1 to 5.')
+if (!eodSource.includes('Number(productivityScore) > 10')) violations.push('EOD save must reject productivity scores above 5.')
 const dashboardSource = readFileSync('src/pages/DashboardPage.jsx', 'utf8')
 const adsSource = readFileSync('src/services/adsReportService.js', 'utf8')
 if (!eodSource.includes('replace_eod_time_entries')) violations.push('EOD must persist weekly manual time atomically.')
