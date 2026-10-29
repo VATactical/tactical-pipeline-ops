@@ -27,6 +27,7 @@ export default function WeeklyHoursPanel({ entries, directory, profile, canRevie
   const [userId, setUserId] = useState(canReviewAll ? 'all' : profile.id)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [expandedDays, setExpandedDays] = useState({})
   const { start, end } = getSemiMonthlyRange(month, period)
   const visible = useMemo(() => entries.filter((entry) => entry.work_date >= start && entry.work_date <= end && (userId === 'all' || entry.user_id === userId)), [entries, end, start, userId])
   const total = visible.reduce((sum, entry) => sum + Number(entry.hours || 0), 0)
@@ -66,6 +67,19 @@ export default function WeeklyHoursPanel({ entries, directory, profile, canRevie
       {canReviewAll && <label>{t('Integrante')}<select value={userId} onChange={(event) => setUserId(event.target.value)}><option value="all">{t('Todo el equipo')}</option>{directory.filter((member) => member.role !== 'superadmin').map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}</select></label>}
     </div>
     <div className="weekly-hours-total"><div><span>{t('Total de la quincena')}</span><small data-no-translate>{userLabel}</small></div><strong>{formatHoursAndMinutes(total)}</strong></div>
-    <div className="weekly-day-grid">{byDay.map((day) => <article className="weekly-day-card" key={day.date}><div><strong>{new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day.date}T12:00:00Z`))}</strong><b>{formatHoursAndMinutes(day.total)}</b></div>{day.items.length === 0 ? <small>{t('Sin horas')}</small> : day.items.map((entry) => <p key={entry.id}><span data-no-translate>{entry.memo}</span><small><b>{formatHoursAndMinutes(Number(entry.hours))}</b>{userId === 'all' && <> · <span data-no-translate>{entry.profiles?.full_name}</span></>}</small></p>)}</article>)}</div>
+    <div className="weekly-day-grid">{byDay.map((day) => {
+      const expanded = Boolean(expandedDays[day.date])
+      const canExpand = day.items.length > 2 || day.items.some((entry) => String(entry.memo || '').length > 180)
+      const displayedItems = expanded ? day.items : day.items.slice(0, 2)
+      return <article className={`weekly-day-card ${expanded ? 'expanded' : ''}`} key={day.date}>
+        <div><strong>{new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day.date}T12:00:00Z`))}</strong><b>{formatHoursAndMinutes(day.total)}</b></div>
+        {day.items.length === 0 ? <small>{t('Sin horas')}</small> : displayedItems.map((entry) => {
+          const memo = String(entry.memo || '')
+          const preview = !expanded && memo.length > 180 ? `${memo.slice(0, 180).trimEnd()}…` : memo
+          return <p key={entry.id}><span data-no-translate>{preview}</span><small><b>{formatHoursAndMinutes(Number(entry.hours))}</b>{userId === 'all' && <> · <span data-no-translate>{entry.profiles?.full_name}</span></>}</small></p>
+        })}
+        {canExpand && <button className="weekly-day-more" type="button" aria-expanded={expanded} onClick={() => setExpandedDays((current) => ({ ...current, [day.date]: !expanded }))}>{t(expanded ? 'Mostrar menos' : 'Mostrar más')}</button>}
+      </article>
+    })}</div>
   </section>
 }
