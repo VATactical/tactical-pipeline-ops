@@ -424,10 +424,10 @@ export default function EodReportsPage() {
       setPasteReportOpen(false)
       setPastedReportText('')
       setMessage(t(parsedActivities.length
-        ? 'Fields filled. Review the editable draft before submitting.'
-        : 'Fields filled. Review the draft and add activity hours manually.'))
+        ? 'Campos rellenados. Revisa el borrador editable antes de enviarlo.'
+        : 'Campos rellenados. Revisa el borrador y agrega las horas manualmente.'))
     } catch (parseError) {
-      setError(t(parseError.message || 'The report could not be analyzed.'))
+      setError(t(parseError.message || 'No se pudo analizar el reporte.'))
     } finally {
       setParsingReport(false)
     }
