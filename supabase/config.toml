@@ -1,0 +1,17 @@
+project_id = "ouecekxhdzgermqospbj"
+
+# Edge Function settings, matching what is deployed in production.
+
+# GHL calls this webhook without a Supabase session; it authenticates with the
+# x-tp-ops-key header checked against private.integration_webhook_tokens.
+[functions.ghl-onboarding]
+verify_jwt = false
+
+[functions.manage-team-user]
+verify_jwt = true
+
+[functions.parse-eod-report]
+verify_jwt = true
+
+[functions.eod-payroll-integrations]
+verify_jwt = true

@@ -31,7 +31,7 @@ Deno.serve(async (request) => {
       global: { headers: { Authorization: authorization } },
       auth: { persistSession: false, autoRefreshToken: false },
     })
-    const token = authorization.replace(/^Bearer\\s+/i, '')
+    const token = authorization.replace(/^Bearer\s+/i, '')
     const { data: userData, error: userError } = await callerClient.auth.getUser(token)
     if (userError || !userData.user) return json({ error: 'Sesión inválida.' }, 401)
 
@@ -161,7 +161,11 @@ Deno.serve(async (request) => {
       full_name: fullName, active: body.active !== false, timezone,
       slack_contact: slackContact, whatsapp_contact: whatsappContact,
     }).eq('id', userId)
-    if (profileError) return json({ error: profileError.message }, 400)
+    if (profileError) {
+      // Do not leave the account locked by the temporary deactivation above.
+      await admin.from('profiles').update({ active: currentProfile.active }).eq('id', userId)
+      return json({ error: profileError.message }, 400)
+    }
 
     const { data: profile, error: resultError } = await admin.from('profiles')
       .select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at')

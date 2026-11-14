@@ -3,7 +3,6 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 
 type Payload = Record<string, unknown>;
 const jsonHeaders = { "Content-Type": "application/json" };
-const webhookTokenSha256 = "c97fcd2e5c6af79de316b020dce025355c1aaf02651f207f159e18fb5585b416";
 const text = (value: unknown, max = 5000) => String(value ?? "").trim().slice(0, max);
 const emptyValue = (value: string) => !value || /^(null|undefined|n\/?a|none|pending)$/i.test(value);
 const fieldText = (value: unknown, max = 5000) => {
@@ -30,21 +29,28 @@ async function sha256(input: string) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input)));
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
-function safeEqual(left: string, right: string) {
-  if (left.length !== right.length) return false;
-  let difference = 0;
-  for (let index = 0; index < left.length; index += 1) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
-  return difference === 0;
-}
+// Escape LIKE wildcards so business names/emails containing % or _ match literally.
+const likeLiteral = (input: string) => input.replace(/[\\%_]/g, (character) => `\\${character}`);
 function adminClient() {
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY") || secretKeys.default;
   if (!key) throw new Error("Supabase server credential is unavailable.");
   return createClient(Deno.env.get("SUPABASE_URL")!, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
-async function authenticate(request: Request) {
+// The token hash lives in private.integration_webhook_tokens (never in this public repo),
+// so it can be rotated without a redeploy.
+async function authenticate(supabase: ReturnType<typeof adminClient>, request: Request) {
   const provided = request.headers.get("x-tp-ops-key")?.trim() || "";
-  return Boolean(provided) && safeEqual(await sha256(provided), webhookTokenSha256);
+  if (provided.length < 32) return false;
+  const { data, error } = await supabase.rpc("verify_integration_webhook_token", {
+    p_integration_name: "ghl_onboarding",
+    p_token_sha256: await sha256(provided),
+  });
+  if (error) {
+    console.error("GHL webhook token verification failed", error.message);
+    return false;
+  }
+  return data === true;
 }
 async function nextClientCode(supabase: ReturnType<typeof adminClient>) {
   const { data, error } = await supabase.rpc("reserve_next_client_code");
@@ -145,7 +151,7 @@ async function findClient(supabase: ReturnType<typeof adminClient>, payload: Pay
   const businessName = value(payload, "business_name", "businessName", "company_name", "companyName");
   const unique = async (column: string, match: string) => {
     if (!match) return null;
-    const { data, error } = await supabase.from("clients").select("*").ilike(column, match).limit(2);
+    const { data, error } = await supabase.from("clients").select("*").ilike(column, likeLiteral(match)).limit(2);
     if (error) throw error;
     if ((data || []).length > 1) throw new Error(`Ambiguous onboarding match for ${column}; manual review required`);
     return data?.[0] || null;
@@ -197,7 +203,7 @@ async function notifyOperations(supabase: ReturnType<typeof adminClient>, client
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
   const supabase = adminClient();
-  if (!(await authenticate(request))) return response({ error: "Unauthorized" }, 401);
+  if (!(await authenticate(supabase, request))) return response({ error: "Unauthorized" }, 401);
   const rawBody = await request.text();
   if (rawBody.length > 100_000) return response({ error: "Payload too large" }, 413);
   let payload: Payload;
@@ -247,7 +253,9 @@ Deno.serve(async (request: Request) => {
     if (existing) {
       const safeChanges = Object.fromEntries(Object.entries(changes).filter(([key]) => {
         const current = existing[key];
-        return current === null || current === "" || emptyValue(text(current)) || key.startsWith("ghl_")
+        // Only fill empty fields; GHL identifiers are no longer overwritten when the match
+        // came from an email or business name, so two similar clients cannot be cross-linked.
+        return current === null || current === "" || emptyValue(text(current))
           || ["intake_form_completed", "intake_form_completed_at", "intake_source", "updated_at"].includes(key);
       }));
       const { data, error } = await supabase.from("clients").update(safeChanges).eq("id", existing.id).select("*").single();
