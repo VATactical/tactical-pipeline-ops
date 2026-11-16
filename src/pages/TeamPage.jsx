@@ -44,13 +44,14 @@ function RolePicker({ departments, departmentRoles, selectedIds, onToggle, local
 
 function TeamMemberCard({
   member, departments, departmentRoles, locale, t, viewerId,
-  onChange, onToggleRole, onSave, onReset, saving,
+  onChange, onToggleRole, onSave, onReset, onDelete, saving,
 }) {
   const [resetPassword, setResetPassword] = useState('')
   const [showResetPassword, setShowResetPassword] = useState(false)
   const assignedTitles = member.department_roles.map((role) => locale.startsWith('en') ? role.title_en : role.title_es)
   const isOwnSuperadmin = member.id === viewerId && member.role === 'superadmin'
-  const canSave = member.department_roles.length > 0 && !saving
+  const canSave = (member.department_roles.length > 0 || !member.active) && !saving
+  const canDelete = member.id !== viewerId && member.role !== 'superadmin'
 
   return <article className={`content-card user-management-card ${member.active ? '' : 'inactive'}`}>
     <div className="section-heading">
@@ -77,6 +78,10 @@ function TeamMemberCard({
         <p className="muted">{t('Mínimo 10 caracteres.')} {resetPassword.length}/10</p>
         <button className="text-button" type="button" disabled={saving || resetPassword.length < 10} onClick={async () => { await onReset(member, resetPassword); setResetPassword('') }}>{t('Restablecer')}</button>
       </details>}
+      {canDelete && <div className="team-member-delete">
+        <p className="muted">{t('Eliminar quita todos sus accesos y cierra sus sesiones. Sus EOD, horas y actividad se conservan.')}</p>
+        <button className="danger-button" type="button" disabled={saving} onClick={() => onDelete(member)}>{t('Eliminar usuario')}</button>
+      </div>}
     </details>
   </article>
 }
@@ -155,6 +160,18 @@ export default function TeamPage() {
     finally { setSaving(false) }
   }
 
+  const deleteMember = async (member) => {
+    const name = member.full_name || member.email
+    if (!window.confirm(t(`¿Eliminar a ${name}? Perderá todos sus accesos de inmediato. Esta acción no se puede deshacer.`))) return
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await manageTeamUser({ action: 'delete', userId: member.id })
+      await refresh()
+      setMessage(t(`${name} fue eliminado y ya no tiene acceso.`))
+    } catch (deleteError) { setError(t(deleteError.message)) }
+    finally { setSaving(false) }
+  }
+
   if (loading) return <LoadingScreen />
   const activeMembers = team.profiles.filter((member) => member.active)
   const inactiveMembers = team.profiles.filter((member) => !member.active)
@@ -192,11 +209,11 @@ export default function TeamPage() {
     </section>
 
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Accesos')}</p><h3>{t('Usuarios activos')}</h3></div><span className="status-pill">{activeMembers.length}</span></div>
-      <div className="team-grid">{activeMembers.map((member) => <TeamMemberCard key={member.id} member={member} departments={team.departments} departmentRoles={team.departmentRoles} locale={locale} t={t} viewerId={profile.id} onChange={changeProfile} onToggleRole={toggleProfileRole} onSave={saveProfile} onReset={resetAccess} saving={saving} />)}</div>
+      <div className="team-grid">{activeMembers.map((member) => <TeamMemberCard key={member.id} member={member} departments={team.departments} departmentRoles={team.departmentRoles} locale={locale} t={t} viewerId={profile.id} onChange={changeProfile} onToggleRole={toggleProfileRole} onSave={saveProfile} onReset={resetAccess} onDelete={deleteMember} saving={saving} />)}</div>
     </section>
 
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Acceso')}</p><h3>{t('Usuarios inactivos')}</h3></div><span className="status-pill">{inactiveMembers.length}</span></div><p className="muted">{t('Los usuarios inactivos no pueden acceder. Sus tareas, notas y actividad se conservan.')}</p>
-      <div className="team-grid">{inactiveMembers.length === 0 ? <p className="muted">{t('No hay usuarios inactivos.')}</p> : inactiveMembers.map((member) => <TeamMemberCard key={member.id} member={member} departments={team.departments} departmentRoles={team.departmentRoles} locale={locale} t={t} viewerId={profile.id} onChange={changeProfile} onToggleRole={toggleProfileRole} onSave={saveProfile} onReset={resetAccess} saving={saving} />)}</div>
+      <div className="team-grid">{inactiveMembers.length === 0 ? <p className="muted">{t('No hay usuarios inactivos.')}</p> : inactiveMembers.map((member) => <TeamMemberCard key={member.id} member={member} departments={team.departments} departmentRoles={team.departmentRoles} locale={locale} t={t} viewerId={profile.id} onChange={changeProfile} onToggleRole={toggleProfileRole} onSave={saveProfile} onReset={resetAccess} onDelete={deleteMember} saving={saving} />)}</div>
     </section>
   </div>
 }
