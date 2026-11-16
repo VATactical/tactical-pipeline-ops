@@ -199,6 +199,7 @@ const translations = {
   'Editar clientes': 'Edit clients',
   'Enviar reportes EOD': 'Submit EOD reports',
   'Administrar operaciones de clientes': 'Manage client operations',
+  'Eliminar clientes archivados': 'Delete archived clients',
   'Slack': 'Slack',
   'WhatsApp': 'WhatsApp',
   'Restablecer contraseña': 'Reset password',
