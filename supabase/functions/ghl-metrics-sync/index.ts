@@ -5,7 +5,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 // period of each client from its GHL sub-account (API v2, Private Integration Token).
 //
 // Callers:
-//   - A signed-in team member: { clientId } syncs one client.
+//   - A signed-in team member: { clientId } syncs one client's current cycle.
+//     { clientId, history: N } also stores the N-1 previous billing cycles (max 12).
+//     { clientId, from, to } returns live counts for any date range without storing them
+//     (used by the period filter and to fill ADS reports).
 //   - Superadmin / operations_admin: {} syncs every connected client.
 //   - Scheduler: header x-tp-ops-key checked against private.integration_webhook_tokens
 //     ('ghl_metrics_sync'), syncs every connected client.
@@ -115,13 +118,36 @@ async function countAppointments(target: Target, start: string, end: string) {
   return { booked, cancelled };
 }
 
-async function syncTarget(admin: ReturnType<typeof adminClient>, target: Target, actorId: string | null) {
-  const { data: periodRows, error: periodError } = await admin.rpc("client_billing_period", {
+type Period = { period_start: string; period_end: string };
+
+async function countPeriod(target: Target, start: string, end: string) {
+  const [leads, qualified, appointments] = await Promise.all([
+    countContacts(target, start, end),
+    target.qualified_tag ? countContacts(target, start, end, target.qualified_tag) : Promise.resolve(0),
+    countAppointments(target, start, end),
+  ]);
+  return { leads, qualified_leads: qualified, appointments_booked: appointments.booked, appointments_cancelled: appointments.cancelled };
+}
+
+async function cyclesFor(admin: ReturnType<typeof adminClient>, target: Target, count: number): Promise<Period[]> {
+  const { data, error } = await admin.rpc("client_billing_period", {
     p_anchor: target.billing_cycle_anchor,
     p_days: target.billing_cycle_days || 30,
   });
-  if (periodError) throw periodError;
-  const period = (periodRows as Array<{ period_start: string; period_end: string }>)[0];
+  if (error) throw error;
+  const current = (data as Period[])[0];
+  const days = target.billing_cycle_days || 30;
+  const periods: Period[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const start = addDays(current.period_start, -days * index);
+    // Never go back before the first cycle of the contract.
+    if (target.billing_cycle_anchor && start < target.billing_cycle_anchor) break;
+    periods.push({ period_start: start, period_end: addDays(start, days - 1) });
+  }
+  return periods;
+}
+
+async function storePeriod(admin: ReturnType<typeof adminClient>, target: Target, period: Period, actorId: string | null) {
   const row: Record<string, unknown> = {
     client_id: target.client_id,
     period_start: period.period_start,
@@ -130,19 +156,7 @@ async function syncTarget(admin: ReturnType<typeof adminClient>, target: Target,
     synced_by: actorId,
   };
   try {
-    const [leads, qualified, appointments] = await Promise.all([
-      countContacts(target, period.period_start, period.period_end),
-      target.qualified_tag ? countContacts(target, period.period_start, period.period_end, target.qualified_tag) : Promise.resolve(0),
-      countAppointments(target, period.period_start, period.period_end),
-    ]);
-    Object.assign(row, {
-      leads,
-      qualified_leads: qualified,
-      appointments_booked: appointments.booked,
-      appointments_cancelled: appointments.cancelled,
-      sync_status: "ok",
-      error_message: "",
-    });
+    Object.assign(row, await countPeriod(target, period.period_start, period.period_end), { sync_status: "ok", error_message: "" });
   } catch (error) {
     Object.assign(row, { sync_status: "error", error_message: String((error as Error).message || error).slice(0, 500) });
   }
@@ -163,14 +177,24 @@ async function syncTarget(admin: ReturnType<typeof adminClient>, target: Target,
   return row;
 }
 
+const isDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const admin = adminClient();
-    const body = await request.json().catch(() => ({})) as { clientId?: string };
+    const body = await request.json().catch(() => ({})) as { clientId?: string; history?: number; from?: string; to?: string };
     const clientId = typeof body.clientId === "string" && body.clientId.trim() ? body.clientId.trim() : null;
+    const history = Math.min(Math.max(Math.trunc(Number(body.history) || 1), 1), 12);
+    const wantsRange = body.from !== undefined || body.to !== undefined;
+    if (wantsRange) {
+      if (!clientId) return json({ error: "Choose a client for a custom range" }, 400);
+      if (!isDate(body.from) || !isDate(body.to) || body.from > body.to) return json({ error: "Invalid date range" }, 400);
+      const spanDays = (new Date(`${body.to}T12:00:00Z`).getTime() - new Date(`${body.from}T12:00:00Z`).getTime()) / 86400000;
+      if (spanDays > 366) return json({ error: "The range can be at most one year" }, 400);
+    }
 
     let actorId: string | null = null;
     const scheduleKey = request.headers.get("x-tp-ops-key")?.trim() || "";
@@ -198,10 +222,23 @@ Deno.serve(async (request: Request) => {
       return json({ error: clientId ? "This client has no GHL Location ID or token configured" : "No clients connected to GHL" }, 400);
     }
 
+    if (wantsRange) {
+      const target = (targets as Target[])[0];
+      try {
+        const counts = await countPeriod(target, body.from!, body.to!);
+        return json({ clientId: target.client_id, period_start: body.from, period_end: body.to, ...counts });
+      } catch (error) {
+        return json({ error: String((error as Error).message || error).slice(0, 500) }, 502);
+      }
+    }
+
     const results = [];
     for (const target of targets as Target[]) {
-      const row = await syncTarget(admin, target, actorId);
-      results.push({ clientId: target.client_id, status: row.sync_status, error: row.error_message || undefined });
+      const periods = await cyclesFor(admin, target, clientId ? history : 1);
+      for (const period of periods) {
+        const row = await storePeriod(admin, target, period, actorId);
+        results.push({ clientId: target.client_id, period_start: period.period_start, status: row.sync_status, error: row.error_message || undefined });
+      }
     }
     return json({ synced: results.filter((item) => item.status === "ok").length, failed: results.filter((item) => item.status === "error").length, results });
   } catch (error) {
