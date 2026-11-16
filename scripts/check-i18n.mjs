@@ -96,16 +96,16 @@ const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.t
 const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('restore_missing_client_ops_objects')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
 if (clientOpsSource.includes('client_field_verifications')) violations.push('Client operations must not render the confusing per-field verification panel.')
 if (clientOpsSource.includes('client_interactions') || clientOpsSource.includes('client-contact-summary') || !clientOpsSource.includes('ghl_form_imports')) violations.push('Client operations must omit the manual contact log while retaining onboarding sync history.')
-if (!clientDetailSource.includes('savePlatformStatus') || !['gbp_access_confirmed', 'meta_payment_method_confirmed', 'payment_method_confirmed'].every((field) => clientDetailSource.includes(field))) violations.push('Client dossier must expose editable GBP access and Meta/GHL payment statuses.')
+if (!clientDetailSource.includes('dossier-step-chip') || !['gbp_access', 'meta_payment', 'ghl_payment'].every((step) => clientDetailSource.includes(`'${step}'`))) violations.push('Client dossier must show GBP access and Meta/GHL payment as checklist steps.')
 if (!onboardingSource.includes('target_zip_codes: value(payload, "target_zip_codes"') || !onboardingSource.includes('markets: value(payload, "service_areas"')) violations.push('Onboarding must map ZIP codes separately from service areas.')
 if (!clientDetailSource.includes("'contact_email'") || !onboardingSource.includes('contact_email: value(payload, "contact_email"') || !readFileSync('src/lib/dossierExport.js', 'utf8').includes('client.contact_email')) violations.push('Client contact email must be separate from the business email in the dossier and export.')
 if (onboardingSource.includes('payment_method_confirmed: booleanValue') || onboardingSource.includes('meta_campaign_live: booleanValue')) violations.push('Operations-confirmed payment and campaign status must not be imported from the onboarding form.')
 const dossierExportSource = readFileSync('src/lib/dossierExport.js', 'utf8')
-const onboardingFieldsMigration = readdirSync('supabase/migrations').filter((name) => name.includes('onboarding_dossier_details')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
-const newOnboardingFields = ['onboarding_call_language', 'appointment_availability', 'website_build_request', 'website_timeline', 'instagram_needed', 'timezone_verified']
+const onboardingFieldsMigration = readdirSync('supabase/migrations').filter((name) => name.includes('onboarding_dossier_details') || name.includes('dossier_form_and_launch_checklist')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
+const newOnboardingFields = ['onboarding_call_language', 'appointment_availability', 'website_build_request', 'ads_targeting_address', 'targeting_radius_miles']
 for (const field of newOnboardingFields) {
   if (!clientDetailSource.includes(`'${field}'`)) violations.push(`Client dossier is missing the ${field} field.`)
-  if (field !== 'timezone_verified' && !onboardingSource.includes(`${field}:`)) violations.push(`Onboarding sync is missing the ${field} mapping.`)
+  if (!onboardingSource.includes(`${field}:`)) violations.push(`Onboarding sync is missing the ${field} mapping.`)
 }
 if (!onboardingSource.includes('daily_budget: dailyBudget')) violations.push('Onboarding must leave a missing daily budget as zero/Pending instead of applying the database default.')
 for (const field of newOnboardingFields) {

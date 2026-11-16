@@ -190,7 +190,7 @@ function StaleClients({ clients, tasks, blockers, t }) {
     <div className="dashboard-stale-list">
       {rows.length === 0 && <p className="complete-note">{t('Todos los clientes tuvieron actividad reciente.')}</p>}
       {rows.map(({ client, days, openTasks, openTickets }) => <Link to={`/clientes/${client.id}`} className="dashboard-stale-row" key={client.id}>
-        <span className="dashboard-stale-main"><b>{client.code} · {client.business_name}</b><small>{t(client.status)} · {client.phase || t('Sin etapa')} · {openTasks} {t('tareas abiertas')} · {openTickets} {t('tickets abiertos')}</small></span>
+        <span className="dashboard-stale-main"><b>{client.code} · {client.business_name}</b><small>{t(client.status)} · {(client.phase && t(client.phase)) || t('Sin etapa')} · {openTasks} {t('tareas abiertas')} · {openTickets} {t('tickets abiertos')}</small></span>
         <span className={`dashboard-age ${days >= 14 ? 'critical' : ''}`}>{days} {t('días')}</span>
       </Link>)}
     </div>

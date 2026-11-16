@@ -8,56 +8,66 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
 import { createClientNote, deleteArchivedClient, deleteClientNote, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateWorkflowStep } from '../services/opsService'
 
+// Dossier sections follow the GHL Client Onboarding Form, then what is confirmed on the
+// onboarding call, then each platform. Field tuple: [label, key, type, source, optional].
+// source: 'form' = Client Onboarding Form, 'call' = onboarding call, 'setup' = filled by TP Ops.
+// Platform sections list the Trello checklist steps that prove the platform is ready.
 const sections = [
-  { title: 'Quién · Perfil comercial', fields: [
-    ['Nombre comercial · formulario', 'business_name'], ['Nombre legal del negocio · formulario', 'legal_name'], ['Nombre completo de contacto · formulario', 'owner_name'], ['Teléfono de negocio · formulario', 'phone'], ['Teléfono personal / contacto · formulario', 'contact_phone'], ['Correo de contacto · formulario', 'contact_email', 'email'], ['Correo de negocio · formulario', 'email', 'email'],
-    ['Dirección física', 'address'], ['EIN / información legal · formulario', 'legal_business_info'], ['Estado Persona / KYC', 'kyc_status'],
+  { title: 'Negocio y contacto', fields: [
+    ['Nombre legal registrado', 'legal_name', null, 'form'], ['Nombre comercial', 'business_name', null, 'call'],
+    ['Nombre del contacto', 'owner_name', null, 'form'], ['Teléfono del contacto', 'contact_phone', null, 'form'], ['Correo del contacto', 'contact_email', 'email', 'form'],
+    ['Teléfono del negocio', 'phone', null, 'form'], ['Correo del negocio', 'email', 'email', 'form'], ['Dirección del negocio', 'address', null, 'form'],
+    ['Zona horaria', 'timezone', null, 'form'], ['Idioma para la llamada de onboarding', 'onboarding_call_language', null, 'form'],
+    ['Horario y disponibilidad', 'appointment_availability', null, 'form'], ['EIN / información legal', 'legal_business_info', null, 'call'],
   ] },
-  { title: 'Qué · Oferta y objetivos', fields: [
-    ['Servicios ofrecidos · formulario', 'services'], ['Ofertas o descuentos · formulario', 'offer'], ['KPI mensual objetivo', 'kpi'],
-    ['Gasto diario objetivo', 'daily_budget', 'number'], ['Proyecto mínimo objetivo', 'minimum_project', 'number'],
-    ['Tipo de proyecto', 'project_type'], ['Perfil del cliente objetivo', 'ideal_customer_profile'],
+  { title: 'Oferta y mercado', fields: [
+    ['Servicios', 'services', null, 'form'], ['Ofertas o descuentos', 'offer', null, 'form'], ['Rango de precio / proyecto mínimo', 'minimum_project', 'number', 'form'],
+    ['Dirección para segmentar anuncios', 'ads_targeting_address', null, 'form'], ['Radio de segmentación (millas)', 'targeting_radius_miles', 'radius', 'form'],
+    ['Ciudades y áreas de servicio', 'markets', null, 'form'], ['ZIP objetivo', 'target_zip_codes', null, 'form'], ['Zonas excluidas', 'exclusions', null, 'call', true],
+    ['Cliente ideal', 'ideal_customer_profile', null, 'call'],
   ] },
-  { title: 'Dónde · Mercado', fields: [
-    ['Áreas de servicio · ciudades / ZIP · formulario', 'markets'], ['ZIP objetivo / Radio', 'target_zip_codes'], ['Ubicaciones excluidas', 'exclusions'], ['Zona horaria', 'timezone'],
-    ['¿Zona horaria del negocio verificada?', 'timezone_verified', 'boolean'],
+  { title: 'Estrategia y lanzamiento', fields: [
+    ['Estrategia publicitaria', 'ad_strategy', null, 'call'], ['Presupuesto diario', 'daily_budget', 'number', 'call'], ['KPI mensual objetivo', 'kpi', null, 'call'],
+    ['Fecha de onboarding', 'onboarding_date', 'date', 'setup'], ['Fecha objetivo de lanzamiento', 'target_launch_date', 'date', 'setup'],
+    ['Estado del cliente', 'status', 'status', 'setup'], ['Siguiente acción', 'next_action', null, 'setup'],
   ] },
-  { title: 'Infraestructura', fields: [
-    ['¿Necesita sitio web o funnel?', 'needs_website_funnel', 'boolean'], ['Dominio existente', 'domain'],
-    ['Sitio web · formulario', 'website_url', 'url'], ['Estado de Google Business Profile', 'gbp_status'], ['Correo de Google Business Profile · formulario', 'gbp_email', 'email'], ['Enlace GBP existente', 'gbp_link', 'url'],
-    ['Activos de marca / Drive · formulario', 'available_assets'],
+  { title: 'GoHighLevel', steps: ['ghl_a2p_account', 'ghl_personalized', 'ghl_client_login', 'leadconnector_app', 'ghl_payment'], fields: [
+    ['Subcuenta de GoHighLevel', 'ghl_subaccount_link', null, 'setup'],
   ] },
-  { title: 'Preferencias de onboarding', fields: [
-    ['Idioma preferido para llamada de onboarding', 'onboarding_call_language'],
-    ['Disponibilidad para citas del cliente', 'appointment_availability'],
-    ['Solicitud de sitio web', 'website_build_request'],
-    ['Tiempo estimado del sitio web', 'website_timeline'],
-    ['¿Necesita cuenta de Instagram?', 'instagram_needed', 'boolean'],
+  { title: 'Meta (Facebook e Instagram)', steps: ['facebook_2fa', 'business_portfolio', 'facebook_page', 'ad_account', 'meta_payment', 'portfolio_partner', 'meta_access', 'pixel'], fields: [
+    ['Página de Facebook', 'facebook_page_url', 'url', 'form'], ['ID de Business Portfolio', 'meta_business_portfolio_id', null, 'setup'],
+    ['ID de cuenta publicitaria', 'meta_ad_account_id', null, 'setup'], ['ID de Pixel / Dataset', 'meta_pixel_id', null, 'setup'],
+    ['Cuenta de Instagram', 'instagram_url', 'url', 'setup', true], ['Notas de Meta', 'facebook_business_info', null, 'setup', true],
   ] },
-  { title: 'Cuándo · Cronología', fields: [
-    ['Fecha de onboarding', 'onboarding_date', 'date'], ['Fecha objetivo de lanzamiento', 'target_launch_date', 'date'],
-    ['Estado actual del ciclo', 'status', 'status'],
+  { title: 'Google Business Profile', steps: ['gbp_access', 'gbp_optimize'], fields: [
+    ['Correo de Google Business Profile', 'gbp_email', 'email', 'form'], ['Enlace de Google Business Profile', 'gbp_link', 'url', 'setup'],
+    ['Estado de Google Business Profile', 'gbp_status', null, 'setup', true],
   ] },
-  { title: 'Enlaces y accesos', fields: [
-    ['Subcuenta / Acceso GoHighLevel', 'ghl_subaccount_link'], ['Carpeta de recursos en Google Drive', 'drive_folder_link', 'url'],
-    ['Dossier en Google Docs', 'google_docs_url', 'url'], ['Página de Facebook', 'facebook_page_url', 'url'], ['Cuenta de Instagram', 'instagram_url', 'url'],
-    ['ID de Meta Business Portfolio', 'meta_business_portfolio_id'], ['ID de cuenta publicitaria Meta', 'meta_ad_account_id'], ['ID de Pixel / Dataset Meta', 'meta_pixel_id'],
-    ['Página de aterrizaje', 'landing_page_url', 'url'], ['Notas de Facebook y Business Manager', 'facebook_business_info'], ['Notas de recursos Meta', 'meta_assets_info'],
-    ['ID del agente Retell AI', 'retell_agent_id'], ['Carpeta de escenarios Make.com', 'make_scenario_link', 'url'], ['Canal de Slack', 'slack_channel_link', 'url'],
+  { title: 'Sitio web y landing', steps: ['domain_ready', 'landing_page', 'lp_big5_ready', 'ai_website'], fields: [
+    ['Sitio web actual', 'website_url', 'url', 'form'], ['¿Pidió sitio web incluido?', 'needs_website_funnel', 'boolean', 'form'],
+    ['Detalle del sitio solicitado', 'website_build_request', null, 'form', true], ['Dominio', 'domain', null, 'setup'], ['Landing page', 'landing_page_url', 'url', 'setup'],
   ] },
-  { title: 'Estrategia publicitaria', fields: [
-    ['Estrategia publicitaria activa', 'ad_strategy'], ['Estado Meta', 'meta_status'],   ] },
-  { title: 'Registro operativo', fields: [
-    ['Fase operativa', 'phase'], ['Siguiente acción', 'next_action'], ['Estado GHL', 'ghl_status'], ['Estado A2P', 'a2p_status'],
-  ] },
-  { title: 'Estado de finalización', fields: [
-    ['Onboarding completado', 'onboarding_completed', 'boolean'],     ['Acceso Facebook confirmado', 'facebook_access_confirmed', 'boolean'], ['Acceso a cuenta publicitaria confirmado', 'ad_account_access_confirmed', 'boolean'],
-    ['Acceso al pixel confirmado', 'pixel_access_confirmed', 'boolean'], ['Acceso al dominio confirmado', 'domain_access_confirmed', 'boolean'],
-    ['Persona / KYC completado', 'kyc_completed', 'boolean'],
-    ['A2P enviado', 'a2p_submitted', 'boolean'], ['Funnel activo', 'funnel_live', 'boolean'], ['Campaña Meta activa', 'meta_campaign_live', 'boolean'],
+  { title: 'Archivos y automatizaciones', steps: ['drive_folder', 'media_request', 'work_media', 'selfie_broll', 'make_retell', 'big5_pipeline'], fields: [
+    ['Carpeta de Google Drive', 'drive_folder_link', 'url', 'setup'], ['Activos de marca y medios', 'available_assets', null, 'setup'],
+    ['Canal de Slack', 'slack_channel_link', 'url', 'setup'], ['Dossier en Google Docs', 'google_docs_url', 'url', 'setup', true],
+    ['ID del agente Retell AI', 'retell_agent_id', null, 'setup', true], ['Escenarios de Make.com', 'make_scenario_link', 'url', 'setup', true],
   ] },
 ]
+const fieldSources = { form: 'Formulario del cliente', call: 'Llamada de onboarding', setup: 'Gestionado por TP Ops' }
+const checklistPhases = [
+  ['prep', 'Venta y preparación'], ['call', 'Llamada de onboarding'], ['build', 'Montaje'], ['launch', 'QA y lanzamiento'], ['post', 'Post-lanzamiento'],
+]
+// Labels for fields that are no longer shown, so older audit entries stay readable.
+const retiredFieldLabels = {
+  kyc_status: 'Estado Persona / KYC', project_type: 'Tipo de proyecto', timezone_verified: '¿Zona horaria del negocio verificada?',
+  website_timeline: 'Tiempo estimado del sitio web', instagram_needed: '¿Necesita cuenta de Instagram?', meta_assets_info: 'Notas de recursos Meta',
+  meta_status: 'Estado Meta', phase: 'Fase operativa', ghl_status: 'Estado GHL', a2p_status: 'Estado A2P',
+  onboarding_completed: 'Onboarding completado', facebook_access_confirmed: 'Acceso Facebook confirmado', ad_account_access_confirmed: 'Acceso a cuenta publicitaria confirmado',
+  pixel_access_confirmed: 'Acceso al pixel confirmado', domain_access_confirmed: 'Acceso al dominio confirmado', kyc_completed: 'Persona / KYC completado',
+  a2p_submitted: 'A2P enviado', funnel_live: 'Funnel activo', meta_campaign_live: 'Campaña Meta activa',
+}
 const fieldLabels = {
+  ...retiredFieldLabels,
   ...Object.fromEntries(sections.flatMap((section) => section.fields.map(([label, key]) => [key, label]))),
   ads_pause_reason: 'Motivo de pausa ADS',
   ads_paused_at: 'Fecha de pausa ADS',
@@ -69,19 +79,11 @@ const fieldLabels = {
   archived_by: 'Usuario que archivó',
 }
 const dossierFields = sections.flatMap((section) => section.fields)
-const clientFormFieldKeys = new Set([
-  'business_name', 'legal_name', 'owner_name', 'phone', 'contact_phone', 'contact_email', 'email', 'address',
-  'legal_business_info', 'services', 'offer', 'daily_budget', 'project_type',
-  'ideal_customer_profile', 'markets', 'target_zip_codes', 'timezone', 'needs_website_funnel', 'domain', 'website_url',
-  'onboarding_call_language', 'appointment_availability', 'website_build_request', 'website_timeline', 'instagram_needed',
-  'gbp_status', 'gbp_email', 'gbp_link', 'available_assets', 'target_launch_date', 'ghl_subaccount_link', 'drive_folder_link',
-  'facebook_page_url', 'instagram_url', 'meta_business_portfolio_id', 'meta_ad_account_id', 'meta_pixel_id',
-  'landing_page_url', 'facebook_business_info', 'meta_assets_info', 'ad_strategy',
-])
-const isMissing = (value, type) => type === 'boolean' ? value == null : type === 'number' ? value == null || value === '' || Number(value) <= 0 : value == null || value === '' || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
+const isMissing = (value, type) => type === 'boolean' ? value == null : type === 'number' || type === 'radius' ? value == null || value === '' || Number(value) <= 0 : value == null || value === '' || /pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(value))
 const displayValue = (value, type) => {
   if (type === 'boolean') return value == null ? 'Pendiente' : value ? 'Sí' : 'No'
   if (type === 'number' && value !== '' && value != null) return `$${value}`
+  if (type === 'radius' && value !== '' && value != null) return `${value} mi`
   return value || 'Pendiente'
 }
 const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -126,8 +128,6 @@ export default function ClientDetailPage() {
   const [noteBody, setNoteBody] = useState('')
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [noteDraft, setNoteDraft] = useState({ title: '', body: '' })
-  const [editingPlatform, setEditingPlatform] = useState(null)
-  const [platformDraft, setPlatformDraft] = useState('')
   const tabs = [
     ['dossier', 'Dossier'],
     ['ads', 'Ads'],
@@ -170,27 +170,29 @@ export default function ClientDetailPage() {
   const dossierUpdatedAt = latestDossierAudit?.created_at || client.updated_at
   const dossierUpdatedBy = latestDossierAudit?.actor_name || profile?.full_name || 'Pending'
   const formatDossierDateTime = (value) => value ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : t('Pendiente')
-  const stageStepKeys = {
-    onboarding: ['sale_closed', 'onboarding_call'],
-    data_access: ['assets_ingested', 'request_ein', 'verify_dossier', 'google_business_profile'],
-    technical_setup: ['a2p_submitted', 'domain_ssl', 'integrations', 'ghl_subaccount', 'buy_phone_number', 'leadconnector', 'facebook_portfolio_partner', 'ads_ghl_payment_method', 'domain_setup'],
-    campaign_ready: ['creatives_ready', 'client_approval'],
-    campaign_active: ['funnel_live', 'campaign_launched'],
-    training: ['slack_updates'],
-    cruise_control: ['daily_audit'],
-  }
-  const stageIndex = Math.max(0, ['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'].indexOf(client.lifecycle_stage || 'onboarding'))
-  const stageKeys = stageStepKeys[['onboarding', 'data_access', 'technical_setup', 'campaign_ready', 'campaign_active', 'training', 'cruise_control'][stageIndex]] || []
-  const visibleWorkflowSteps = showAllWorkflowSteps ? workflowSteps : workflowSteps.filter((step) => stageKeys.includes(step.step_key))
+  const stepTitle = (step) => (locale.startsWith('en') && step.title_en) ? step.title_en : step.title
+  const stepByKey = new Map(workflowSteps.map((step) => [step.step_key, step]))
+  const currentPhase = workflowSteps.find((step) => !step.completed)?.phase || null
+  const visibleWorkflowSteps = showAllWorkflowSteps || !currentPhase ? workflowSteps : workflowSteps.filter((step) => step.phase === currentPhase)
+  const workflowDone = workflowSteps.filter((step) => step.completed).length
+  const isStepDone = (key) => Boolean(stepByKey.get(key)?.completed)
+  const suggestedStatus = isStepDone('cruise_control') && client.status === 'ADS LIVE'
+    ? 'CRUISE CONTROL'
+    : isStepDone('launch_ads') && ['ONBOARDING', 'A2P SUBMITTED'].includes(client.status) ? 'ADS LIVE' : null
 
-  const missingFields = dossierFields.filter(([, key, type]) => isMissing(client[key], type)).map(([label]) => label)
+  const missingFields = dossierFields.filter(([, key, type, , optional]) => !optional && isMissing(client[key], type)).map(([label]) => label)
   const setField = (key, value) => setDraft((current) => ({ ...current, [key]: value }))
   const startEditing = (index) => { setDraft(client); setEditingSection(index); setMessage(''); setError('') }
   const cancelEditing = () => { setDraft(client); setEditingSection(null) }
   const saveSection = async (section, index) => {
     setSaving(true); setError(''); setMessage('')
     try {
-      const changes = Object.fromEntries(section.fields.map(([, key]) => [key, draft[key]]))
+      const changes = Object.fromEntries(section.fields.map(([, key, type]) => {
+        const value = draft[key]
+        if (type === 'radius') return [key, value === '' || value == null ? null : Number(value)]
+        if (type === 'number') return [key, value === '' || value == null ? 0 : Number(value)]
+        return [key, value]
+      }))
       await updateClient(clientId, changes)
       await refresh()
       setEditingSection(null); setMessage(`${t(section.title)} ${t('guardado correctamente.')}`)
@@ -217,6 +219,16 @@ export default function ClientDetailPage() {
   const toggleStep = async (step) => {
     try { await updateWorkflowStep(step.id, !step.completed); await refresh() }
     catch (updateError) { setError(t(updateError.message)) }
+  }
+  const applySuggestedStatus = async () => {
+    if (!suggestedStatus) return
+    setSaving(true); setError(''); setMessage('')
+    try {
+      await updateClient(clientId, { status: suggestedStatus })
+      await refresh()
+      setMessage(t(`Estado actualizado a ${suggestedStatus}.`))
+    } catch (statusError) { setError(t(statusError.message)) }
+    finally { setSaving(false) }
   }
   const addClientNote = async (event) => {
     event.preventDefault()
@@ -258,14 +270,15 @@ export default function ClientDetailPage() {
   const canCreateNotes = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
   const canManageNotes = canCreateNotes
   const canManageWorkflow = !client.archived && (profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin || profile?.permissions?.clients_edit))
+  const canToggleStep = (step) => !client.archived && (canManageWorkflow || step.owner_role === profile?.role)
   const canViewSensitive = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
   const canManageSensitive = profile?.role === 'superadmin'
   const canEdit = Boolean(profile?.permissions?.clients_edit) && !client.archived
-  const dossierText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt })
+  const dossierText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt, workflowSteps })
   const copyForGoogleDocs = async () => {
     try {
       const copiedAt = new Date().toISOString()
-      const copyText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt, copiedAt })
+      const copyText = buildDossierText(client, dossierUpdatedBy, { lastUpdatedAt: dossierUpdatedAt, copiedAt, workflowSteps })
       await copyDossier(copyText)
       await recordDossierEvent(clientId, 'copied_google_docs', profile.id, copiedAt)
       setMessage('Dossier copied successfully')
@@ -285,25 +298,6 @@ export default function ClientDetailPage() {
       await refresh()
       setMessage(t('Google Docs marcado como actualizado.'))
     } catch (updateError) { setError(t(updateError.message)) }
-  }
-  const savePlatformStatus = async (item) => {
-    const value = item.kind === 'boolean'
-      ? (platformDraft === '' ? null : platformDraft === 'true')
-      : platformDraft
-    setSaving(true); setError(''); setMessage('')
-    try {
-      await updateClient(clientId, { [item.field]: value })
-      await refresh()
-      setEditingPlatform(null)
-      setMessage(t('Estado de plataforma guardado.'))
-    } catch (updateError) { setError(t(updateError.message)) }
-    finally { setSaving(false) }
-  }
-  const openPlatformEditor = (item) => {
-    const currentValue = client[item.field]
-    setPlatformDraft(item.kind === 'boolean' ? (currentValue == null ? '' : String(currentValue)) : currentValue || 'Pendiente')
-    setEditingPlatform(item.key)
-    setError(''); setMessage('')
   }
   const pauseAds = async (event) => {
     event.preventDefault()
@@ -422,8 +416,8 @@ export default function ClientDetailPage() {
 
   return <div className="page-stack client-dossier-page" data-client-tab={activeTab}>
     <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {t(client.archived ? 'Clientes archivados' : 'Todos los clientes')}</Link>
-    <header ref={clientHeaderRef} className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{client.phase}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
-    {showPinnedClient && <div className="client-name-pin" aria-label={client.business_name}><span className="client-name-pin-code">{client.code}</span><strong>{client.business_name}</strong><span className="client-name-pin-phase">{client.phase}</span><span className={`lifecycle client-name-pin-status ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span></div>}
+    <header ref={clientHeaderRef} className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{t(client.phase)}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
+    {showPinnedClient && <div className="client-name-pin" aria-label={client.business_name}><span className="client-name-pin-code">{client.code}</span><strong>{client.business_name}</strong><span className="client-name-pin-phase">{t(client.phase)}</span><span className={`lifecycle client-name-pin-status ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span></div>}
     <div className="client-sticky-shell">
     <nav className="client-detail-tabs" aria-label={t('Secciones del cliente')}>{tabs.map(([key, label]) => <button key={key} type="button" className={activeTab === key ? 'active' : ''} aria-current={activeTab === key ? 'page' : undefined} onClick={() => selectTab(key)}>{t(label)}</button>)}</nav>
     <form className="dossier-search compact-sticky-search client-tab-section tab-dossier" role="search" onSubmit={searchDossier}><label htmlFor="dossier-search-input">Buscar en este dossier</label><div><input id="dossier-search-input" type="search" value={dossierSearch} onChange={(event) => setDossierSearch(event.target.value)} placeholder="Ej. EIN, presupuesto, pixel, dominio…" /><button className="secondary-button" type="submit">Buscar</button></div></form>
@@ -460,7 +454,8 @@ export default function ClientDetailPage() {
         const lastUpdate = auditLog.find((entry) => entry.changed_fields?.some((field) => sectionKeys.includes(field)))
         return <section className={`content-card dossier-section ${highlightedSection === index ? 'search-highlight' : ''}`} id={`dossier-section-${index}`} key={section.title}>
           <div className="section-heading dossier-section-heading"><p className="eyebrow">{t(section.title)}</p><div className="section-actions">{editing ? <><button className="secondary-button" type="button" onClick={cancelEditing}>Cancelar</button><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => saveSection(section, index)}>{saving ? 'Guardando…' : 'Guardar'}</button></> : canEdit && <button className="secondary-button" type="button" disabled={editingSection != null} onClick={() => startEditing(index)}>Editar</button>}</div></div>
-          <div className="detail-grid">{section.fields.map(([label, key, type]) => <div className="detail-item" id={`dossier-field-${key}`} key={key}><span>{t(label)}<small className="dossier-field-source">{t(clientFormFieldKeys.has(key) ? 'Formulario del cliente' : 'Gestionado por TP Ops')}</small></span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option>CRUISE CONTROL</option><option disabled>ADS PAUSED</option></select> : <input type={type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && client[key] ? <a href={client[key]} target="_blank" rel="noreferrer">Abrir enlace ↗</a> : <strong>{displayValue(client[key], type)}</strong>)}</div>)}</div>
+          <div className="detail-grid">{section.fields.map(([label, key, type, source]) => <div className="detail-item" id={`dossier-field-${key}`} key={key}><span>{t(label)}<small className={`dossier-field-source source-${source}`}>{t(fieldSources[source])}</small></span>{editing ? (type === 'boolean' ? <select value={draft[key] == null ? '' : String(draft[key])} onChange={(event) => setField(key, event.target.value === '' ? null : event.target.value === 'true')}><option value="">Pendiente</option><option value="true">Sí</option><option value="false">No</option></select> : type === 'status' ? <select value={draft[key]} onChange={(event) => setField(key, event.target.value)}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option><option>CRUISE CONTROL</option><option disabled>ADS PAUSED</option></select> : type === 'radius' ? <input type="number" min="1" max="500" step="1" value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} /> : <input type={type === 'url' ? 'text' : type || 'text'} value={draft[key] ?? ''} onChange={(event) => setField(key, event.target.value)} />) : (type === 'url' && /^https?:\/\//i.test(client[key] || '') ? <a href={client[key]} target="_blank" rel="noreferrer">{t('Abrir enlace')} ↗</a> : <strong>{type === 'boolean' || isMissing(client[key], type) ? t(displayValue(client[key], type)) : displayValue(client[key], type)}</strong>)}</div>)}</div>
+          {section.steps && <div className="dossier-step-chips" aria-label={t('Pasos del checklist')}>{section.steps.map((key) => stepByKey.get(key)).filter(Boolean).map((step) => <button type="button" key={step.id} className={`dossier-step-chip ${step.completed ? 'done' : ''}`} disabled={!canToggleStep(step)} title={step.department_id ? t(step.owner_name) : ''} onClick={() => toggleStep(step)}><span aria-hidden="true">{step.completed ? '✓' : '○'}</span>{stepTitle(step)}</button>)}</div>}
           <small className="section-updated">{lastUpdate ? t(`Actualizado por ${lastUpdate.actor_name} · ${new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(lastUpdate.created_at))}`) : 'Sin actualizaciones registradas'}</small>
         </section>
       })}
@@ -470,27 +465,6 @@ export default function ClientDetailPage() {
       <summary className="section-heading dossier-section-heading"><span className="eyebrow">{t('Ver notas originales del formulario')}</span></summary>
       <p className="dossier-source-notes-content">{client.onboarding_form_notes}</p>
     </details>}
-
-    <section className="content-card client-integration-summary client-tab-section tab-dossier" aria-labelledby="client-integration-summary-title">
-      <div className="section-heading"><div><p className="eyebrow">{t('Accesos e integraciones')}</p><h3 id="client-integration-summary-title">{t('Estado de plataformas')}</h3></div><span className="muted">{t('Actualizado en el dossier')}</span></div>
-      <div className="client-integration-summary-grid platform-status-grid">
-        {[
-          { key: 'gbp', field: 'gbp_access_confirmed', kind: 'boolean', label: t('Google Business Profile'), value: client.gbp_access_confirmed == null ? t('Pendiente') : client.gbp_access_confirmed ? t('Acceso confirmado') : t('Sin acceso'), state: client.gbp_access_confirmed == null ? 'pending' : client.gbp_access_confirmed ? 'positive' : 'negative' },
-          { key: 'metaPayment', field: 'meta_payment_method_confirmed', kind: 'boolean', label: t('Método de pago en Meta'), value: client.meta_payment_method_confirmed == null ? t('Pendiente') : client.meta_payment_method_confirmed ? t('Agregado') : t('No agregado'), mark: client.meta_payment_method_confirmed == null ? '—' : client.meta_payment_method_confirmed ? '✓' : '✕', state: client.meta_payment_method_confirmed == null ? 'pending' : client.meta_payment_method_confirmed ? 'positive' : 'negative' },
-          { key: 'payment', field: 'payment_method_confirmed', kind: 'boolean', label: t('Método de pago en GHL'), value: client.payment_method_confirmed == null ? t('Pendiente') : client.payment_method_confirmed ? t('Agregado') : t('No agregado'), mark: client.payment_method_confirmed == null ? '—' : client.payment_method_confirmed ? '✓' : '✕', state: client.payment_method_confirmed == null ? 'pending' : client.payment_method_confirmed ? 'positive' : 'negative' },
-        ].map((item) => <article className="client-integration-summary-item platform-status-item" key={item.key}>
-          <span>{item.label}</span>
-          <strong className={item.state}>{item.mark && <span aria-hidden="true">{item.mark} </span>}{item.value}</strong>
-          {editingPlatform === item.key ? <div className="platform-status-editor">
-            <label className="sr-only" htmlFor={`platform-status-${item.key}`}>{t('Estado de plataforma')} · {item.label}</label>
-            <select id={`platform-status-${item.key}`} value={platformDraft} disabled={saving} onChange={(event) => setPlatformDraft(event.target.value)}>
-              {item.kind === 'boolean' ? (['payment', 'metaPayment'].includes(item.key) ? <><option value="">{t('Pendiente')}</option><option value="true">{t('Agregado')}</option><option value="false">{t('No agregado')}</option></> : <><option value="">{t('Pendiente')}</option><option value="true">{t('Acceso confirmado')}</option><option value="false">{t('Sin acceso')}</option></>) : <><option value="Pendiente">{t('Pendiente')}</option><option value="Activa">{t('Activa')}</option><option value="Pausada">{t('Pausada')}</option><option value="Requiere atención">{t('Requiere atención')}</option></>}
-            </select>
-            <div className="platform-status-actions"><button className="primary-button compact-button" type="button" disabled={saving} onClick={() => savePlatformStatus(item)}>{saving ? t('Guardando…') : t('Guardar')}</button><button className="text-button" type="button" disabled={saving} onClick={() => setEditingPlatform(null)}>{t('Cancelar')}</button></div>
-          </div> : canEdit && <button type="button" className="secondary-button platform-edit-button" disabled={saving} onClick={() => openPlatformEditor(item)}>{t('Cambiar estado')}</button>}
-        </article>)}
-      </div>
-    </section>
 
     <div className="client-tab-section tab-dossier"><ClientOpsPanel client={client} directory={directory} canEdit={canEdit} onRefresh={refresh} /></div>
 
@@ -514,7 +488,17 @@ export default function ClientDetailPage() {
       </article>)}</div>
     </section>    <section className="content-card client-tab-section tab-audit"><div className="section-heading"><div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div><span className="muted">Últimos {auditLog.length}</span></div><div className="audit-list">{auditLog.length === 0 && <p className="muted">Aún no hay cambios registrados.</p>}{auditLog.map((entry) => <article className="audit-row" key={entry.id}><span className={`audit-badge ${entry.actor_role}`} data-no-translate>{entry.actor_name}</span><div><strong>{entry.action === 'dossier_updated' ? 'Actualizó el dossier' : entry.summary}</strong>{entry.action === 'dossier_updated' && <p>{entry.changed_fields.map((field) => t(fieldLabels[field] || field)).join(', ')}</p>}<small>{new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.created_at))}</small></div></article>)}</div></section>
     <div className="client-tab-section tab-dossier client-workflow-groups">
-      <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Onboarding')}</p><h3>{visibleWorkflowSteps.filter((item) => item.completed).length} {t('de')} {visibleWorkflowSteps.length} {t('completadas')}</h3><p className="muted">{t(['Onboarding', 'Datos y accesos', 'Configuración técnica', 'Campaña lista', 'Campaña activa', 'Capacitación', 'Cruise control'][stageIndex])}</p></div><button className="text-button" type="button" onClick={() => setShowAllWorkflowSteps((value) => !value)}>{showAllWorkflowSteps ? t('Ver solo la etapa actual') : t('Ver checklist completo')}</button></div><div className="workflow-list">{visibleWorkflowSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={client.archived || (!canManageWorkflow && step.owner_role !== profile?.role)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{t(step.title)}</strong><small>{t(taskRoles.find(([role]) => role === step.owner_role)?.[1] || step.owner_name)}</small></div></label>)}</div></section>
+      <section className="content-card client-checklist"><div className="section-heading"><div><p className="eyebrow">{t('Checklist de lanzamiento')}</p><h3>{workflowDone} {t('de')} {workflowSteps.length} {t('completadas')}</h3><p className="muted">{currentPhase ? `${t('Fase actual')}: ${t(checklistPhases.find(([key]) => key === currentPhase)?.[1] || '')}` : t('Checklist completo')}</p></div><button className="text-button" type="button" onClick={() => setShowAllWorkflowSteps((value) => !value)}>{showAllWorkflowSteps ? t('Ver solo la fase actual') : t('Ver checklist completo')}</button></div>
+        {suggestedStatus && canEdit && <div className="checklist-status-hint"><span>{t(`El checklist indica que el cliente ya está en ${suggestedStatus}.`)}</span><button className="primary-button compact-button" type="button" disabled={saving} onClick={applySuggestedStatus}>{t(`Cambiar estado a ${suggestedStatus}`)}</button></div>}
+        {checklistPhases.filter(([phase]) => visibleWorkflowSteps.some((step) => step.phase === phase)).map(([phase, phaseLabel]) => {
+          const phaseSteps = visibleWorkflowSteps.filter((step) => step.phase === phase)
+          const allPhaseSteps = workflowSteps.filter((step) => step.phase === phase)
+          return <div className="checklist-phase" key={phase}>
+            <h4>{t(phaseLabel)} <small>{allPhaseSteps.filter((step) => step.completed).length}/{allPhaseSteps.length}</small></h4>
+            <div className="workflow-list">{phaseSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={!canToggleStep(step)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{stepTitle(step)}</strong><small>{t(step.owner_name)}</small>{step.notes && <small className="workflow-step-note" data-no-translate>{step.notes}</small>}</div></label>)}</div>
+          </div>
+        })}
+      </section>
       <section className="content-card"><p className="eyebrow">{t('Bloqueos')}</p><h3>{blockers.filter((item) => !item.resolved).length} {t('abiertos')}</h3>{blockers.map((item) => <div className="blocker-row" key={item.id}><strong>{item.title}</strong><small>{item.owner_name}</small></div>)}</section>
     </div>
   </div>
