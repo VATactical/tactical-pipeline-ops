@@ -134,7 +134,9 @@ as $$
     );
 $$;
 
--- Only the sync Edge Function (service role) can read tokens.
+-- Only the sync Edge Function (service role) can read tokens. Access is enforced by EXECUTE
+-- privileges (see the grants below), like verify_integration_webhook_token after #66:
+-- current_user checks never see 'service_role' inside SECURITY DEFINER.
 create or replace function public.get_ghl_sync_targets(p_client_id text default null)
 returns table (
   client_id text,
@@ -150,11 +152,6 @@ security definer
 set search_path = ''
 as $$
 begin
-  if current_user <> 'service_role'
-     and coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
-    raise exception 'Service role required';
-  end if;
-
   return query
   select c.id, c.ghl_location_id, s.ghl_private_token, c.ghl_qualified_tag,
          c.billing_cycle_anchor, c.billing_cycle_days

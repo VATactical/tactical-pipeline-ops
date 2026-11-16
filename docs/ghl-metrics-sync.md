@@ -4,7 +4,7 @@ Cada cliente muestra, en la pestaña **ADS**, los leads, leads calificados y cit
 
 ## Piezas
 
-- Migración `20261116080000_ghl_metrics_sync.sql`: columnas de ciclo de cobro en `clients`, tabla `client_ghl_metrics` y token privado en `private.client_secrets.ghl_private_token`.
+- Migración `20261116090000_ghl_metrics_sync.sql`: columnas de ciclo de cobro en `clients`, tabla `client_ghl_metrics` y token privado en `private.client_secrets.ghl_private_token`.
 - Edge Function `ghl-metrics-sync`: llama a la API v2 de GHL (`services.leadconnectorhq.com`).
 - Componente `GhlMetricsPanel`: configuración y botón **Sincronizar GHL**.
 
