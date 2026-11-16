@@ -502,6 +502,28 @@ html[data-theme='light'] .app-footer { border-color: #d8e2ec; color: #6a7f92; }
 html[data-theme='light'] .app-footer strong { color: #3a536b; }
 html[data-theme='light'] .new-task-alert { border-color: #e5c264; background: #fff8e5; }
 
+/* Light theme: Team page (Structure, role picker, member cards). */
+html[data-theme='light'] .department-card { border-color: #d6e1eb; background: #f7fafd; }
+html[data-theme='light'] .department-card h3 { color: #182536; }
+html[data-theme='light'] .department-role-row, html[data-theme='light'] .permission-summary { border-top-color: #dde6ee; }
+html[data-theme='light'] .department-role-row strong, html[data-theme='light'] .permission-summary > strong { color: #1f3449; }
+html[data-theme='light'] .department-role-row p { color: #4f667b; }
+html[data-theme='light'] .department-role-row small { color: #087cae; font-weight: 600; }
+html[data-theme='light'] .permission-summary > small, html[data-theme='light'] .department-role-picker > .muted { color: #5f7388; }
+html[data-theme='light'] .permission-chips span { border-color: #bcd3e3; background: #eef6fb; color: #29435b; }
+html[data-theme='light'] .department-role-group { border-color: #d6e1eb; background: #ffffff; }
+html[data-theme='light'] .department-role-group legend { color: #087cae; }
+html[data-theme='light'] .department-role-option { border-top-color: #e3eaf1; color: #1f3449; }
+html[data-theme='light'] .department-role-option small { color: #5f7388; }
+html[data-theme='light'] .department-role-option input, html[data-theme='light'] .active-toggle input { accent-color: #087cae; }
+html[data-theme='light'] .team-member-edit > summary { color: #087cae; }
+html[data-theme='light'] .password-reset-panel { border-color: #d6e1eb; background: #f7fafd; }
+html[data-theme='light'] .status-pill { border-color: #9fd9b9; background: #e9f9f0; color: #176a3d; }
+html[data-theme='light'] .form-error { border-color: #e6b7be; background: #fff1f2; color: #9a3040; }
+html[data-theme='light'] .form-success { border-color: #9fd9b9; background: #effbf5; color: #176a3d; }
+html[data-theme='light'] label, html[data-theme='light'] .field-label { color: #3a536b; }
+html[data-theme='light'] .permission-grid label, html[data-theme='light'] .reminder-options label, html[data-theme='light'] .language-choice label { border-color: #d6e1eb; background: #f7fafd; color: #1f3449; }
+
 @media (max-width: 480px) {
   .main-content { padding: 1rem; }
   .page-stack { gap: 1rem; }
