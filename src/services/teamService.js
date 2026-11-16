@@ -4,6 +4,7 @@ export async function loadTeam() {
   const [profilesResult, departmentsResult, rolesResult, assignmentsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('profiles')
       .select('id, email, full_name, role, active, timezone, slack_contact, whatsapp_contact, created_at')
+      .is('deleted_at', null)
       .order('created_at'),
     supabase.from('departments')
       .select('id, name_es, name_en, permissions, sort_order, active')

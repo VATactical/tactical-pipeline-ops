@@ -42,13 +42,47 @@ Deno.serve(async (request) => {
     if (!caller?.active || caller.role !== 'superadmin') return json({ error: 'Solo el superadmin puede administrar usuarios.' }, 403)
 
     const body = await request.json()
-    const action = body.action === 'reset_password' ? 'reset_password' : body.action === 'update' ? 'update' : 'create'
+    const action = ['reset_password', 'update', 'delete'].includes(body.action) ? body.action : 'create'
     const userId = String(body.userId || '')
+
+    // Removes every access a member has while keeping their EOD/payroll history.
+    // permanent=true (deletion) also replaces the password and clears the app role.
+    const revokeAccess = async (targetId: string, permanent = false) => {
+      const { error: banError } = await admin.auth.admin.updateUserById(targetId, permanent
+        ? { ban_duration: '876000h', password: `${crypto.randomUUID()}${crypto.randomUUID()}`, app_metadata: { app_role: null } }
+        : { ban_duration: '876000h' })
+      if (banError) return banError.message
+      const { error: sessionsError } = await admin.rpc('revoke_user_sessions', { p_user_id: targetId })
+      return sessionsError?.message || ''
+    }
+
+    if (action === 'delete') {
+      if (!userId) return json({ error: 'Usuario requerido.' }, 400)
+      if (userId === userData.user.id) return json({ error: 'No puedes eliminar tu propia cuenta.' }, 400)
+      const { data: target, error: targetError } = await admin.from('profiles')
+        .select('id, role, deleted_at').eq('id', userId).single()
+      if (targetError || !target) return json({ error: 'Usuario no encontrado.' }, 404)
+      if (target.role === 'superadmin') return json({ error: 'No se puede eliminar a un superadmin.' }, 403)
+
+      const { error: profileError } = await admin.from('profiles').update({
+        active: false, deleted_at: target.deleted_at || new Date().toISOString(), deleted_by: userData.user.id,
+      }).eq('id', userId)
+      if (profileError) return json({ error: profileError.message }, 400)
+
+      const { error: rolesError } = await admin.from('profile_department_roles').delete().eq('profile_id', userId)
+      if (rolesError) return json({ error: rolesError.message }, 400)
+
+      const accessError = await revokeAccess(userId, true)
+      if (accessError) return json({ error: accessError }, 400)
+      return json({ deleted: true })
+    }
 
     if (action === 'reset_password') {
       const password = String(body.password || '')
       if (!userId) return json({ error: 'Usuario requerido.' }, 400)
       if (password.length < 10) return json({ error: 'La contraseña debe tener al menos 10 caracteres.' }, 400)
+      const { data: resetTarget } = await admin.from('profiles').select('deleted_at').eq('id', userId).single()
+      if (resetTarget?.deleted_at) return json({ error: 'Este usuario fue eliminado y no se puede editar.' }, 400)
       const { error: resetError } = await admin.auth.admin.updateUserById(userId, { password })
       if (resetError) return json({ error: resetError.message }, 400)
       return json({ success: true })
@@ -57,6 +91,20 @@ Deno.serve(async (request) => {
     const departmentRoleIds = Array.isArray(body.departmentRoleIds)
       ? [...new Set(body.departmentRoleIds.map((value: unknown) => String(value).trim()).filter(Boolean))]
       : []
+
+    if (action === 'update' && body.active === false && !departmentRoleIds.length) {
+      if (!userId) return json({ error: 'Usuario requerido.' }, 400)
+      if (userId === userData.user.id) return json({ error: 'No puedes quitarte tu propio acceso de superadmin.' }, 400)
+      const { error: deactivateError } = await admin.from('profiles').update({ active: false }).eq('id', userId)
+      if (deactivateError) return json({ error: deactivateError.message }, 400)
+      const accessError = await revokeAccess(userId)
+      if (accessError) return json({ error: accessError }, 400)
+      const { data: profile } = await admin.from('profiles')
+        .select('id, email, full_name, role, permissions, active, timezone, slack_contact, whatsapp_contact, created_at')
+        .eq('id', userId).single()
+      return json({ profile })
+    }
+
     if (!departmentRoleIds.length) return json({ error: 'Selecciona al menos una función de departamento.' }, 400)
 
     const { data: selectedRoles, error: rolesError } = await admin
@@ -142,8 +190,9 @@ Deno.serve(async (request) => {
     if (slackContact.length > 300 || whatsappContact.length > 300) return json({ error: 'El contacto es demasiado largo.' }, 400)
 
     const { data: currentProfile, error: currentProfileError } = await admin.from('profiles')
-      .select('active').eq('id', userId).single()
+      .select('active, deleted_at').eq('id', userId).single()
     if (currentProfileError || !currentProfile) return json({ error: currentProfileError?.message || 'Usuario no encontrado.' }, 404)
+    if (currentProfile.deleted_at) return json({ error: 'Este usuario fue eliminado y no se puede editar.' }, 400)
 
     // Temporarily disable the account while its inherited permissions are replaced.
     const { error: lockError } = await admin.from('profiles').update({ active: false }).eq('id', userId)
@@ -178,6 +227,10 @@ Deno.serve(async (request) => {
       ban_duration: profile.active ? 'none' : '876000h',
     })
     if (authError) return json({ error: authError.message }, 400)
+    if (!profile.active) {
+      const { error: sessionsError } = await admin.rpc('revoke_user_sessions', { p_user_id: userId })
+      if (sessionsError) return json({ error: sessionsError.message }, 400)
+    }
     return json({ profile })
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'Error inesperado.' }, 500)

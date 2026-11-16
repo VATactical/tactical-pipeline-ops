@@ -522,6 +522,7 @@ html[data-theme='light'] .status-pill { border-color: #9fd9b9; background: #e9f9
 html[data-theme='light'] .form-error { border-color: #e6b7be; background: #fff1f2; color: #9a3040; }
 html[data-theme='light'] .form-success { border-color: #9fd9b9; background: #effbf5; color: #176a3d; }
 html[data-theme='light'] label, html[data-theme='light'] .field-label { color: #3a536b; }
+html[data-theme='light'] .danger-button { border-color: #e6b7be; background: #fff1f2; color: #9a3040; }
 html[data-theme='light'] .permission-grid label, html[data-theme='light'] .reminder-options label, html[data-theme='light'] .language-choice label { border-color: #d6e1eb; background: #f7fafd; color: #1f3449; }
 
 @media (max-width: 480px) {
@@ -2237,6 +2238,9 @@ html[data-theme='dark'] .client-name-pin-code {
 .team-member-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
 .team-member-fields label, .password-reset-panel label { display: grid; gap: .4rem; }
 .team-member-edit > button { justify-self: start; }
+.team-member-delete { display: grid; gap: .5rem; justify-items: start; margin-top: .4rem; padding-top: .8rem; border-top: 1px solid #22364a; }
+.team-member-delete .muted { margin: 0; font-size: .82rem; }
+html[data-theme='light'] .team-member-delete { border-top-color: #e3eaf1; }
 .team-role-chips { margin-top: .5rem; }
 .team-role-chips .status-pill { font-size: .7rem; }
 @media (max-width: 800px) {
