@@ -7,6 +7,10 @@ project_id = "ouecekxhdzgermqospbj"
 [functions.ghl-onboarding]
 verify_jwt = false
 
+# Accepts a user session (checked in code) or the scheduler key in x-tp-ops-key.
+[functions.ghl-metrics-sync]
+verify_jwt = false
+
 [functions.manage-team-user]
 verify_jwt = true
 

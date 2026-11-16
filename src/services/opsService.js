@@ -359,3 +359,29 @@ export async function updateWorkflowStep(stepId, completed) {
   }).eq('id', stepId)
   if (error) throw error
 }
+
+export async function loadClientGhlMetrics(clientId) {
+  const { data, error } = await supabase.from('client_ghl_metrics').select('*').eq('client_id', clientId).order('period_start', { ascending: false }).limit(6)
+  if (error) throw error
+  return data || []
+}
+
+export async function isClientGhlTokenConfigured(clientId) {
+  const { data, error } = await supabase.rpc('client_ghl_token_configured', { p_client_id: clientId })
+  if (error) throw error
+  return Boolean(data)
+}
+
+export async function saveClientGhlToken(clientId, token) {
+  const { error } = await supabase.rpc('save_client_ghl_token', { p_client_id: clientId, p_token: token.trim() })
+  if (error) throw error
+}
+
+export async function syncClientGhlMetrics(clientId) {
+  const { data, error } = await supabase.functions.invoke('ghl-metrics-sync', { body: clientId ? { clientId } : {} })
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null)
+    throw new Error(detail?.error || error.message)
+  }
+  return data
+}
