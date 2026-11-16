@@ -86,6 +86,14 @@ function clientChanges(payload: Payload) {
   const instagram = value(payload, "instagram", "instagram_url", "instagramUrl");
   const instagramNeeded = booleanValue(payload, "instagram_needed", "instagram_required", "instagramNeeded")
     ?? (/\binstagram\s*:\s*(not needed|not required|no)\b/i.test(notes) ? false : /\binstagram\s*:\s*(needed|yes|required)\b/i.test(notes) ? true : null);
+  const street = value(payload, "business_address", "address", "address1", "street_address", "streetAddress");
+  const city = value(payload, "city");
+  const state = value(payload, "state");
+  const postalCode = value(payload, "postal_code", "postalCode", "zip", "zip_code");
+  const markets = value(payload, "service_areas", "service_area", "markets", "serviceAreas");
+  // "15 miles around the client's address" in the service-area answer, unless a radius is sent.
+  const radiusText = value(payload, "targeting_radius_miles", "radius_miles", "radius") || (markets.match(/(\d{1,3})\s*(?:mi\b|miles?|millas)/i)?.[1] ?? "");
+  const radius = Number.parseInt(radiusText, 10);
   const budgetValue = value(payload, "daily_budget", "ad_budget", "budget", "dailyBudget");
   const dailyBudget = budgetValue ? Number(budgetValue.replace(/[^0-9.]/g, "")) || 0 : 0;
   const submittedAt = value(payload, "submitted_at", "submittedAt") || new Date().toISOString();
@@ -96,7 +104,9 @@ function clientChanges(payload: Payload) {
     email: value(payload, "business_email", "businessEmail", "email"),
     contact_email: value(payload, "contact_email", "contactEmail", "personal_email", "personalEmail", "email"),
     contact_phone: value(payload, "personal_phone", "contact_phone", "contactPhone"),
-    address: value(payload, "business_address", "address", "street_address", "streetAddress"),
+    address: [street, city, [state, postalCode].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+    ads_targeting_address: value(payload, "ads_targeting_address", "ads_targeting", "targeting_address", "adsTargetingAddress"),
+    targeting_radius_miles: Number.isFinite(radius) && radius > 0 && radius <= 500 ? radius : null,
     timezone: value(payload, "timezone", "time_zone", "timeZone")
       || noteValue(notes, "The form lists", ["; confirm whether"]),
     services: value(payload, "services", "service_offering", "serviceOffering"),

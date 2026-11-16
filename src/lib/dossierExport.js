@@ -7,88 +7,105 @@ const money = (value) => value == null || value === '' || Number(value) <= 0 ? '
 const date = (value) => value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : 'Pending'
 const dateTime = (value) => value ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' }).format(new Date(value)) : 'Pending'
 
-export function buildDossierText(client, updatedBy = 'Pending', { lastUpdatedAt = client.updated_at, copiedAt = null } = {}) {
+const radius = (value) => value == null || value === '' ? 'Pending' : `${value} miles`
+const yesNoPending = (value) => value == null ? 'Pending' : yesNo(value)
+const checklistPhases = [
+  ['prep', 'SALE & PREPARATION'], ['call', 'ONBOARDING CALL'], ['build', 'BUILD'], ['launch', 'QA & LAUNCH'], ['post', 'AFTER LAUNCH'],
+]
+
+function checklistText(workflowSteps = []) {
+  if (!workflowSteps.length) return ''
+  const done = workflowSteps.filter((step) => step.completed).length
+  const blocks = checklistPhases.map(([phase, label]) => {
+    const steps = workflowSteps.filter((step) => step.phase === phase)
+    if (!steps.length) return ''
+    return `${label} (${steps.filter((step) => step.completed).length}/${steps.length})\n` +
+      steps.map((step) => `  [${step.completed ? 'x' : ' '}] ${step.title_en || step.title}`).join('\n')
+  }).filter(Boolean)
+  return `\n[LAUNCH CHECKLIST — ${done}/${workflowSteps.length} COMPLETE]\n\n${blocks.join('\n\n')}\n`
+}
+
+// Sections mirror the dossier: onboarding form first, then the call, then each platform.
+export function buildDossierText(client, updatedBy = 'Pending', { lastUpdatedAt = client.updated_at, copiedAt = null, workflowSteps = [] } = {}) {
   return `==================================================
 TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 ==================================================
 
-[WHO — CLIENT PROFILE & COMPLIANCE]
+[BUSINESS & CONTACT]
 
 • Client Code: ${pending(client.code)}
+• Registered Business Name: ${pending(client.legal_name)}
 • Business Name: ${pending(client.business_name)}
-• Legal Business Name: ${pending(client.legal_name)}
-• Owner Name: ${pending(client.owner_name)}
-• Business Phone: ${pending(client.phone)}
+• Contact Name: ${pending(client.owner_name)}
 • Contact Phone: ${pending(client.contact_phone)}
 • Contact Email: ${pending(client.contact_email)}
+• Business Phone: ${pending(client.phone)}
 • Business Email: ${pending(client.email)}
-• Physical Business Address: ${pending(client.address)}
-• Primary Market: ${pending(client.markets)}
-• Target ZIP Codes / Radius: ${pending(client.target_zip_codes)}
-• Excluded Areas: ${pending(client.exclusions)}
-• EIN / Tax ID Status: ${pending(client.legal_business_info)}
-• Persona / KYC Status: ${pending(client.kyc_status)}
-
-[WHAT — OFFER, SERVICES & TARGETS]
-
-• Core Services: ${pending(client.services)}
-• Core Consumer Offer: ${pending(client.offer)}
-• Project Type: ${pending(client.project_type)}
-• Target Customer Profile: ${pending(client.ideal_customer_profile)}
-• Target Monthly KPI: ${pending(client.kpi)}
-• Target Daily Ad Spend: ${money(client.daily_budget)} / day
-• Minimum Target Project Size: ${money(client.minimum_project)}
-
-[ASSET DIAGNOSTICS & INFRASTRUCTURE]
-
-• Website / Funnel Required: ${client.needs_website_funnel == null ? 'Pending' : yesNo(client.needs_website_funnel)}
-• Existing Domain: ${pending(client.domain)}
-• Website / Funnel URL: ${pending(client.website_url)}
-• Website Build Request: ${pending(client.website_build_request)}
-• Website Delivery Estimate: ${pending(client.website_timeline)}
-• Google Business Profile Status: ${pending(client.gbp_status)}
-• Google Business Profile Email: ${pending(client.gbp_email)}
-• Google Business Profile Link: ${pending(client.gbp_link)}
-• Google Drive Folder: ${pending(client.drive_folder_link)}
-• Available Assets: ${pending(client.available_assets)}
-
-[WHEN — TIMELINE & STATUS]
-
-• Onboarding Date: ${date(client.onboarding_date)}
+• Business Address: ${pending(client.address)}
+• Timezone: ${pending(client.timezone)}
 • Preferred Onboarding-Call Language: ${pending(client.onboarding_call_language)}
-• Client Appointment Availability: ${pending(client.appointment_availability)}
-• Business Timezone Verified: ${client.timezone_verified == null ? 'Pending' : yesNo(client.timezone_verified)}
-• Instagram Account Needed: ${client.instagram_needed == null ? 'Pending' : yesNo(client.instagram_needed)}
+• Business Hours / Availability: ${pending(client.appointment_availability)}
+• EIN / Tax ID Status: ${pending(client.legal_business_info)}
+
+[OFFER & MARKET]
+
+• Services: ${pending(client.services)}
+• Offers / Discounts: ${pending(client.offer)}
+• Price Range / Minimum Project: ${money(client.minimum_project)}
+• Ads Targeting Address: ${pending(client.ads_targeting_address)}
+• Targeting Radius: ${radius(client.targeting_radius_miles)}
+• Cities / Service Areas: ${pending(client.markets)}
+• Target ZIP Codes: ${pending(client.target_zip_codes)}
+• Excluded Areas: ${pending(client.exclusions)}
+• Ideal Customer Profile: ${pending(client.ideal_customer_profile)}
+
+[STRATEGY & LAUNCH]
+
+• Ad Strategy: ${pending(client.ad_strategy)}
+• Daily Ad Spend: ${money(client.daily_budget)} / day
+• Monthly KPI Target: ${pending(client.kpi)}
+• Onboarding Date: ${date(client.onboarding_date)}
 • Target Ad Launch Date: ${date(client.target_launch_date)}
-• Current Lifecycle Status: ${pending(client.status)}
-• A2P Status: ${pending(client.a2p_status)}
-• Meta Ads Status: ${pending(client.meta_status)}
+• Client Status: ${pending(client.status)}
+• Current Phase: ${pending(client.phase)}
+• Next Action: ${pending(client.next_action)}
 
-[WHERE — SYSTEM LINKS & ACCESS]
+[GOHIGHLEVEL]
 
-• GoHighLevel Sub-Account: ${pending(client.ghl_subaccount_link)}
+• Sub-Account: ${pending(client.ghl_subaccount_link)}
+
+[META — FACEBOOK & INSTAGRAM]
+
 • Facebook Page: ${pending(client.facebook_page_url)}
-• Instagram Account: ${pending(client.instagram_url)}
-• Meta Business Portfolio ID: ${pending(client.meta_business_portfolio_id)}
-• Meta Ad Account ID: ${pending(client.meta_ad_account_id)}
-• Meta Pixel / Dataset ID: ${pending(client.meta_pixel_id)}
-• Google Docs Dossier: ${pending(client.google_docs_url)}
+• Business Portfolio ID: ${pending(client.meta_business_portfolio_id)}
+• Ad Account ID: ${pending(client.meta_ad_account_id)}
+• Pixel / Dataset ID: ${pending(client.meta_pixel_id)}
+• Instagram: ${pending(client.instagram_url)}
+• Meta Notes: ${pending(client.facebook_business_info)}
+
+[GOOGLE BUSINESS PROFILE]
+
+• GBP Email: ${pending(client.gbp_email)}
+• GBP Link: ${pending(client.gbp_link)}
+• GBP Status: ${pending(client.gbp_status)}
+
+[WEBSITE & LANDING PAGE]
+
+• Current Website: ${pending(client.website_url)}
+• Website Included Requested: ${yesNoPending(client.needs_website_funnel)}
+• Requested Website Details: ${pending(client.website_build_request)}
+• Domain: ${pending(client.domain)}
 • Landing Page: ${pending(client.landing_page_url)}
 
-[OPERATIONAL COMPLETION STATUS]
+[FILES & AUTOMATIONS]
 
-• Onboarding Completed: ${yesNo(client.onboarding_completed)}
-• GHL Access Confirmed: ${yesNo(client.ghl_access_confirmed)}
-• Facebook Access Confirmed: ${yesNo(client.facebook_access_confirmed)}
-• Ad Account Access Confirmed: ${yesNo(client.ad_account_access_confirmed)}
-• Pixel Access Confirmed: ${yesNo(client.pixel_access_confirmed)}
-• Domain Access Confirmed: ${yesNo(client.domain_access_confirmed)}
-• Payment Method Confirmed: ${yesNo(client.payment_method_confirmed)}
-• Persona / KYC Completed: ${yesNo(client.kyc_completed)}
-• A2P Submitted: ${yesNo(client.a2p_submitted)}
-• Funnel Live: ${yesNo(client.funnel_live)}
-• Meta Campaign Live: ${yesNo(client.meta_campaign_live)}
-
+• Google Drive Folder: ${pending(client.drive_folder_link)}
+• Brand Assets / Media: ${pending(client.available_assets)}
+• Slack Channel: ${pending(client.slack_channel_link)}
+• Google Docs Dossier: ${pending(client.google_docs_url)}
+• Retell AI Agent ID: ${pending(client.retell_agent_id)}
+• Make.com Scenarios: ${pending(client.make_scenario_link)}
+${checklistText(workflowSteps)}
 ==================================================
 [DOCUMENT FOOTER]
 Last updated: ${dateTime(lastUpdatedAt)}

@@ -2605,3 +2605,33 @@ html[data-theme='dark'] .eod-parse-status { background: #143649; color: #b9eaff;
   .weekly-day-modal-list { padding: .75rem; }
   .weekly-day-detail-entry { grid-template-columns: minmax(0, 1fr); gap: .45rem; }
 }
+
+/* Dossier aligned with the onboarding form + Trello launch checklist. */
+.detail-item .dossier-field-source { display: block; margin-top: .2rem; color: #7890a8; font-size: .62rem; font-weight: 700; letter-spacing: .05em; }
+.detail-item .dossier-field-source.source-form { color: #6fd3ff; }
+.detail-item .dossier-field-source.source-call { color: #f5c76b; }
+.dossier-step-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; padding-top: .8rem; border-top: 1px solid #1d3043; }
+.dossier-step-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .6rem; border: 1px solid #294158; border-radius: 999px; background: #0b1826; color: #b9cbdc; font-size: .74rem; font-weight: 650; cursor: pointer; text-align: left; }
+.dossier-step-chip span { color: #7890a8; font-weight: 900; }
+.dossier-step-chip.done { border-color: #24533f; background: #102d24; color: #8ee9b6; }
+.dossier-step-chip.done span { color: #3fcf8e; }
+.dossier-step-chip:disabled { cursor: default; opacity: .85; }
+.dossier-step-chip:not(:disabled):hover { border-color: #4b7d9b; }
+.client-checklist .checklist-phase + .checklist-phase { margin-top: 1rem; }
+.checklist-phase h4 { display: flex; align-items: baseline; gap: .5rem; margin: .4rem 0 0; color: #6fd3ff; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; }
+.checklist-phase h4 small { color: #7890a8; font-size: .74rem; letter-spacing: 0; }
+.checklist-status-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .7rem; margin: .4rem 0 .8rem; padding: .75rem .9rem; border: 1px solid #24533f; border-radius: 10px; background: #102d24; color: #8ee9b6; font-size: .86rem; }
+.workflow-step small.workflow-step-note { color: #b9cbdc; white-space: pre-wrap; }
+html[data-theme='light'] .detail-item .dossier-field-source { color: #6a7f92; }
+html[data-theme='light'] .detail-item .dossier-field-source.source-form { color: #087cae; }
+html[data-theme='light'] .detail-item .dossier-field-source.source-call { color: #95650a; }
+html[data-theme='light'] .dossier-step-chips { border-top-color: #e3eaf1; }
+html[data-theme='light'] .dossier-step-chip { border-color: #c7d7e5; background: #f6f9fc; color: #29435b; }
+html[data-theme='light'] .dossier-step-chip span { color: #7b8fa2; }
+html[data-theme='light'] .dossier-step-chip.done { border-color: #9fd9b9; background: #e9f9f0; color: #176a3d; }
+html[data-theme='light'] .dossier-step-chip.done span { color: #1f9d5a; }
+html[data-theme='light'] .checklist-phase h4 { color: #087cae; }
+html[data-theme='light'] .checklist-phase h4 small { color: #5f7388; }
+html[data-theme='light'] .checklist-status-hint { border-color: #9fd9b9; background: #effbf5; color: #176a3d; }
+html[data-theme='light'] .workflow-step small.workflow-step-note { color: #3a536b; }
+@media print { .dossier-step-chips, .checklist-status-hint { display: none; } }
