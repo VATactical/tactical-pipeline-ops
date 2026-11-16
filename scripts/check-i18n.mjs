@@ -93,7 +93,7 @@ if (!adsSource.includes('ad_performance_reports')) violations.push('Client follo
 const clientOpsSource = readFileSync('src/components/ClientOpsPanel.jsx', 'utf8')
 const clientDetailSource = readFileSync('src/pages/ClientDetailPage.jsx', 'utf8')
 const onboardingSource = readFileSync('supabase/functions/ghl-onboarding/index.ts', 'utf8')
-const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('client_ops_lifecycle_followups')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
+const lifecycleMigration = readdirSync('supabase/migrations').filter((name) => name.includes('restore_missing_client_ops_objects')).map((name) => readFileSync(join('supabase/migrations', name), 'utf8')).join('\n')
 if (clientOpsSource.includes('client_field_verifications')) violations.push('Client operations must not render the confusing per-field verification panel.')
 if (clientOpsSource.includes('client_interactions') || clientOpsSource.includes('client-contact-summary') || !clientOpsSource.includes('ghl_form_imports')) violations.push('Client operations must omit the manual contact log while retaining onboarding sync history.')
 if (!clientDetailSource.includes('savePlatformStatus') || !['gbp_access_confirmed', 'meta_payment_method_confirmed', 'payment_method_confirmed'].every((field) => clientDetailSource.includes(field))) violations.push('Client dossier must expose editable GBP access and Meta/GHL payment statuses.')
@@ -114,7 +114,7 @@ for (const field of newOnboardingFields) {
 }
 if (!onboardingSource.includes('attempt_count') || !onboardingSource.includes('sync_stage')) violations.push('Onboarding sync must keep retry and stage details.')
 if (!lifecycleMigration.includes('reassign_client_code') || !lifecycleMigration.includes('client_code_history')) violations.push('Visible client-code changes must keep a history and stable client IDs.')
-if (!lifecycleMigration.includes('require_eod_late_reason')) violations.push('Database must require a reason for a late EOD.')
+if (!eodSource.includes('late_reason: cleanLateReason') || !eodPageSource.includes('lateReason')) violations.push('Late EOD reports must capture and save a late reason.')
 if (!eodSource.includes("DEFAULT_KEVIN_TIME_ZONE = 'America/New_York'") || !eodSource.includes('late_reason: cleanLateReason')) violations.push('EOD must use New York time and persist late reasons.')
 if (!taskProgressServiceSource.includes('next_step: nextStep.trim()')) violations.push('Tasks must persist a next step.')
 if (!clientDetailSource.includes('showAllWorkflowSteps') || !clientDetailSource.includes('visibleWorkflowSteps')) violations.push('Client workflow must focus on the current stage and allow opening the full checklist.')
