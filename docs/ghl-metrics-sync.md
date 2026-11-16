@@ -30,6 +30,19 @@ supabase db push
 supabase functions deploy ghl-metrics-sync
 ```
 
-## Sincronización automática (opcional)
+## Periodos e historial
 
-Genera una clave larga, guarda su SHA-256 en `private.integration_webhook_tokens` (`integration_name = 'ghl_metrics_sync'`, `active = true`) y programa un `POST` diario a la función con el encabezado `x-tp-ops-key`. Sin cuerpo, sincroniza todos los clientes conectados.
+- **Ciclo actual**: lo que se guarda en cada sincronización.
+- **Ciclos anteriores**: el botón *Traer historial (6 ciclos)* guarda los 6 ciclos previos (`{ clientId, history: 6 }`). Requiere la fecha de inicio del ciclo y nunca va antes de ella.
+- **Rango de fechas**: consulta en vivo (`{ clientId, from, to }`, máximo un año); no se guarda.
+- **Reportes ADS**: *Traer leads y citas de GHL* usa el mismo rango en vivo con las fechas del reporte.
+
+## Sincronización automática
+
+Migración `20261116220000_ghl_metrics_daily_sync.sql`: `pg_cron` llama a la función todos los días a las 11:00 UTC (6:00 a. m. ET en invierno, 7:00 a. m. en horario de verano) y sincroniza el ciclo actual de todos los clientes conectados. La clave del programador se genera dentro de la base de datos y vive en Vault (`ghl_metrics_sync_key`); la tabla de tokens solo guarda su SHA-256.
+
+- Ver ejecuciones: `select * from cron.job_run_details order by start_time desc limit 5;`
+- Ver respuesta de la función: `select status_code, content from net._http_response order by created desc limit 5;`
+- Lanzar una sincronización completa a mano: `select private.run_ghl_metrics_sync();`
+
+El botón **Sincronizar GHL** sigue disponible para actualizar un cliente al momento.

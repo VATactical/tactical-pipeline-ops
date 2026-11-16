@@ -361,7 +361,7 @@ export async function updateWorkflowStep(stepId, completed) {
 }
 
 export async function loadClientGhlMetrics(clientId) {
-  const { data, error } = await supabase.from('client_ghl_metrics').select('*').eq('client_id', clientId).order('period_start', { ascending: false }).limit(6)
+  const { data, error } = await supabase.from('client_ghl_metrics').select('*').eq('client_id', clientId).order('period_start', { ascending: false }).limit(24)
   if (error) throw error
   return data || []
 }
@@ -377,11 +377,16 @@ export async function saveClientGhlToken(clientId, token) {
   if (error) throw error
 }
 
-export async function syncClientGhlMetrics(clientId) {
-  const { data, error } = await supabase.functions.invoke('ghl-metrics-sync', { body: clientId ? { clientId } : {} })
+// options: { history: N } stores the last N billing cycles; { from, to } returns live counts for a range.
+export async function syncClientGhlMetrics(clientId, options = {}) {
+  const { data, error } = await supabase.functions.invoke('ghl-metrics-sync', { body: clientId ? { clientId, ...options } : {} })
   if (error) {
     const detail = await error.context?.json?.().catch(() => null)
     throw new Error(detail?.error || error.message)
   }
   return data
+}
+
+export function fetchClientGhlRange(clientId, from, to) {
+  return syncClientGhlMetrics(clientId, { from, to })
 }

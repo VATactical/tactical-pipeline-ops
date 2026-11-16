@@ -4,6 +4,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { downloadAdsReportPdf } from '../lib/reportExports'
 import { loadAdsReports, saveAdsReport } from '../services/adsReportService'
 import { loadCompanySettings } from '../services/companyService'
+import { fetchClientGhlRange } from '../services/opsService'
 
 const today = new Date().toISOString().slice(0, 10)
 const initial = { reportDate: today, periodStart: today, periodEnd: today, reportStatus: 'Activa', spend: '', impressions: '', reach: '', clicks: '', leads: '', appointments: '', summary: '', wins: '', issues: '', nextSteps: '' }
@@ -18,6 +19,7 @@ export default function AdsReportsPanel({ client, canEdit }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [fillingFromGhl, setFillingFromGhl] = useState(false)
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const refresh = () => loadAdsReports(client.id).then(setReports)
   useEffect(() => { refresh().catch((loadError) => setError(t(loadError.message))) }, [client.id, t])
@@ -29,6 +31,16 @@ export default function AdsReportsPanel({ client, canEdit }) {
       await refresh(); setForm(initial); setOpen(false); setMessage(t('Reporte ADS guardado.'))
     } catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
+  }
+  // Fills leads and appointments from the client's GHL sub-account for the report period.
+  const fillFromGhl = async () => {
+    setFillingFromGhl(true); setError(''); setMessage('')
+    try {
+      const counts = await fetchClientGhlRange(client.id, form.periodStart, form.periodEnd)
+      setForm((current) => ({ ...current, leads: String(counts.leads ?? 0), appointments: String(counts.appointments_booked ?? 0) }))
+      setMessage(`${t('Datos de GHL cargados')}: ${counts.leads ?? 0} ${t('leads')}, ${counts.appointments_booked ?? 0} ${t('citas')}.`)
+    } catch (ghlError) { setError(t(ghlError.message)) }
+    finally { setFillingFromGhl(false) }
   }
   const exportPdf = async (report) => {
     try {
@@ -45,6 +57,7 @@ export default function AdsReportsPanel({ client, canEdit }) {
         <label>{t('Fecha del reporte')}<input type="date" value={form.reportDate} onChange={(e) => setField('reportDate', e.target.value)} required /></label>
         <label>{t('Desde')}<input type="date" value={form.periodStart} onChange={(e) => setField('periodStart', e.target.value)} required /></label>
         <label>{t('Hasta')}<input type="date" value={form.periodEnd} onChange={(e) => setField('periodEnd', e.target.value)} required /></label>
+        <div className="ghl-fill-row wide"><button className="secondary-button compact-button" type="button" disabled={fillingFromGhl || !form.periodStart || !form.periodEnd || form.periodStart > form.periodEnd} onClick={fillFromGhl}>{t(fillingFromGhl ? 'Consultando GHL…' : 'Traer leads y citas de GHL')}</button><small className="muted">{t('Usa las fechas Desde y Hasta de este reporte.')}</small></div>
         <label>{t('Estado de campaña')}<select value={form.reportStatus} onChange={(e) => setField('reportStatus', e.target.value)}><option value="Activa">{t('Activa')}</option><option value="Requiere atención">{t('Requiere atención')}</option><option value="Pausada">{t('Pausada')}</option></select></label>
         {[['spend', 'Gasto'], ['impressions', 'Impresiones'], ['reach', 'Alcance'], ['clicks', 'Clics'], ['leads', 'Leads'], ['appointments', 'Citas']].map(([key, label]) => <label key={key}>{t(label)}<input type="number" min="0" step={key === 'spend' ? '0.01' : '1'} value={form[key]} onChange={(e) => setField(key, e.target.value)} /></label>)}
         <label className="wide">{t('Resumen ejecutivo')}<textarea rows="3" value={form.summary} onChange={(e) => setField('summary', e.target.value)} /></label>
