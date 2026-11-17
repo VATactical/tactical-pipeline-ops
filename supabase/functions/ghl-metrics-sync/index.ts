@@ -12,8 +12,14 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 //   - Superadmin / operations_admin: {} syncs every connected client.
 //   - Scheduler: header x-tp-ops-key checked against private.integration_webhook_tokens
 //     ('ghl_metrics_sync'), syncs every connected client.
+//
+// Ad spend for the same period comes from the Meta Marketing API (Insights) when the client has
+// a Meta ad account ID and a token is available: the portfolio-wide META_ACCESS_TOKEN secret
+// (system user with ads_read) or, as a fallback, the client's own token in private.client_secrets.
+// A Meta failure never blocks the GHL counts; it is stored in meta_spend_error.
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
+const META_GRAPH = "https://graph.facebook.com/v23.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-tp-ops-key",
@@ -28,6 +34,8 @@ type Target = {
   qualified_tag: string;
   billing_cycle_anchor: string | null;
   billing_cycle_days: number;
+  meta_ad_account_id: string;
+  meta_token: string;
 };
 
 function adminClient() {
@@ -96,6 +104,9 @@ async function countAppointments(target: Target, start: string, end: string) {
   const seen = new Set<string>();
   let booked = 0;
   let cancelled = 0;
+  let confirmed = 0;
+  let showed = 0;
+  let noshow = 0;
   for (const calendar of calendars || []) {
     const query = new URLSearchParams({
       locationId: target.location_id,
@@ -111,11 +122,15 @@ async function countAppointments(target: Target, start: string, end: string) {
       const created = new Date(String(event.dateAdded || event.startTime || "")).getTime();
       if (!(created >= from && created <= to)) continue;
       const status = String(event.appointmentStatus || "").toLowerCase();
-      if (status === "cancelled" || status === "invalid") cancelled += 1;
-      else booked += 1;
+      if (status === "cancelled" || status === "invalid") { cancelled += 1; continue; }
+      // Booked = every appointment that was not cancelled (new, confirmed, showed, no-show).
+      booked += 1;
+      if (status === "confirmed") confirmed += 1;
+      else if (status === "showed") showed += 1;
+      else if (status === "noshow" || status === "no_show") noshow += 1;
     }
   }
-  return { booked, cancelled };
+  return { booked, cancelled, confirmed, showed, noshow };
 }
 
 type Period = { period_start: string; period_end: string };
@@ -126,7 +141,42 @@ async function countPeriod(target: Target, start: string, end: string) {
     target.qualified_tag ? countContacts(target, start, end, target.qualified_tag) : Promise.resolve(0),
     countAppointments(target, start, end),
   ]);
-  return { leads, qualified_leads: qualified, appointments_booked: appointments.booked, appointments_cancelled: appointments.cancelled };
+  return {
+    leads, qualified_leads: qualified,
+    appointments_booked: appointments.booked, appointments_cancelled: appointments.cancelled,
+    appointments_confirmed: appointments.confirmed, appointments_showed: appointments.showed, appointments_noshow: appointments.noshow,
+  };
+}
+
+// Meta ad spend for the period. Returns null when the client has no ad account or no token.
+async function metaSpend(target: Target, start: string, end: string): Promise<number | null> {
+  const accountDigits = (target.meta_ad_account_id || "").replace(/\D/g, "");
+  const token = Deno.env.get("META_ACCESS_TOKEN") || target.meta_token || "";
+  if (!accountDigits || !token) return null;
+  const query = new URLSearchParams({
+    fields: "spend",
+    level: "account",
+    time_range: JSON.stringify({ since: start, until: end }),
+  });
+  const response = await fetch(`${META_GRAPH}/act_${accountDigits}/insights?${query}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const body = await response.json().catch(() => ({})) as { data?: Array<{ spend?: string }>; error?: { message?: string } };
+  if (!response.ok || body.error) {
+    throw new Error(`Meta ${response.status}: ${body.error?.message || response.statusText}`);
+  }
+  return (body.data || []).reduce((total, row) => total + (Number(row.spend) || 0), 0);
+}
+
+// Spend columns for a stored period; on error the last good meta_spend is kept.
+async function spendColumns(target: Target, start: string, end: string) {
+  try {
+    const spend = await metaSpend(target, start, end);
+    if (spend === null) return { meta_spend_error: "" };
+    return { meta_spend: Math.round(spend * 100) / 100, meta_spend_synced_at: new Date().toISOString(), meta_spend_error: "" };
+  } catch (error) {
+    return { meta_spend_error: String((error as Error).message || error).slice(0, 300) };
+  }
 }
 
 async function cyclesFor(admin: ReturnType<typeof adminClient>, target: Target, count: number): Promise<Period[]> {
@@ -155,6 +205,7 @@ async function storePeriod(admin: ReturnType<typeof adminClient>, target: Target
     synced_at: new Date().toISOString(),
     synced_by: actorId,
   };
+  const spend = await spendColumns(target, period.period_start, period.period_end);
   try {
     Object.assign(row, await countPeriod(target, period.period_start, period.period_end), { sync_status: "ok", error_message: "" });
   } catch (error) {
@@ -166,12 +217,13 @@ async function storePeriod(admin: ReturnType<typeof adminClient>, target: Target
       .eq("client_id", target.client_id).eq("period_start", period.period_start).maybeSingle();
     if (existing) {
       const { error } = await admin.from("client_ghl_metrics").update({
-        sync_status: "error", error_message: row.error_message, synced_at: row.synced_at, synced_by: actorId,
+        sync_status: "error", error_message: row.error_message, synced_at: row.synced_at, synced_by: actorId, ...spend,
       }).eq("id", existing.id);
       if (error) throw error;
       return row;
     }
   }
+  Object.assign(row, spend);
   const { error } = await admin.from("client_ghl_metrics").upsert(row, { onConflict: "client_id,period_start" });
   if (error) throw error;
   return row;
@@ -225,8 +277,11 @@ Deno.serve(async (request: Request) => {
     if (wantsRange) {
       const target = (targets as Target[])[0];
       try {
-        const counts = await countPeriod(target, body.from!, body.to!);
-        return json({ clientId: target.client_id, period_start: body.from, period_end: body.to, ...counts });
+        const [counts, spend] = await Promise.all([
+          countPeriod(target, body.from!, body.to!),
+          spendColumns(target, body.from!, body.to!),
+        ]);
+        return json({ clientId: target.client_id, period_start: body.from, period_end: body.to, ...counts, ...spend });
       } catch (error) {
         return json({ error: String((error as Error).message || error).slice(0, 500) }, 502);
       }

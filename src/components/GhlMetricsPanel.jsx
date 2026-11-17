@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-import { fetchClientGhlRange, isClientGhlTokenConfigured, loadClientGhlMetrics, saveClientGhlToken, syncClientGhlMetrics, updateClient } from '../services/opsService'
+import { fetchClientGhlRange, isClientGhlTokenConfigured, loadClientGhlMetrics, saveClientGhlToken, setClientPeriodSpend, syncClientGhlMetrics, updateClient } from '../services/opsService'
 
 const settingsFrom = (client) => ({
   ghl_location_id: client.ghl_location_id || '',
@@ -40,6 +40,8 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
   const [selected, setSelected] = useState('current')
   const [range, setRange] = useState(() => ({ from: addDays(localToday(), -29), to: localToday() }))
   const [rangeResult, setRangeResult] = useState(null)
+  const [spendOpen, setSpendOpen] = useState(false)
+  const [spendDraft, setSpendDraft] = useState('')
 
   const refresh = async () => {
     const [rows, configured] = await Promise.all([loadClientGhlMetrics(client.id), isClientGhlTokenConfigured(client.id)])
@@ -63,7 +65,18 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
   const connected = Boolean(client.ghl_location_id) && tokenConfigured
   const formatDate = (value) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : '—'
   const daysToRebill = anchor ? daysBetween(localToday(), cycle.period_end) + 1 : null
-  const bookingRate = shown?.leads ? Math.round((shown.appointments_booked / shown.leads) * 100) : null
+  const synced = Boolean(shown) && shown.sync_status !== 'pending'
+  const bookingRate = synced && shown.leads ? Math.round((shown.appointments_booked / shown.leads) * 100) : null
+  // Spend: a value typed by hand wins over the one pulled from Meta.
+  const manualSpend = shown?.manual_spend ?? null
+  const spend = manualSpend !== null ? Number(manualSpend) : shown?.meta_spend != null ? Number(shown.meta_spend) : null
+  const spendSource = manualSpend !== null ? 'manual' : shown?.meta_spend != null ? 'meta' : null
+  const confirmedTotal = synced ? (shown.appointments_confirmed || 0) + (shown.appointments_showed || 0) : 0
+  const money = (value) => value === null || value === undefined || Number.isNaN(value)
+    ? '—'
+    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: value < 100 ? 2 : 0 }).format(value)
+  const costPer = (count) => spend !== null && synced && count > 0 ? money(spend / count) : '—'
+  const canEditSpend = canEdit && selected !== 'custom' && Boolean(shownPeriod)
 
   const sync = async (history = 1) => {
     setBusy(history > 1 ? 'history' : 'sync'); setError(''); setMessage('')
@@ -107,6 +120,20 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
   }
 
   const setField = (key, value) => setSettings((state) => ({ ...state, [key]: value }))
+
+  const openSpend = () => { setSpendDraft(manualSpend !== null ? String(manualSpend) : ''); setSpendOpen(true) }
+  const saveSpend = async (event) => {
+    event.preventDefault(); setBusy('spend'); setError(''); setMessage('')
+    try {
+      const amount = spendDraft.trim() === '' ? null : Number(spendDraft)
+      if (amount !== null && (!Number.isFinite(amount) || amount < 0)) throw new Error('Escribe un monto válido.')
+      await setClientPeriodSpend(client.id, shownPeriod.period_start, shownPeriod.period_end, amount)
+      await refresh()
+      setSpendOpen(false)
+      setMessage(t(amount === null ? 'Gasto manual eliminado; se usa el de Meta si existe.' : 'Gasto del periodo guardado.'))
+    } catch (spendError) { setError(t(spendError.message)) }
+    finally { setBusy('') }
+  }
 
   return <section className="content-card ghl-metrics-panel">
     <div className="section-heading">
@@ -155,16 +182,38 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
     </form>}
 
     <div className="metric-grid compact ads-metrics-grid">
-      <article className="metric-card green"><span>{t('Leads')}</span><strong>{shown?.leads ?? '—'}</strong><small>{t('registrados en GHL')}</small></article>
-      <article className="metric-card teal"><span>{t('Calificados')}</span><strong>{shown?.qualified_leads ?? '—'}</strong><small data-no-translate>{client.ghl_qualified_tag ? `#${client.ghl_qualified_tag}` : ''}</small></article>
-      <article className="metric-card amber"><span>{t('Citas')}</span><strong>{shown?.appointments_booked ?? '—'}</strong><small>{bookingRate !== null ? `${bookingRate}% ${t('de los leads')}` : t('agendadas')}{shown?.appointments_cancelled ? ` · ${shown.appointments_cancelled} ${t('canceladas')}` : ''}</small></article>
+      <article className="metric-card green"><span>{t('Leads')}</span><strong>{synced ? shown.leads : '—'}</strong><small>{t('registrados en GHL')}</small></article>
+      <article className="metric-card teal"><span>{t('Calificados')}</span><strong>{synced ? shown.qualified_leads : '—'}</strong><small data-no-translate>{client.ghl_qualified_tag ? `#${client.ghl_qualified_tag}` : ''}</small></article>
+      <article className="metric-card amber"><span>{t('Citas agendadas')}</span><strong>{synced ? shown.appointments_booked : '—'}</strong><small>{bookingRate !== null ? `${bookingRate}% ${t('de los leads')}` : t('no canceladas')}</small></article>
       {selected === 'current'
         ? <article className={`metric-card ${daysToRebill !== null && daysToRebill <= 5 ? 'red' : 'blue'}`}><span>{t('Próximo cobro')}</span><strong>{daysToRebill === null ? '—' : daysToRebill}</strong><small>{anchor ? `${t('días')} · ${formatDate(addDays(cycle.period_end, 1))}` : t('falta la fecha de inicio del ciclo')}</small></article>
         : <article className="metric-card purple"><span>{t('Tasa de calificados')}</span><strong>{shown?.leads ? `${Math.round((shown.qualified_leads / shown.leads) * 100)}%` : '—'}</strong><small>{t('de los leads del periodo')}</small></article>}
     </div>
+    {synced && <div className="ghl-appointment-breakdown" aria-label={t('Citas por estado')}>
+      <span><strong>{confirmedTotal}</strong> {t('confirmadas o asistidas')}</span>
+      <span><strong>{shown.appointments_confirmed || 0}</strong> {t('confirmadas')}</span>
+      <span><strong>{shown.appointments_showed || 0}</strong> {t('asistieron')}</span>
+      <span><strong>{shown.appointments_noshow || 0}</strong> {t('no asistieron')}</span>
+      <span><strong>{shown.appointments_cancelled || 0}</strong> {t('canceladas')}</span>
+    </div>}
+    <div className="metric-grid compact ads-metrics-grid ghl-cost-grid">
+      <article className="metric-card blue"><span>{t('Gasto en anuncios')}</span><strong>{money(spend)}</strong>
+        <small>{spendSource === 'manual' ? t('ingresado a mano') : spendSource === 'meta' ? t('desde Meta') : t(client.meta_ad_account_id ? 'sin dato de Meta todavía' : 'falta la cuenta publicitaria de Meta')}{canEditSpend && <> · <button className="link-button" type="button" onClick={openSpend}>{t(manualSpend !== null ? 'Editar' : 'Ingresar a mano')}</button></>}</small>
+      </article>
+      <article className="metric-card green"><span>{t('Costo por lead')}</span><strong>{costPer(shown?.leads || 0)}</strong><small>{t('gasto / leads')}</small></article>
+      <article className="metric-card amber"><span>{t('Costo por cita agendada')}</span><strong>{costPer(shown?.appointments_booked || 0)}</strong><small>{t('gasto / citas no canceladas')}</small></article>
+      <article className="metric-card purple"><span>{t('Costo por cita confirmada')}</span><strong>{costPer(confirmedTotal)}</strong><small>{t('gasto / confirmadas o asistidas')}</small></article>
+    </div>
+    {shown?.meta_spend_error && spendSource !== 'manual' && <p className="form-error" data-no-translate>{shown.meta_spend_error}</p>}
+    {spendOpen && <form className="ghl-range-form" onSubmit={saveSpend}>
+      <label>{t('Gasto del periodo (USD)')}<input type="number" min="0" step="0.01" value={spendDraft} onChange={(e) => setSpendDraft(e.target.value)} placeholder={shown?.meta_spend != null ? String(shown.meta_spend) : '0.00'} autoFocus /></label>
+      <button className="primary-button compact-button" disabled={busy === 'spend'}>{t(busy === 'spend' ? 'Guardando…' : 'Guardar gasto')}</button>
+      <button className="text-button" type="button" onClick={() => setSpendOpen(false)}>{t('Cancelar')}</button>
+      <small className="muted">{t('Déjalo vacío para usar el gasto de Meta.')}</small>
+    </form>}
     {selected === 'custom'
       ? rangeResult && <p className="muted">{t('Consulta en vivo; no se guarda en el historial.')}</p>
-      : shown ? <p className="muted">{t('Última sincronización')}: {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(shown.synced_at))}{shown.sync_status === 'error' ? ` · ${t('con error')}` : ''}</p>
+      : synced ? <p className="muted">{t('Última sincronización')}: {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(shown.synced_at))}{shown.sync_status === 'error' ? ` · ${t('con error')}` : ''}</p>
         : <p className="muted">{t('Este ciclo todavía no se ha sincronizado.')}</p>}
   </section>
 }
