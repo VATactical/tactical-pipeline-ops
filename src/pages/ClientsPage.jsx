@@ -13,28 +13,26 @@ const statuses = ['Todos', 'ONBOARDING', 'A2P SUBMITTED', 'ADS LIVE', 'ADS PAUSE
 const naturalCode = (value) => Number(String(value).match(/\d+/)?.[0] || 0)
 const dossierComplete = (client) => requiredFields.every((key) => client[key] && !/pendiente|confirmar|verificar|bloquead|rechazad/i.test(String(client[key])))
 
+// Three compact chips (GBP · Meta · GHL); the full status lives in the tooltip and aria-label.
 function ClientIntegrationIndicators({ client }) {
   const { t } = useLanguage()
-  const gbpLabel = client.gbp_access_confirmed === true ? 'Acceso confirmado' : client.gbp_access_confirmed === false ? 'Sin acceso' : 'Pendiente'
-  const gbpTone = client.gbp_access_confirmed === true ? 'positive' : client.gbp_access_confirmed === false ? 'negative' : 'pending'
-  const metaPayment = client.meta_payment_method_confirmed
-  const metaPaymentLabel = metaPayment == null ? 'Pendiente' : metaPayment ? 'Agregado' : 'No agregado'
-  const metaPaymentTone = metaPayment == null ? 'pending' : metaPayment ? 'positive' : 'negative'
-  const metaPaymentMark = metaPayment == null ? '—' : metaPayment ? '✓' : '✕'
-  const ghlPayment = client.payment_method_confirmed
-  const ghlPaymentLabel = ghlPayment == null ? 'Pendiente' : ghlPayment ? 'Agregado' : 'No agregado'
-  const ghlPaymentTone = ghlPayment == null ? 'pending' : ghlPayment ? 'positive' : 'negative'
-  const ghlPaymentMark = ghlPayment == null ? '—' : ghlPayment ? '✓' : '✕'
+  const toneOf = (value) => value == null ? 'pending' : value ? 'positive' : 'negative'
+  const markOf = (value) => value == null ? '—' : value ? '✓' : '✕'
+  const items = [
+    { key: 'gbp', short: 'GBP', name: t('Acceso GBP'), value: client.gbp_access_confirmed, label: client.gbp_access_confirmed === true ? 'Acceso confirmado' : client.gbp_access_confirmed === false ? 'Sin acceso' : 'Pendiente' },
+    { key: 'meta', short: 'Meta', name: t('Método de pago en Meta'), value: client.meta_payment_method_confirmed, label: client.meta_payment_method_confirmed == null ? 'Pendiente' : client.meta_payment_method_confirmed ? 'Agregado' : 'No agregado' },
+    { key: 'ghl', short: 'GHL', name: t('Método de pago en GHL'), value: client.payment_method_confirmed, label: client.payment_method_confirmed == null ? 'Pendiente' : client.payment_method_confirmed ? 'Agregado' : 'No agregado' },
+  ]
   return <div className="client-integration-indicators" aria-label={t('Accesos e integraciones')}>
-    <span className={`integration-pill ${gbpTone}`} title={`${t('Acceso GBP')}: ${t(gbpLabel)}`}><b>GBP</b><span>{t(gbpLabel)}</span></span>
-    <span className={`integration-pill ${metaPaymentTone}`} title={`${t('Método de pago en Meta')}: ${t(metaPaymentLabel)}`} aria-label={`${t('Método de pago en Meta')}: ${t(metaPaymentLabel)}`}><b>{t('Método de pago en Meta')}</b><span aria-hidden="true">{metaPaymentMark}</span></span>
-    <span className={`integration-pill ${ghlPaymentTone}`} title={`${t('Método de pago en GHL')}: ${t(ghlPaymentLabel)}`} aria-label={`${t('Método de pago en GHL')}: ${t(ghlPaymentLabel)}`}><b>{t('Método de pago en GHL')}</b><span aria-hidden="true">{ghlPaymentMark}</span></span>
+    {items.map((item) => <span key={item.key} className={`integration-chip ${toneOf(item.value)}`} title={`${item.name}: ${t(item.label)}`} aria-label={`${item.name}: ${t(item.label)}`}>
+      <b data-no-translate>{item.short}</b><span aria-hidden="true">{markOf(item.value)}</span>
+    </span>)}
   </div>
 }
 
 export default function ClientsPage() {
   const { profile } = useAuth()
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const [clients, setClients] = useState([])
   const [blockedIds, setBlockedIds] = useState(new Set())
@@ -119,7 +117,7 @@ export default function ClientsPage() {
         <label>Bloqueos<select value={filters.blockers} onChange={(event) => setFilter('blockers', event.target.value)}><option>Todos</option><option>Con bloqueos</option><option>Sin bloqueos</option></select></label>
         <label>Ordenar<select value={filters.sort} onChange={(event) => setFilter('sort', event.target.value)}><option>Código</option><option>Actualización reciente</option><option>Nombre</option><option>Estado</option></select></label>
       </div>
-      <div className="filter-summary"><span>{filtered.length} de {visibleClients.length} {showArchived ? 'archivados' : 'clientes activos'}</span><div>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
+      <div className="filter-summary"><span>{filtered.length} {t('de')} {visibleClients.length} {t(showArchived ? 'archivados' : 'clientes activos')}</span><div>{hasFilters && <button className="text-button" onClick={clearFilters}>Limpiar filtros</button>}</div></div>
     </section>
     {filtered.length ? <section className="client-list-view"><div className="client-list-header"><span>Cliente</span><span>Estado</span><span>Progreso</span><span>Deadline</span><span>{t('Accesos e integraciones')}</span><span>{t('Tickets abiertos')}</span><span /></div>{filtered.map((client) => {
       const blocked = blockedIds.has(client.id)
@@ -130,7 +128,7 @@ export default function ClientsPage() {
         <div className="client-list-name"><span className="client-code">{client.code}</span><strong>{client.business_name}</strong></div>
         <span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span>
         <div className="client-list-progress"><strong>{progress}%</strong><div className="progress-track"><span style={{ width: `${progress}%` }} /></div></div>
-        <div className={`client-deadline ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`}><span>{t('Deadline')}</span><b>{client.target_launch_date || t('Sin fecha')}</b></div>
+        <div className={`client-deadline ${client.target_launch_date ? '' : 'empty'} ${client.target_launch_date && !['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'].includes(client.status) && new Date(`${client.target_launch_date}T23:59:59`) < new Date() ? 'overdue' : ''}`} title={t('Deadline de lanzamiento ADS')}>{client.target_launch_date ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${client.target_launch_date}T12:00:00`)) : t('Sin fecha')}</div>
         <ClientIntegrationIndicators client={client} />
         <span className={`client-list-tickets ${openTicketCount > 0 ? 'has-open-tickets' : ''}`} title={t('Tickets registrados en TP Ops')}><strong>{openTicketCount}</strong> {t(openTicketCount === 1 ? 'ticket abierto' : 'tickets abiertos')}</span><span className="row-arrow">→</span>
       </Link>
