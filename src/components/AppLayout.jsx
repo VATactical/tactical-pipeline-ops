@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { defaultCompany, loadCompanySettings, resolveCompanyLogo } from '../services/companyService'
 import { LanguageToggle, useLanguage } from '../i18n/LanguageContext'
 import { loadOwnEodState, loadUnreadEodCount } from '../services/eodService'
 import TeamAvatar from './TeamAvatar'
+import { NavIcon, PageTrailProvider, navGroups, sectionFor, usePageTrailState } from './navigation'
 
 const roleLabels = {
   onboarding_media: 'Integrante del equipo',
@@ -14,6 +15,10 @@ const roleLabels = {
 }
 
 export default function AppLayout() {
+  return <PageTrailProvider><AppShell /></PageTrailProvider>
+}
+
+function AppShell() {
   const { profile, user, signOut } = useAuth()
   const { t } = useLanguage()
   const location = useLocation()
@@ -21,6 +26,8 @@ export default function AppLayout() {
   const [company, setCompany] = useState(defaultCompany)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const pageTrail = usePageTrailState()
+  const section = sectionFor(location.pathname)
   useEffect(() => {
     document.documentElement.dataset.theme = 'light'
     window.localStorage.setItem('tp-theme', 'light')
@@ -53,8 +60,14 @@ export default function AppLayout() {
   }, [])
 
 
+  // Browser tab names the place: "C4 Crystal Flowers · TP | Ops", "Clientes · TP | Ops".
+  const pageName = pageTrail.length ? pageTrail[0].label : section ? t(section.label) : ''
   useEffect(() => {
-    document.title = company.system_name || 'TP | Ops'
+    const system = company.system_name || 'TP | Ops'
+    document.title = pageName ? `${pageName} · ${system}` : system
+  }, [company.system_name, pageName])
+
+  useEffect(() => {
     let favicon = document.querySelector('link[rel="icon"]')
     if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon) }
     favicon.href = resolveCompanyLogo(company.logo_url)
@@ -85,7 +98,7 @@ export default function AppLayout() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img className="brand-logo" src={logoUrl} alt="Logo de TP | Ops" />
-          <div><p className="eyebrow">{company.company_name}</p><h1>{company.system_name}</h1></div>
+          <div><p className="eyebrow">{company.company_name}</p><h1>{company.system_name}</h1>{section && <p className="mobile-current-section">{t(section.label)}</p>}</div>
           <button
             className="mobile-menu-toggle"
             type="button"
@@ -99,14 +112,18 @@ export default function AppLayout() {
         </div>
 
         <nav id="main-navigation" className={mobileMenuOpen ? 'mobile-open' : ''} aria-label="Navegación principal">
-          <NavLink to="/" end>Panel</NavLink>
-          <NavLink to="/clientes">Clientes</NavLink>
-          <NavLink to="/tickets">{t('Tickets')}</NavLink>
-          <NavLink to="/training">Training</NavLink>
-          <NavLink to="/mi-equipo">Mi equipo</NavLink>
-          <NavLink to="/eod-reports">EOD Reports{eodUnreadCount > 0 && <span className="nav-badge">{eodUnreadCount}</span>}</NavLink>
-          {profile?.role === 'superadmin' && <NavLink to="/equipo">Usuarios</NavLink>}
-          {(profile?.role === 'superadmin' || profile?.permissions?.operations_admin) && <NavLink to="/mi-empresa">Mi empresa</NavLink>}
+          {navGroups.map((group) => {
+            const items = group.items.filter((item) => !item.show || item.show(profile))
+            if (!items.length) return null
+            return <div className="nav-group" key={group.label}>
+              <p className="nav-group-label">{t(group.label)}</p>
+              {items.map((item) => <NavLink key={item.to} to={item.to} end={item.end}>
+                <NavIcon name={item.icon} />
+                <span className="nav-label">{t(item.label)}</span>
+                {item.badge === 'eod' && eodUnreadCount > 0 && <span className="nav-badge" aria-label={`${eodUnreadCount} ${t('sin revisar')}`}>{eodUnreadCount}</span>}
+              </NavLink>)}
+            </div>
+          })}
         </nav>
 
         <div className={`user-card${mobileMenuOpen ? ' mobile-open' : ''}`}>
@@ -117,7 +134,19 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <main className="main-content"><div className="content-area"><Outlet /></div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span></div></footer></main>
+      <main className="main-content"><div className="content-area">
+        {section && <nav className="page-trail" aria-label={t('Ubicación')}>
+          <NavIcon name={section.icon} />
+          <span className="page-trail-group">{t(section.group)}</span>
+          <span className="page-trail-sep" aria-hidden="true">›</span>
+          {pageTrail.length ? <Link to={section.to}>{t(section.label)}</Link> : <span className="page-trail-current" aria-current="page">{t(section.label)}</span>}
+          {pageTrail.map((crumb, index) => <span className="page-trail-step" key={`${crumb.label}-${index}`}>
+            <span className="page-trail-sep" aria-hidden="true">›</span>
+            {crumb.to && index < pageTrail.length - 1 ? <Link to={crumb.to} data-no-translate>{crumb.label}</Link> : <span className={index === pageTrail.length - 1 ? 'page-trail-current' : ''} aria-current={index === pageTrail.length - 1 ? 'page' : undefined} data-no-translate>{crumb.label}</span>}
+          </span>)}
+        </nav>}
+        <Outlet />
+      </div><footer className="app-footer"><img src={logoUrl} alt="" /><div><strong>{company.system_name}</strong><span>© {new Date().getFullYear()} {company.company_name}{company.company_email ? ` · ${company.company_email}` : ''}</span></div></footer></main>
     </div>
   )
 }

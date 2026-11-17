@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import AdsReportsPanel from '../components/AdsReportsPanel'
 import GhlMetricsPanel from '../components/GhlMetricsPanel'
+import { usePageTrail } from '../components/navigation'
 import ClientOpsPanel from '../components/ClientOpsPanel'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -162,6 +163,14 @@ export default function ClientDetailPage() {
     observer.observe(header)
     return () => observer.disconnect()
   }, [data?.client?.id])
+  // Location trail: Operación › Clientes › [Archivados ›] C4 Business › Ads
+  const trailClient = data?.client
+  const activeTabLabel = t(tabs.find(([key]) => key === activeTab)?.[1] || 'Dossier')
+  usePageTrail(trailClient ? [
+    ...(trailClient.archived ? [{ label: t('Archivados'), to: '/clientes?vista=archivados' }] : []),
+    { label: `${trailClient.code} ${trailClient.business_name}`, to: `/clientes/${trailClient.id}?tab=dossier` },
+    { label: activeTabLabel },
+  ] : [])
   if (!data && !error) return <LoadingScreen />
   if (error && !data) return <div className="page-stack"><p className="form-error">{error}</p><Link to="/clientes">← Volver</Link></div>
 
@@ -416,7 +425,6 @@ export default function ClientDetailPage() {
   }
 
   return <div className="page-stack client-dossier-page" data-client-tab={activeTab}>
-    <Link className="back-link" to={client.archived ? '/clientes?vista=archivados' : '/clientes'}>← {t(client.archived ? 'Clientes archivados' : 'Todos los clientes')}</Link>
     <header ref={clientHeaderRef} className="page-header client-detail-header"><div><p className="eyebrow">{client.code} · {client.archived ? t('Cliente archivado') : t('Cliente activo')} {canEdit && <button className="text-button compact-button" type="button" onClick={() => { setCodeDraft(client.code); setCodeEditing(true); setError(''); setMessage('') }}>{t('Editar código')}</button>}</p><h2>{client.business_name}</h2><p className="muted">{t(client.phase)}</p></div><div className="header-actions dossier-actions"><span className={`lifecycle large-pill ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span>{canManageArchive && !client.archived && <button className="secondary-button archive-client-button" type="button" disabled={saving} onClick={() => { setArchiveOpen(true); setError(''); setMessage('') }}>{t('Archivar cliente')}</button>}{canManageArchive && client.archived && <button className="primary-button compact-button" type="button" disabled={saving} onClick={restoreClient}>{saving ? 'Restaurando…' : t('Restaurar cliente')}</button>}{canEdit && ['ADS LIVE', 'CRUISE CONTROL'].includes(client.status) && <button className="danger-button" type="button" disabled={saving} onClick={() => { setPauseOpen(true); setError(''); setMessage('') }}>{t('Pausar ADS')}</button>}{canEdit && client.status === 'ADS PAUSED' && <button className="primary-button compact-button" type="button" disabled={saving} onClick={resumeAds}>{saving ? 'Reactivando…' : 'Reactivar ADS'}</button>}{slackChannelUrl && <a className="secondary-button slack-channel-button" href={slackChannelUrl} target="_blank" rel="noreferrer">{t('Abrir Slack')} ↗</a>}{driveFolderUrl && <a className="secondary-button drive-folder-button" href={driveFolderUrl} target="_blank" rel="noreferrer">{t('Abrir Drive')} ↗</a>}<button className="secondary-button" type="button" onClick={copyForGoogleDocs}>{t('Copiar para Google Docs')}</button><button className="secondary-button" type="button" onClick={downloadPdf}>{t('Descargar WWWW PDF')}</button>{client.google_docs_url && <a className="secondary-button" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Abrir Google Docs')} ↗</a>}{canEdit && <button className="secondary-button" type="button" disabled={!client.google_docs_url} onClick={markDocsUpdated}>{t('Marcar como actualizado')}</button>}</div></header>
     {showPinnedClient && <div className="client-name-pin" aria-label={client.business_name}><span className="client-name-pin-code">{client.code}</span><strong>{client.business_name}</strong><span className="client-name-pin-phase">{t(client.phase)}</span><span className={`lifecycle client-name-pin-status ${client.archived ? 'archived' : client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.archived ? t('ARCHIVADO') : t(client.status)}</span></div>}
     <div className="client-sticky-shell">

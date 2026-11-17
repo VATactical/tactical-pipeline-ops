@@ -2802,6 +2802,114 @@ html[data-theme='light'] .integration-pill b { overflow-wrap: normal; white-spac
   .eod-payroll-ai-controls > .secondary-button { width: 100%; white-space: normal; }
 }
 
+
+/* ===================================================================
+   UI polish (Nov 2026): one button system, consistent headers,
+   readable client list chips and a tidier client header.
+   =================================================================== */
+
+/* Page headers: title, subtitle and actions on one rhythm */
+html[data-theme='light'] .page-header { align-items: flex-start; margin-bottom: .35rem; }
+html[data-theme='light'] .page-header h2 { margin: .2rem 0 .45rem; line-height: 1.08; }
+html[data-theme='light'] .page-header .muted { margin: 0; max-width: 70ch; line-height: 1.5; }
+html[data-theme='light'] .page-header .eyebrow { margin-bottom: 0; }
+html[data-theme='light'] :is(.page-header, .section-heading) .status-pill { white-space: nowrap; }
+html[data-theme='light'] .header-actions { flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; }
+
+/* Button system: 40px default, 34px compact, same type scale everywhere */
+html[data-theme='light'] :is(.primary-button, .secondary-button, .danger-button) {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-height: 40px; padding: 0 1rem; border-radius: 10px;
+  font-size: .875rem; font-weight: 700; line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer;
+}
+html[data-theme='light'] :is(.primary-button, .secondary-button, .danger-button).compact-button { min-height: 34px; padding: 0 .8rem; font-size: .8125rem; }
+html[data-theme='light'] :is(.page-header, .section-heading, .header-actions, .section-actions) :is(.primary-button, .secondary-button, .danger-button) { margin: 0; }
+html[data-theme='light'] .danger-button { border: 1px solid #f3c4cb; background: var(--tp-danger-soft); color: var(--tp-danger); }
+html[data-theme='light'] .danger-button:hover:not(:disabled) { border-color: var(--tp-danger); background: var(--tp-danger); color: #fff; }
+html[data-theme='light'] :is(.secondary-button, .danger-button):disabled { border-color: var(--tp-border); background: var(--tp-surface-muted); color: var(--tp-text-faint); box-shadow: none; opacity: 1; cursor: not-allowed; }
+/* Form submit buttons keep their natural width instead of stretching across the card */
+html[data-theme='light'] form:not(.login-card form) > .primary-button { justify-self: start; }
+html[data-theme='light'] .text-button { padding: 0; font-size: .875rem; line-height: 1.3; }
+html[data-theme='light'] .text-button.compact-button { min-height: 0; font-size: .8125rem; }
+
+/* Sidebar footer: account link and sign out read as a pair */
+html[data-theme='light'] .user-card .account-link, html[data-theme='light'] .user-card > button.text-button {
+  justify-self: start; padding: .2rem 0; color: var(--tp-text-muted); font-size: .85rem; font-weight: 650; text-decoration: none;
+}
+html[data-theme='light'] .user-card .account-link:hover, html[data-theme='light'] .user-card > button.text-button:hover { color: var(--tp-accent); text-decoration: none; }
+html[data-theme='light'] .user-card .account-link.active { color: var(--tp-accent); }
+
+/* Client detail header: title left, every action on one aligned row */
+html[data-theme='light'] .client-detail-header { flex-direction: column; align-items: stretch; gap: .85rem; }
+html[data-theme='light'] .client-detail-header > div:first-child { flex: none; }
+html[data-theme='light'] .client-detail-header .header-actions { flex: none; max-width: none; justify-content: flex-start; }
+html[data-theme='light'] .client-detail-header .header-actions > :is(button, a) { min-height: 36px; padding: 0 .85rem; font-size: .8125rem; }
+html[data-theme='light'] .client-detail-header .large-pill { display: inline-flex; align-items: center; min-height: 36px; padding: 0 .85rem; }
+html[data-theme='light'] .client-detail-header .eyebrow .text-button { margin-left: .5rem; font-size: .75rem; letter-spacing: 0; text-transform: none; }
+html[data-theme='light'] .client-sticky-shell { border-color: var(--tp-border); background: rgba(245, 247, 251, .94); }
+
+/* Client summary cards: aligned labels, no dates broken over three lines */
+html[data-theme='light'] .client-ops-summary-grid { align-items: stretch; }
+html[data-theme='light'] .client-ops-summary-grid > .compact-summary-card { align-content: start; gap: .5rem; padding: 1rem 1.1rem; }
+html[data-theme='light'] .client-ops-summary-grid .launch-deadline { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .5rem; border-left-width: 1px; }
+html[data-theme='light'] .client-ops-summary-grid .launch-deadline > span { display: inline-block; align-self: flex-start; width: max-content; max-width: 100%; padding: .2rem .6rem; border-radius: 999px; background: var(--tp-accent-soft); color: var(--tp-accent-hover); font-size: .72rem; font-weight: 700; text-align: left; }
+html[data-theme='light'] .client-ops-summary-grid .launch-deadline.overdue > span { background: var(--tp-danger-soft); color: var(--tp-danger); }
+html[data-theme='light'] .client-ops-summary-grid .compact-last-copy-card > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; row-gap: .05rem; align-items: baseline; }
+html[data-theme='light'] .client-ops-summary-grid .compact-last-copy-card span { grid-column: 1 / -1; font-size: .62rem; letter-spacing: .06em; }
+html[data-theme='light'] .client-ops-summary-grid .compact-last-copy-card strong { font-size: .8rem; font-weight: 650; text-align: left; overflow-wrap: normal; }
+html[data-theme='light'] .client-ops-summary-grid .compact-last-copy-card small { color: var(--tp-text-muted); font-size: .75rem; }
+
+/* Client list: one chip per line, label left and value right, nothing overlaps */
+html[data-theme='light'] .client-list-row .client-integration-indicators { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
+html[data-theme='light'] .client-list-row .client-integration-indicators .integration-pill:last-child { grid-column: auto; }
+html[data-theme='light'] .client-integration-indicators .integration-pill { justify-content: space-between; gap: .5rem; width: 100%; padding: .2rem .5rem; font-size: .68rem; line-height: 1.3; }
+html[data-theme='light'] .client-integration-indicators .integration-pill b { overflow: hidden; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme='light'] .client-integration-indicators .integration-pill span { flex: 0 0 auto; font-weight: 600; white-space: nowrap; }
+html[data-theme='light'] .client-list-header { font-size: .68rem; letter-spacing: .08em; }
+html[data-theme='light'] .client-list-header > * { white-space: nowrap; }
+
+
+/* ===================================================================
+   Wayfinding (Nov 2026): grouped navigation with icons, a location
+   trail on every page, and the current section on the mobile bar.
+   =================================================================== */
+html[data-theme='light'] .sidebar nav { display: grid; gap: 1.1rem; align-content: start; }
+html[data-theme='light'] .nav-group { display: grid; gap: .15rem; }
+html[data-theme='light'] .nav-group-label { margin: 0 0 .3rem .85rem; color: var(--tp-text-faint); font-size: .66rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+html[data-theme='light'] .sidebar nav a { display: flex; align-items: center; gap: .65rem; min-height: 40px; }
+html[data-theme='light'] .sidebar nav a .nav-icon { flex: none; color: var(--tp-text-faint); transition: color .15s; }
+html[data-theme='light'] .sidebar nav a:hover .nav-icon { color: var(--tp-text-muted); }
+html[data-theme='light'] .sidebar nav a.active .nav-icon { color: var(--tp-accent); }
+html[data-theme='light'] .sidebar nav a .nav-label { flex: 1 1 auto; min-width: 0; }
+html[data-theme='light'] .sidebar nav a .nav-badge { margin-left: auto; }
+
+/* Location trail above each page title */
+html[data-theme='light'] .page-trail {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+  margin: 0 0 1.1rem; color: var(--tp-text-muted); font-size: .82rem; font-weight: 600; line-height: 1.3;
+}
+html[data-theme='light'] .page-trail .nav-icon { color: var(--tp-accent); }
+html[data-theme='light'] .page-trail-group { color: var(--tp-text-faint); }
+html[data-theme='light'] .page-trail-sep { color: #b4c0cd; font-weight: 400; }
+html[data-theme='light'] .page-trail-step { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+html[data-theme='light'] .page-trail a { color: var(--tp-text-muted); text-decoration: none; border-radius: 4px; }
+html[data-theme='light'] .page-trail a:hover { color: var(--tp-accent); text-decoration: underline; text-underline-offset: 3px; }
+html[data-theme='light'] .page-trail-current { overflow: hidden; color: var(--tp-text); font-weight: 750; text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
+
+/* The current section only shows on the compact mobile bar */
+html[data-theme='light'] .mobile-current-section { display: none; }
+@media (max-width: 800px) {
+  html[data-theme='light'] .nav-group-label { margin-left: .5rem; }
+  /* Keep the menu collapsed until the Menu button opens it */
+  html[data-theme='light'] .sidebar nav:not(.mobile-open) { display: none; }
+  html[data-theme='light'] .sidebar nav.mobile-open { grid-template-columns: minmax(0, 1fr); gap: .9rem; }
+  html[data-theme='light'] .page-trail { margin-bottom: .75rem; font-size: .78rem; }
+  html[data-theme='light'] .page-trail-group, html[data-theme='light'] .page-trail-group + .page-trail-sep { display: none; }
+  html[data-theme='light'] .page-trail-current { max-width: 24ch; }
+  html[data-theme='light'] .sidebar-brand h1 { display: none; }
+  html[data-theme='light'] .mobile-current-section { display: block; margin: 0; color: var(--tp-text); font-size: 1rem; font-weight: 800; letter-spacing: -.01em; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-theme='light'] * { transition: none !important; }
 }
