@@ -2910,6 +2910,89 @@ html[data-theme='light'] .mobile-current-section { display: none; }
   html[data-theme='light'] .mobile-current-section { display: block; margin: 0; color: var(--tp-text); font-size: 1rem; font-weight: 800; letter-spacing: -.01em; }
 }
 
+
+/* ===================================================================
+   Client list density (Nov 2026): one compact line per client,
+   short integration chips, plain deadline, filters across the card.
+   =================================================================== */
+@media (min-width: 801px) {
+  html[data-theme='light'] .clients-page .client-list-header,
+  html[data-theme='light'] .clients-page .client-list-row {
+    grid-template-columns: minmax(170px, 2.4fr) 124px minmax(90px, 1fr) 100px 184px 96px 14px !important;
+    column-gap: 1rem;
+  }
+  html[data-theme='light'] .clients-page .client-list-row { min-height: 56px; padding: .6rem 1rem; }
+  html[data-theme='light'] .clients-page .client-list-header { padding: 0 1rem .35rem; }
+}
+/* Medium screens (tablets, small laptops): two lines per client instead of a squeezed table */
+@media (max-width: 1120px) {
+  html[data-theme='light'] .clients-page .client-list-header { display: none !important; }
+  html[data-theme='light'] .clients-page .client-list-row {
+    grid-template-columns: minmax(120px, 1fr) auto auto auto !important;
+    grid-template-areas: "name name status arrow" "progress deadline chips tickets";
+    column-gap: 1rem; row-gap: .55rem; padding: .75rem .9rem;
+  }
+  html[data-theme='light'] .clients-page .client-list-name { grid-area: name; }
+  html[data-theme='light'] .clients-page .client-list-row .lifecycle { grid-area: status; justify-self: end; }
+  html[data-theme='light'] .clients-page .client-list-row .row-arrow { display: inline; grid-area: arrow; }
+  html[data-theme='light'] .clients-page .client-list-progress { grid-area: progress; max-width: 240px; }
+  html[data-theme='light'] .clients-page .client-list-row .client-deadline { grid-area: deadline; align-self: center; }
+  html[data-theme='light'] .clients-page .client-list-row .client-integration-indicators { grid-area: chips; }
+  html[data-theme='light'] .clients-page .client-list-tickets { grid-area: tickets; align-self: center; }
+}
+@media (max-width: 800px) {
+  html[data-theme='light'] .clients-page .client-list-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "name name" "status deadline" "progress tickets" "chips chips";
+    padding: .75rem .85rem;
+  }
+  html[data-theme='light'] .clients-page .client-list-row .lifecycle { justify-self: start; }
+  html[data-theme='light'] .clients-page .client-list-row .client-deadline { justify-self: end; }
+  html[data-theme='light'] .clients-page .client-list-progress { max-width: none; }
+  html[data-theme='light'] .clients-page .client-list-tickets { justify-self: end; }
+  html[data-theme='light'] .clients-page .client-list-row .row-arrow { display: none; }
+  html[data-theme='light'] .clients-page .client-list-name { flex-wrap: wrap; }
+  html[data-theme='light'] .clients-page .client-list-name strong { white-space: normal; }
+}
+html[data-theme='light'] .clients-page .client-list-view { gap: .4rem; }
+html[data-theme='light'] .clients-page .client-list-row { border-radius: 10px; }
+html[data-theme='light'] .clients-page .client-list-row:hover { border-color: #9ccbe6; background: #fbfdff; }
+html[data-theme='light'] .clients-page .client-list-name { display: flex; align-items: baseline; gap: .6rem; min-width: 0; }
+html[data-theme='light'] .clients-page .client-list-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme='light'] .clients-page .client-list-row .lifecycle { justify-self: start; }
+html[data-theme='light'] .clients-page .client-list-progress { display: flex; align-items: center; gap: .5rem; }
+html[data-theme='light'] .clients-page .client-list-progress strong { flex: 0 0 2.4rem; font-size: .8rem; }
+html[data-theme='light'] .clients-page .client-list-progress .progress-track { flex: 1 1 auto; min-width: 40px; height: 6px; margin: 0; }
+html[data-theme='light'] .clients-page .status-tabs button { padding: .4rem .75rem; font-size: .78rem; }
+html[data-theme='light'] .clients-page .status-tabs button span { min-width: 1.3rem; font-size: .7rem; }
+
+/* Deadline: just the date, red when overdue */
+html[data-theme='light'] .clients-page .client-list-row .client-deadline { display: block; margin: 0; padding: 0; border: 0; background: none; color: var(--tp-text); font-size: .82rem; font-weight: 650; white-space: nowrap; }
+html[data-theme='light'] .clients-page .client-list-row .client-deadline.empty { color: var(--tp-text-faint); font-weight: 500; }
+html[data-theme='light'] .clients-page .client-list-row .client-deadline.overdue { color: var(--tp-danger); }
+
+/* GBP · Meta · GHL chips */
+html[data-theme='light'] .clients-page .client-list-row .client-integration-indicators { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+html[data-theme='light'] .integration-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .18rem .5rem; border: 1px solid transparent; border-radius: 999px; font-size: .72rem; line-height: 1.3; white-space: nowrap; cursor: help; }
+html[data-theme='light'] .integration-chip b { font-weight: 700; }
+html[data-theme='light'] .integration-chip span { font-weight: 800; }
+html[data-theme='light'] .integration-chip.positive { border-color: #bfe5d0; background: var(--tp-success-soft); color: var(--tp-success); }
+html[data-theme='light'] .integration-chip.negative { border-color: #f5c6cd; background: var(--tp-danger-soft); color: var(--tp-danger); }
+html[data-theme='light'] .integration-chip.pending { border-color: #f3dca6; background: var(--tp-warning-soft); color: var(--tp-warning); }
+
+/* Tickets column */
+html[data-theme='light'] .clients-page .client-list-tickets { color: var(--tp-text-faint); font-size: .8rem; white-space: nowrap; }
+html[data-theme='light'] .clients-page .client-list-tickets.has-open-tickets { color: var(--tp-danger); font-weight: 650; }
+html[data-theme='light'] .clients-page .row-arrow { color: var(--tp-text-faint); }
+html[data-theme='light'] .clients-page .client-list-row:hover .row-arrow { color: var(--tp-accent); }
+
+/* Filters use the full card width */
+html[data-theme='light'] .clients-page .filter-controls { grid-template-columns: minmax(240px, 2fr) repeat(4, minmax(130px, 1fr)); gap: .75rem; }
+@media (max-width: 1200px) { html[data-theme='light'] .clients-page .filter-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { html[data-theme='light'] .clients-page .filter-controls { grid-template-columns: minmax(0, 1fr); } }
+html[data-theme='light'] .clients-page .client-filters { display: grid; gap: .9rem; }
+html[data-theme='light'] .clients-page .filter-summary { margin: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   html[data-theme='light'] * { transition: none !important; }
 }
