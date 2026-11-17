@@ -387,6 +387,13 @@ export async function syncClientGhlMetrics(clientId, options = {}) {
   return data
 }
 
+export async function setClientPeriodSpend(clientId, periodStart, periodEnd, amount) {
+  const { error } = await supabase.rpc('set_client_period_spend', {
+    p_client_id: clientId, p_period_start: periodStart, p_period_end: periodEnd, p_amount: amount,
+  })
+  if (error) throw error
+}
+
 export function fetchClientGhlRange(clientId, from, to) {
   return syncClientGhlMetrics(clientId, { from, to })
 }

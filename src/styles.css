@@ -3053,3 +3053,9 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
   .ghl-period-bar > .secondary-button { width: 100%; }
   .ghl-range-form > * { flex: 1 1 100%; }
 }
+
+/* GHL panel: appointment status breakdown and cost row. */
+.ghl-appointment-breakdown { display: flex; flex-wrap: wrap; gap: .45rem .9rem; margin: .7rem 0 .2rem; color: #4f667b; font-size: .82rem; }
+.ghl-appointment-breakdown strong { color: #182536; font-size: .92rem; }
+.ghl-cost-grid { margin-top: .7rem; }
+.ghl-cost-grid .link-button { padding: 0; border: 0; background: none; color: #087cae; font: inherit; font-weight: 700; cursor: pointer; }
