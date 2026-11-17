@@ -1028,7 +1028,8 @@ html[data-theme='light'] .client-note-form { border-color: #c8d8e5; background: 
 .client-dossier-page[data-client-tab="ads"] .client-tab-section.tab-ads,
 .client-dossier-page[data-client-tab="notes"] .client-tab-section.tab-notes,
 .client-dossier-page[data-client-tab="tasks"] .client-tab-section.tab-tasks,
-.client-dossier-page[data-client-tab="audit"] .client-tab-section.tab-audit { display: block; }
+.client-dossier-page[data-client-tab="audit"] .client-tab-section.tab-audit,
+.client-dossier-page[data-client-tab="checklist"] .client-tab-section.tab-checklist { display: block; }
 .client-dossier-page[data-client-tab="dossier"] .print-dossier { display: grid; }
 html[data-theme='light'] .client-detail-tabs { border-color: #c8d8e5; background: #ffffffee; box-shadow: 0 5px 18px #24435b12; }
 html[data-theme='light'] .client-detail-tabs button { color: #526b80; }
@@ -3059,3 +3060,13 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .ghl-appointment-breakdown strong { color: #182536; font-size: .92rem; }
 .ghl-cost-grid { margin-top: .7rem; }
 .ghl-cost-grid .link-button { padding: 0; border: 0; background: none; color: #087cae; font: inherit; font-weight: 700; cursor: pointer; }
+
+/* Client page: clickable missing fields, long text, editing state. */
+.missing-chips button { padding: .42rem .62rem; border: 1px solid #e2cc7f; border-radius: 99px; background: #fff8df; color: #5d4b16; font: inherit; font-size: .78rem; font-weight: 700; line-height: 1.3; cursor: pointer; }
+.missing-chips button:hover { border-color: #c9a93c; background: #fff1c2; }
+.detail-item.long-field strong { white-space: pre-wrap; font-weight: 600; line-height: 1.45; }
+.detail-item textarea { min-height: 4.6rem; margin: 0; font: inherit; }
+.dossier-section.is-editing { border-color: #8fd3ef; box-shadow: 0 0 0 3px #19c6ff22, 0 18px 45px #10182811; }
+.detail-item.changed { border-radius: 10px; background: #fff8df; box-shadow: inset 3px 0 0 #e8b931; }
+.dossier-edit-hint { align-self: center; margin-right: .3rem; color: #6a7f92; font-size: .74rem; }
+.client-dossier-page[data-client-tab="checklist"] .client-tab-section.client-workflow-groups { display: grid; gap: 1rem; }
