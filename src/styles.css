@@ -2993,6 +2993,47 @@ html[data-theme='light'] .clients-page .filter-controls { grid-template-columns:
 html[data-theme='light'] .clients-page .client-filters { display: grid; gap: .9rem; }
 html[data-theme='light'] .clients-page .filter-summary { margin: 0; }
 
+
+/* ===================================================================
+   Client detail tabs (Nov 2026): real tabs instead of a flat grey bar.
+   Left aligned, icon + label (+ count), hover background, accent underline.
+   =================================================================== */
+html[data-theme='light'] .client-detail-tabs {
+  display: flex; gap: .25rem; padding: 0; overflow-x: auto;
+  border: 0; border-bottom: 1px solid var(--tp-border-strong); border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-theme='light'] .client-detail-tabs button {
+  position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; gap: .5rem;
+  min-width: 0; min-height: 44px; margin-bottom: -1px; padding: 0 1.1rem;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0;
+  background: transparent; color: var(--tp-text-muted); font-size: .9rem; font-weight: 650; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+html[data-theme='light'] .client-detail-tabs button .nav-icon { color: var(--tp-text-faint); transition: color .15s; }
+html[data-theme='light'] .client-detail-tabs button:hover { background: #e9eef4; color: var(--tp-text); box-shadow: none; }
+html[data-theme='light'] .client-detail-tabs button:hover .nav-icon { color: var(--tp-text-muted); }
+html[data-theme='light'] .client-detail-tabs button.active {
+  border-color: var(--tp-border-strong); background: var(--tp-surface); color: var(--tp-accent-hover); font-weight: 750; box-shadow: none;
+}
+html[data-theme='light'] .client-detail-tabs button.active .nav-icon { color: var(--tp-accent); }
+html[data-theme='light'] .client-detail-tabs button.active::after {
+  content: ''; position: absolute; left: .75rem; right: .75rem; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--tp-accent);
+}
+html[data-theme='light'] .client-detail-tabs .tab-count {
+  display: inline-grid; min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; place-items: center;
+  border-radius: 999px; background: #e3e9f0; color: #4a5b70; font-size: .7rem; font-weight: 750;
+}
+html[data-theme='light'] .client-detail-tabs button.active .tab-count { background: var(--tp-accent-soft); color: var(--tp-accent-hover); }
+html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
+@media (max-width: 800px) {
+  html[data-theme='light'] .client-detail-tabs { gap: 0; }
+  html[data-theme='light'] .client-detail-tabs button { flex: 1 0 auto; justify-content: center; gap: .35rem; padding: 0 .6rem; font-size: .82rem; }
+}
+@media (max-width: 480px) {
+  html[data-theme='light'] .client-detail-tabs button .nav-icon { display: none; }
+  html[data-theme='light'] .client-detail-tabs button.active::after { left: .4rem; right: .4rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-theme='light'] * { transition: none !important; }
 }
