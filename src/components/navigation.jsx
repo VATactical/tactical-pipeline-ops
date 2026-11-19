@@ -15,6 +15,7 @@ const paths = {
   ads: <><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1Z" /><path d="M16 9a4 4 0 0 1 0 6" /><path d="M19 6a8 8 0 0 1 0 12" /></>,
   notes: <><path d="M5 3h14a2 2 0 0 1 2 2v10l-6 6H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M15 21v-6h6" /><path d="M7 8h10M7 12h6" /></>,
   audit: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  board: <><rect x="3" y="4" width="5" height="16" rx="1.5" /><rect x="10" y="4" width="5" height="11" rx="1.5" /><rect x="17" y="4" width="4" height="7" rx="1.5" /></>,
   checklist: <><path d="M10 6h10M10 12h10M10 18h10" /><path d="m3.5 6 1.5 1.5L7.5 5" /><path d="m3.5 12 1.5 1.5 2.5-2.5" /><path d="m3.5 18 1.5 1.5 2.5-2.5" /></>,
 }
 
@@ -27,6 +28,7 @@ export const navGroups = [
   { label: 'Operación', items: [
     { to: '/', end: true, label: 'Panel', icon: 'home' },
     { to: '/clientes', label: 'Clientes', icon: 'clients' },
+    { to: '/ciclo', label: 'Ciclo de vida', icon: 'board' },
     { to: '/tickets', label: 'Tickets', icon: 'tickets' },
   ] },
   { label: 'Equipo', items: [

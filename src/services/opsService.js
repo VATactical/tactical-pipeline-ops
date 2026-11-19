@@ -453,3 +453,56 @@ export async function deleteStepEvidence(evidence) {
   if (!data?.length) throw new Error('Solo quien subió la captura o un administrador de operaciones puede eliminarla.')
   await supabase.storage.from(EVIDENCE_BUCKET).remove([evidence.storage_path])
 }
+
+// Lifecycle board (Trello replacement): columns, client cards and moves.
+export async function loadLifecycleBoard() {
+  const [stagesResult, clientsResult, stepsResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('lifecycle_board_stages').select('*').eq('archived', false).order('sort_order'),
+    supabase.from('clients')
+      .select('id, code, business_name, owner_name, status, phase, daily_budget, board_stage, board_position, board_stage_changed_at, target_launch_date, ads_pause_reason, updated_at')
+      .eq('archived', false),
+    supabase.from('client_workflow_steps').select('client_id, completed'),
+  ]))
+  const error = stagesResult.error || clientsResult.error || stepsResult.error
+  if (error) throw error
+  const progress = new Map()
+  for (const step of stepsResult.data || []) {
+    const item = progress.get(step.client_id) || { done: 0, total: 0 }
+    item.total += 1
+    if (step.completed) item.done += 1
+    progress.set(step.client_id, item)
+  }
+  return {
+    stages: stagesResult.data || [],
+    clients: (clientsResult.data || []).map((client) => ({ ...client, progress: progress.get(client.id) || { done: 0, total: 0 } })),
+  }
+}
+
+export async function moveClientOnBoard(clientId, stage, position) {
+  const { data, error } = await supabase.rpc('move_client_on_board', { p_client_id: clientId, p_stage: stage, p_position: position })
+  if (error) throw error
+  return data
+}
+
+export async function createBoardClient({ businessName, stage, code }) {
+  const { data, error } = await supabase.rpc('create_board_client', { p_business_name: businessName, p_stage: stage, p_code: code || null })
+  if (error) throw error
+  return data
+}
+
+export async function saveBoardStage(stage) {
+  const payload = {
+    name: stage.name.trim(),
+    name_en: (stage.name_en || '').trim(),
+    owner_hint: (stage.owner_hint || '').trim(),
+    sort_order: stage.sort_order,
+    color: stage.color || 'slate',
+    archived: Boolean(stage.archived),
+    updated_at: new Date().toISOString(),
+  }
+  const query = stage.isNew
+    ? supabase.from('lifecycle_board_stages').insert({ ...payload, key: stage.key })
+    : supabase.from('lifecycle_board_stages').update(payload).eq('key', stage.key)
+  const { error } = await query
+  if (error) throw error
+}
