@@ -3058,6 +3058,10 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 /* GHL panel: appointment status breakdown and cost row. */
 .ghl-appointment-breakdown { display: flex; flex-wrap: wrap; gap: .45rem .9rem; margin: .7rem 0 .2rem; color: #4f667b; font-size: .82rem; }
 .ghl-appointment-breakdown strong { color: #182536; font-size: .92rem; }
+.ghl-slack-check { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .8rem; margin: .35rem 0 .2rem; padding: .45rem .7rem; border-radius: 8px; background: #fff7e6; border: 1px solid #f3d9a4; color: #5c4a1f; font-size: .82rem; }
+.ghl-slack-check.match { background: #eaf7ef; border-color: #b9e2c7; color: #24543a; }
+.ghl-slack-check strong { color: #182536; font-size: .92rem; }
+.ghl-slack-check small { flex-basis: 100%; color: inherit; opacity: .85; }
 .ghl-cost-grid { margin-top: .7rem; }
 .ghl-cost-grid .link-button { padding: 0; border: 0; background: none; color: #087cae; font: inherit; font-weight: 700; cursor: pointer; }
 

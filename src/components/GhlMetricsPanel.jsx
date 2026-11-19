@@ -196,6 +196,17 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
       <span><strong>{shown.appointments_noshow || 0}</strong> {t('no asistieron')}</span>
       <span><strong>{shown.appointments_cancelled || 0}</strong> {t('canceladas')}</span>
     </div>}
+    {synced && shown.slack_leads != null && <div className={`ghl-slack-check${shown.slack_leads === shown.leads ? ' match' : ''}`} aria-label={t('Verificación con Slack')}>
+      <span>{t('Avisos en Slack')}:</span>
+      <span><strong>{shown.slack_leads}</strong> {t('leads')}</span>
+      <span><strong>{shown.slack_appointments ?? 0}</strong> {t('citas')}</span>
+      <small>{shown.slack_leads === shown.leads
+        ? t('Coincide con GHL.')
+        : shown.slack_first_notice_at
+          ? `${t('Primer aviso del periodo')}: ${formatDate(String(shown.slack_first_notice_at).slice(0, 10))}. ${t('Antes de esa fecha el aviso puede no haber estado activo.')}`
+          : t('No hay avisos de LeadConnector en el canal para este periodo.')}</small>
+    </div>}
+    {synced && shown.slack_error && <p className="muted" data-no-translate>Slack: {shown.slack_error}</p>}
     <div className="metric-grid compact ads-metrics-grid ghl-cost-grid">
       <article className="metric-card blue"><span>{t('Gasto en anuncios')}</span><strong>{money(spend)}</strong>
         <small>{spendSource === 'manual' ? t('ingresado a mano') : spendSource === 'meta' ? t('desde Meta') : t(client.meta_ad_account_id ? 'sin dato de Meta todavía' : 'falta la cuenta publicitaria de Meta')}{canEditSpend && <> · <button className="link-button" type="button" onClick={openSpend}>{t(manualSpend !== null ? 'Editar' : 'Ingresar a mano')}</button></>}</small>
