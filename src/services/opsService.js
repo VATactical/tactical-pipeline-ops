@@ -588,3 +588,19 @@ export async function resolveDossierSuggestion(suggestionId, apply) {
   if (error) throw error
   return data
 }
+
+// Extra data for the main dashboard: latest log comments, Slack suggestions and checklist screenshots.
+// Each part is optional: if one fails, the dashboard still loads.
+export async function loadDashboardExtras() {
+  const [commentsResult, suggestionsResult, evidenceResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('client_comments').select('id, client_id, author_id, kind, body, created_at, send_to_slack, slack_sent_at')
+      .is('deleted_at', null).order('created_at', { ascending: false }).limit(40),
+    supabase.from('client_dossier_suggestions').select('client_id, field').eq('status', 'pending'),
+    supabase.from('client_step_evidence').select('step_id'),
+  ]))
+  return {
+    comments: commentsResult.data || [],
+    suggestions: suggestionsResult.data || [],
+    evidenceStepIds: new Set((evidenceResult.data || []).map((row) => row.step_id)),
+  }
+}

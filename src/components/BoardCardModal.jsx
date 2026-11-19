@@ -128,7 +128,7 @@ export default function BoardCardModal({ clientId, stages, stageLabel, canMove, 
               {steps.length > 0 && !visibleSteps.length && <p className="muted">{t('Checklist completo')}</p>}
               <ul className="board-modal-steps">{visibleSteps.map((step) => <li key={step.id} className={step.completed ? 'completed' : ''}>
                 <label><input type="checkbox" checked={step.completed} disabled={!canToggle(step) || savingStep === step.id} onChange={() => toggleStep(step)} />
-                  <span>{stepTitle(step)}<small>{t(step.owner_name)}</small></span></label>
+                  <span>{stepTitle(step)}{step.evidence === 'required' && <em className="board-step-evidence" title={t('Este paso se confirma con una captura (súbela desde la ficha del cliente).')}> 📷</em>}<small>{t(step.owner_name)}</small></span></label>
               </li>)}</ul>
             </section>
 

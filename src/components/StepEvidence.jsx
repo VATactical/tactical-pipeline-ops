@@ -4,7 +4,11 @@ import { deleteStepEvidence, uploadStepEvidence } from '../services/opsService'
 
 // Screenshots attached to one checklist step. Paste (Ctrl/Cmd+V) into the drop zone,
 // drag a file onto it or pick one with the button.
-export default function StepEvidence({ clientId, step, items, canUpload, canDelete, onChange }) {
+// step.evidence says what proof the step expects:
+//   required: a clear "Agregar captura" button; once the step is checked without one, it is flagged.
+//   optional: a small 📎 button.
+//   none:     no upload button (existing screenshots are still shown).
+export default function StepEvidence({ clientId, step, items, canUpload, canDelete, onChange, autoOpen = false }) {
   const { t } = useLanguage()
   const inputRef = useRef(null)
   const [open, setOpen] = useState(false)
@@ -12,6 +16,9 @@ export default function StepEvidence({ clientId, step, items, canUpload, canDele
   const [error, setError] = useState('')
   const [preview, setPreview] = useState(null)
   const dropRef = useRef(null)
+  const mode = step.evidence || 'optional'
+  const allowUpload = canUpload && mode !== 'none'
+  useEffect(() => { if (autoOpen && allowUpload) setOpen(true) }, [autoOpen, allowUpload])
   useEffect(() => { if (open) dropRef.current?.focus() }, [open])
   useEffect(() => {
     if (!preview) return undefined
@@ -38,17 +45,21 @@ export default function StepEvidence({ clientId, step, items, canUpload, canDele
     finally { setBusy(false) }
   }
 
-  if (!items.length && !canUpload) return null
-  return <div className="step-evidence">
+  const missing = mode === 'required' && !items.length
+  if (!items.length && !allowUpload && !(missing && step.completed)) return null
+  return <div className={`step-evidence ${mode}`}>
     <div className="step-evidence-row">
+      {missing && step.completed && <span className="step-evidence-missing">⚠️ {t('Falta la captura que lo confirma')}</span>}
       {items.map((item) => <button type="button" className="step-evidence-thumb" key={item.id} onClick={() => setPreview(item)} title={t('Ver captura')}>
         {item.url ? <img src={item.url} alt={t('Captura de evidencia')} loading="lazy" /> : <span>?</span>}
       </button>)}
-      {canUpload && <button type="button" className="step-evidence-add" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        {items.length ? '+' : `📎 ${t('Agregar captura')}`}
-      </button>}
+      {allowUpload && (mode === 'required' || items.length
+        ? <button type="button" className={`step-evidence-add ${missing ? 'required' : ''}`} onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+          {items.length ? '+' : `📷 ${t('Agregar captura')}`}
+        </button>
+        : <button type="button" className="step-evidence-add optional" onClick={() => setOpen((value) => !value)} aria-expanded={open} title={t('Agregar captura (opcional)')} aria-label={t('Agregar captura (opcional)')}>📎</button>)}
     </div>
-    {open && canUpload && <div
+    {open && allowUpload && <div
       className={`step-evidence-drop ${busy ? 'busy' : ''}`}
       ref={dropRef}
       tabIndex={0}
@@ -56,7 +67,7 @@ export default function StepEvidence({ clientId, step, items, canUpload, canDele
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => { event.preventDefault(); upload(event.dataTransfer?.files) }}
     >
-      <span>{busy ? t('Subiendo…') : t('Haz clic aquí y pega la captura (Ctrl+V), o arrástrala')}</span>
+      <span>{busy ? t('Subiendo…') : missing && step.completed ? t('Paso marcado. Pega aquí la captura que lo confirma (Ctrl+V) o arrástrala.') : t('Haz clic aquí y pega la captura (Ctrl+V), o arrástrala')}</span>
       <button type="button" className="secondary-button compact-button" disabled={busy} onClick={() => inputRef.current?.click()}>{t('Elegir imagen')}</button>
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event) => { upload(event.target.files); event.target.value = '' }} />
     </div>}
