@@ -6,6 +6,7 @@ import ClientLog from './ClientLog'
 import ClientTickets from './ClientTickets'
 import DossierSuggestions from './DossierSuggestions'
 import { createClientNote, loadClient, updateWorkflowStep } from '../services/opsService'
+import LinkifiedText from './LinkifiedText'
 
 // Trello-style quick view of a client opened from the lifecycle board: summary, checklist,
 // notes and recent activity without leaving the board.
@@ -145,7 +146,7 @@ export default function BoardCardModal({ clientId, stages, stageLabel, canMove, 
               </form>
               <ul className="board-modal-notes">{data.notes.slice(0, 6).map((item) => <li key={item.id}>
                 <div><strong data-no-translate>{item.title}</strong><small>{item.author?.full_name || t('Equipo')} · {formatWhen(item.created_at)}</small></div>
-                {item.body && <p data-no-translate>{item.body}</p>}
+                {item.body && <LinkifiedText text={item.body} className="formatted-text" />}
               </li>)}</ul>
               {data.notes.length > 6 && <Link className="text-button" to={`/clientes/${client.id}?tab=notes`}>{t('Ver todas las notas')} ({data.notes.length})</Link>}
             </section>

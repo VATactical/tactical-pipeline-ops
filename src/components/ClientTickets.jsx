@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { loadClientTickets } from '../services/opsService'
+import LinkifiedText from './LinkifiedText'
 
 // Tickets of one client from the Tickets module, including those Viktor tracks in Slack
 // (synced every hour). Open tickets first; resolved ones on demand.
@@ -22,7 +23,7 @@ function TicketItem({ ticket }) {
       {!closed && <span className="client-ticket-age">{age} {t(age === 1 ? 'día' : 'días')}</span>}
       {ticket.source === 'slack' && <span className="client-ticket-source">Slack</span>}
     </div>
-    <p data-no-translate>{ticket.source === 'slack' && ticket.slack_summary ? ticket.slack_summary : ticket.title}</p>
+    <LinkifiedText text={ticket.source === 'slack' && ticket.slack_summary ? ticket.slack_summary : ticket.title} />
     {(ticket.slack_owner_name || ticket.source_url) && <div className="client-ticket-foot">
       {ticket.slack_owner_name && <span>👤 <span data-no-translate>{ticket.slack_owner_name}</span></span>}
       {ticket.source_url && <a href={ticket.source_url} target="_blank" rel="noreferrer">{t('Ver en Slack')} ↗</a>}
