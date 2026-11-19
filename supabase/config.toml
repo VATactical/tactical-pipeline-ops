@@ -25,3 +25,6 @@ verify_jwt = false
 
 [functions.slack-bridge]
 verify_jwt = false
+
+[functions.slack-interactions]
+verify_jwt = false

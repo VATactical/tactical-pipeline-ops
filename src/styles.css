@@ -3297,3 +3297,5 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .dossier-suggestion-actions { display: flex; flex-direction: column; gap: .35rem; flex-shrink: 0; }
 .board-card-meta .board-suggestion-badge { color: #4a154b; }
 @media (max-width: 640px) { .dossier-suggestions li { flex-direction: column; } .dossier-suggestion-actions { flex-direction: row; } }
+.eod-slack-source { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0 0 .6rem; color: #4d6175; font-size: .82rem; }
+.eod-slack-source a { color: #0e81aa; font-weight: 700; }
