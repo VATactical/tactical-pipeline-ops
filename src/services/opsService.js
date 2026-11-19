@@ -589,18 +589,29 @@ export async function resolveDossierSuggestion(suggestionId, apply) {
   return data
 }
 
-// Extra data for the main dashboard: latest log comments, Slack suggestions and checklist screenshots.
-// Each part is optional: if one fails, the dashboard still loads.
-export async function loadDashboardExtras() {
-  const [commentsResult, suggestionsResult, evidenceResult] = await runWithSessionRetry(() => Promise.all([
+// Extra data for the main dashboard: log comments, Slack suggestions, lead metrics, board stages
+// and whether I sent today's EOD. Each part is optional: if one fails, the dashboard still loads.
+export async function loadDashboardExtras(profile) {
+  const since = new Date(Date.now() - 30 * 86400000).toISOString()
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile?.timezone || 'America/Managua' }).format(new Date())
+  const [commentsResult, suggestionsResult, metricsResult, stagesResult, eodResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('client_comments').select('id, client_id, author_id, kind, body, created_at, send_to_slack, slack_sent_at')
-      .is('deleted_at', null).order('created_at', { ascending: false }).limit(40),
+      .is('deleted_at', null).gte('created_at', since).order('created_at', { ascending: false }).limit(500),
     supabase.from('client_dossier_suggestions').select('client_id, field').eq('status', 'pending'),
-    supabase.from('client_step_evidence').select('step_id'),
+    supabase.from('client_ghl_metrics').select('client_id, period_start, period_end, leads, appointments_booked, sync_status')
+      .order('period_end', { ascending: false }).limit(400),
+    supabase.from('lifecycle_board_stages').select('key, name, name_en, sort_order').eq('archived', false).order('sort_order'),
+    profile?.id ? supabase.from('eod_reports').select('id').eq('user_id', profile.id).eq('report_date', today).limit(1) : Promise.resolve({ data: [] }),
   ]))
+  // Latest GHL window per client.
+  const latestMetrics = new Map()
+  for (const row of metricsResult.data || []) if (!latestMetrics.has(row.client_id)) latestMetrics.set(row.client_id, row)
   return {
     comments: commentsResult.data || [],
     suggestions: suggestionsResult.data || [],
-    evidenceStepIds: new Set((evidenceResult.data || []).map((row) => row.step_id)),
+    metrics: latestMetrics,
+    stages: stagesResult.data || [],
+    myEodToday: Boolean(eodResult.data?.length),
+    eodChecked: !eodResult.error,
   }
 }

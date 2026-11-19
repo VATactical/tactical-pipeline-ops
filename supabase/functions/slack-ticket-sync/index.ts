@@ -352,6 +352,8 @@ Deno.serve(async (request: Request) => {
       const slackFields = {
         source: "slack", slack_summary: state.open ? state.title : state.resolution, slack_owner_id: state.ownerId,
         slack_owner_name: state.ownerName, source_url: state.sourceUrl, slack_synced_at: now,
+        // Date of the sweep that resolved it (the dashboard counts resolved tickets per week).
+        ...(state.open ? {} : { resolved_at: state.at.toISOString() }),
       };
       let ticket = ticketsByNumber.get(state.code);
       if (!ticket) {
