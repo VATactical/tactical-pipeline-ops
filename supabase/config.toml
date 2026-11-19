@@ -22,3 +22,6 @@ verify_jwt = true
 
 [functions.slack-ticket-sync]
 verify_jwt = false
+
+[functions.slack-bridge]
+verify_jwt = false

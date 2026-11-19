@@ -33,7 +33,7 @@ export default function ClientLog({ clientId, limit = null, onChanged, compact =
   const { t, locale } = useLanguage()
   const [comments, setComments] = useState(null)
   const [error, setError] = useState('')
-  const [draft, setDraft] = useState({ kind: 'update', body: '' })
+  const [draft, setDraft] = useState({ kind: 'update', body: '', sendToSlack: false })
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(null)
   const [showAll, setShowAll] = useState(false)
@@ -49,7 +49,7 @@ export default function ClientLog({ clientId, limit = null, onChanged, compact =
     event?.preventDefault()
     if (!draft.body.trim() || saving) return
     setSaving(true); setError('')
-    try { await addClientComment({ clientId, profileId: profile?.id, ...draft }); setDraft({ kind: 'update', body: '' }); await reload(); onChanged?.() }
+    try { await addClientComment({ clientId, profileId: profile?.id, ...draft }); setDraft({ kind: 'update', body: '', sendToSlack: false }); await reload(); onChanged?.() }
     catch (saveError) { setError(t(saveError.message)) }
     finally { setSaving(false) }
   }
@@ -76,6 +76,10 @@ export default function ClientLog({ clientId, limit = null, onChanged, compact =
         onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit() }} />
       {draft.body && <div className="client-log-form-actions">
         <KindPicker value={draft.kind} onChange={(kind) => setDraft((current) => ({ ...current, kind }))} />
+        <label className="client-log-slack" title={draft.kind === 'blocked' ? t('Los bloqueos siempre se avisan en el canal de Slack del cliente.') : t('Publica este comentario en el canal de Slack del cliente.')}>
+          <input type="checkbox" checked={draft.kind === 'blocked' || draft.sendToSlack} disabled={draft.kind === 'blocked'}
+            onChange={(event) => setDraft((current) => ({ ...current, sendToSlack: event.target.checked }))} /> {t('Enviar a Slack')}
+        </label>
         <button className="primary-button compact-button" disabled={saving}>{saving ? t('Guardando…') : t('Comentar')}</button>
       </div>}
     </form>
@@ -91,6 +95,9 @@ export default function ClientLog({ clientId, limit = null, onChanged, compact =
           <span className={`client-log-badge ${comment.kind}`}>{kind[1]} {t(kind[2])}</span>
           <strong>{comment.author?.full_name || t('Equipo')}</strong>
           <small>{formatWhen(comment.created_at)}{comment.edited_at ? ` · ${t('editado')}` : ''}</small>
+          {comment.slack_sent_at
+            ? <span className="client-log-slack-state sent" title={t('Publicado en el canal de Slack del cliente')}>{t('En Slack')}</span>
+            : (comment.kind === 'blocked' || comment.send_to_slack) && <span className="client-log-slack-state" title={t('Se publicará en Slack cuando la app tenga el permiso chat:write')}>{t('Pendiente para Slack')}</span>}
           {canEdit && !isEditing && <span className="client-log-actions">
             <button type="button" className="text-button" onClick={() => setEditing({ id: comment.id, kind: comment.kind, body: comment.body })}>{t('Editar')}</button>
             <button type="button" className="text-button danger" onClick={() => remove(comment)}>{t('Eliminar')}</button>

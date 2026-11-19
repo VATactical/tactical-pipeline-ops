@@ -3270,3 +3270,30 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .ticket-slack-panel .eyebrow { color: #4a154b; }
 .ticket-slack-panel div { display: flex; flex-wrap: wrap; gap: .3rem .9rem; color: #6a8197; font-size: .74rem; }
 .ticket-slack-panel a { color: #0e81aa; font-weight: 700; }
+
+/* Bitácora → Slack */
+.client-log-slack { display: inline-flex; align-items: center; gap: .3rem; color: #4a154b; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.client-log-slack input { accent-color: #4a154b; }
+.client-log-slack-state { padding: .05rem .4rem; border-radius: 5px; background: #f1edf2; color: #6b4a6c; font-size: .66rem; font-weight: 800; }
+.client-log-slack-state.sent { background: #4a154b; color: #fff; }
+
+/* Dossier suggestions coming from Slack */
+.dossier-suggestions { display: grid; gap: .6rem; border: 1px solid #e3d3e4; background: #fcf9fc; }
+.dossier-suggestions.compact { padding: .7rem .8rem; border-radius: 10px; }
+.dossier-suggestions-head h3 { display: flex; align-items: center; gap: .4rem; margin: 0; color: #4a154b; font-size: 1rem; }
+.dossier-suggestions-head h3 small { padding: .05rem .45rem; border-radius: 99px; background: #4a154b; color: #fff; font-size: .7rem; }
+.dossier-suggestions-head p { margin: .2rem 0 0; font-size: .8rem; }
+.dossier-suggestions ul { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.dossier-suggestions li { display: flex; justify-content: space-between; gap: .8rem; padding: .6rem .75rem; border: 1px solid #e6dbe7; border-radius: 9px; background: #fff; }
+.dossier-suggestion-main { display: grid; gap: .25rem; min-width: 0; }
+.dossier-suggestion-main strong { color: #17293a; font-size: .86rem; }
+.dossier-suggestion-change { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .84rem; overflow-wrap: anywhere; }
+.dossier-suggestion-old { color: #8396a8; text-decoration: line-through; }
+.dossier-suggestion-new { color: #17683f; font-weight: 800; }
+.dossier-suggestion-new a { color: #17683f; }
+.dossier-suggestions blockquote { margin: 0; padding: .2rem .55rem; border-left: 3px solid #d9c6da; color: #4d6175; font-size: .78rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dossier-suggestion-main small { color: #6a8197; font-size: .72rem; }
+.dossier-suggestion-main small a { color: #0e81aa; font-weight: 700; }
+.dossier-suggestion-actions { display: flex; flex-direction: column; gap: .35rem; flex-shrink: 0; }
+.board-card-meta .board-suggestion-badge { color: #4a154b; }
+@media (max-width: 640px) { .dossier-suggestions li { flex-direction: column; } .dossier-suggestion-actions { flex-direction: row; } }

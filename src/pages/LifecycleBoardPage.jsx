@@ -303,6 +303,7 @@ export default function LifecycleBoardPage() {
                     {Number(client.daily_budget) > 0 && <span title={t('Presupuesto diario')}>${Number(client.daily_budget)}/{t('día')}</span>}
                     {client.commentCount > 0 && <span title={t('Comentarios en la bitácora')}>💬 {client.commentCount}</span>}
                     {client.openTickets > 0 && <span className="board-ticket-badge" title={t('Tickets abiertos')}>🎫 {client.openTickets}</span>}
+                    {client.slackSuggestions > 0 && <span className="board-suggestion-badge" title={t('Datos de Slack por revisar en el dossier')}>📥 {client.slackSuggestions}</span>}
                   </div>
                   {menuFor === client.id && <CardMenu client={client} stages={board.stages} stageLabel={stageLabel} onMove={(stageKey) => moveCard(client.id, stageKey, null)} onClose={() => setMenuFor(null)} />}
                 </article>
