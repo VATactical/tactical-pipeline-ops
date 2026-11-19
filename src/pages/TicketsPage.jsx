@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { addTicketUpdate, createTicket, loadTicketWorkspace, updateTicket } from '../services/ticketService'
 import { syncSlackTickets } from '../services/opsService'
+import LinkifiedText from '../components/LinkifiedText'
 
 const statuses = ['Open', 'In progress', 'Waiting', 'Resolved', 'Closed']
 const priorities = ['Low', 'Medium', 'High', 'Urgent']
@@ -299,7 +300,7 @@ export default function TicketsPage() {
 
             {selectedTicket.source === 'slack' && <div className="ticket-slack-panel">
               <p className="eyebrow">{t('Último estado en Slack (Viktor)')}</p>
-              <p data-no-translate>{selectedTicket.slack_summary || '—'}</p>
+              {selectedTicket.slack_summary ? <LinkifiedText text={selectedTicket.slack_summary} /> : <p>—</p>}
               <div>
                 {selectedTicket.slack_owner_name && <span>👤 <span data-no-translate>{selectedTicket.slack_owner_name}</span></span>}
                 {selectedTicket.slack_synced_at && <span>{t('Sincronizado')}: {formatDate(selectedTicket.slack_synced_at.slice(0, 10), locale)}</span>}
@@ -334,7 +335,7 @@ export default function TicketsPage() {
 
             <div className="ticket-history"><h4>{t('Historial')}</h4>
               {selectedTicket.updates.length === 0 && <p className="muted">{t('Sin actualizaciones registradas.')}</p>}
-              {selectedTicket.updates.map((update) => <article key={update.id}><div><strong>{update.author_name}</strong><time dateTime={update.created_at}>{formatDate(update.created_at.slice(0, 10), locale)}</time></div><p>{update.body}</p>{update.status_after && <small>{t('Estado')}: {t(statusLabels[update.status_after])}</small>}</article>)}
+              {selectedTicket.updates.map((update) => <article key={update.id}><div><strong>{update.author_name}</strong><time dateTime={update.created_at}>{formatDate(update.created_at.slice(0, 10), locale)}</time></div><LinkifiedText text={update.body} className="formatted-text" />{update.status_after && <small>{t('Estado')}: {t(statusLabels[update.status_after])}</small>}</article>)}
             </div>
           </aside>}
         </div>}

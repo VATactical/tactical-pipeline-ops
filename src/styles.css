@@ -3299,3 +3299,5 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 @media (max-width: 640px) { .dossier-suggestions li { flex-direction: column; } .dossier-suggestion-actions { flex-direction: row; } }
 .eod-slack-source { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0 0 .6rem; color: #4d6175; font-size: .82rem; }
 .eod-slack-source a { color: #0e81aa; font-weight: 700; }
+.smart-link { display: inline-flex; align-items: center; max-width: 100%; padding: .02rem .4rem; border: 1px solid #cfe3ee; border-radius: 6px; background: #f1f8fc; color: #0e6f94; font-weight: 700; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: baseline; }
+.smart-link:hover { background: #e2f1f9; text-decoration: underline; }

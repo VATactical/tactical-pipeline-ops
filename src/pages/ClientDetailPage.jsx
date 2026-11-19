@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
 import { createClientNote, deleteArchivedClient, deleteClientNote, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateWorkflowStep, loadStepEvidence } from '../services/opsService'
+import LinkifiedText from '../components/LinkifiedText'
 
 // Dossier sections follow the GHL Client Onboarding Form, then what is confirmed on the
 // onboarding call, then each platform. Field tuple: [label, key, type, source, optional].
@@ -579,7 +580,7 @@ export default function ClientDetailPage() {
           <div className="section-actions"><button className="text-button" type="button" onClick={() => setEditingNoteId(null)}>{t('Cancelar')}</button><button className="primary-button compact-button" disabled={saving || !noteDraft.title.trim()}>{saving ? t('Guardando…') : t('Guardar cambios')}</button></div>
         </form> : <>
           <div className="section-heading"><strong data-no-translate>{note.title}</strong>{canManageNotes && <div className="section-actions"><button className="text-button" type="button" onClick={() => { setEditingNoteId(note.id); setNoteDraft({ title: note.title, body: note.body || '' }) }}>{t('Editar nota')}</button><button className="text-button" type="button" disabled={saving} onClick={() => removeClientNote(note.id)}>{t('Eliminar nota')}</button></div>}</div>
-          {note.body && <p data-no-translate>{note.body}</p>}
+          {note.body && <LinkifiedText text={note.body} className="formatted-text" />}
           <small>{note.author?.full_name || t('Usuario')} · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small>
         </>}
       </article>)}</div>

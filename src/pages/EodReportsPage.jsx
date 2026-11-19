@@ -17,6 +17,7 @@ import {
 import { getCalendarDayWindow } from '../utils/timeZone'
 import { loadCompanySettings } from '../services/companyService'
 import { formatHoursAndMinutes, normalizeHoursAndMinutes } from '../utils/timeDuration'
+import LinkifiedText from '../components/LinkifiedText'
 
 function formatMoment(value, timeZone, locale) {
   if (!value) return ''
@@ -738,14 +739,14 @@ export default function EodReportsPage() {
             {expandedReport.manual_tasks.map((item, index) => {
               const section = normalizeManualSection(item)
               return <article className="eod-report-section" key={section.title + '-' + index}>
-                <div><strong data-no-translate>{section.title}</strong>{section.description && <p className="formatted-text" data-no-translate>{section.description}</p>}</div>
+                <div><strong data-no-translate>{section.title}</strong>{section.description && <LinkifiedText text={section.description} className="formatted-text" />}</div>
                 {section.hours != null && <span>{formatHoursAndMinutes(Number(section.hours))}</span>}
               </article>
             })}
           </div>}
           {!isStructuredEodReport(expandedReport.notes) && <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>}
           {expandedReport.source === 'slack' && <p className="eod-slack-source"><span className="ticket-source-badge">Slack</span> {t('Enviado desde Slack con “Send to TP OPS”.')} {expandedReport.slack_permalink && <a href={expandedReport.slack_permalink} target="_blank" rel="noreferrer">{t('Ver en Slack')}</a>}</p>}
-          {expandedReport.notes && <div className="eod-notes-block"><strong>{t(expandedReport.source === 'slack' ? 'Reporte EOD de Slack' : isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
+          {expandedReport.notes && <div className="eod-notes-block"><strong>{t(expandedReport.source === 'slack' ? 'Reporte EOD de Slack' : isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><LinkifiedText text={expandedReport.notes} className="formatted-text" /></div>}
           {canReviewAll && <section className="eod-modal-review">
             <h3>{t('Revisión del reporte')}</h3>
             <div className="eod-review-actions">
@@ -770,7 +771,7 @@ export default function EodReportsPage() {
             <strong>{t('Seguimiento')}</strong>
             {expandedReport.comments.map((comment) => <article className="eod-comment" key={comment.id}>
               <div><b data-no-translate>{comment.author?.full_name || 'Supervisor'}</b><small>{formatMoment(comment.created_at, timeZone, locale)}</small></div>
-              <p className="formatted-text" data-no-translate>{comment.body}</p>
+              <LinkifiedText text={comment.body} className="formatted-text" />
               {canReviewAll && !comment.task_id && <button className="secondary-button" type="button" disabled={actionKey === `task-${comment.id}`} onClick={() => convertComment(expandedReport, comment)}>{actionKey === `task-${comment.id}` ? t('Guardando…') : t('Convertir en tarea alta')}</button>}
             </article>)}
           </div>}

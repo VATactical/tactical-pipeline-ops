@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
+import LinkifiedText from './LinkifiedText'
 import { addClientComment, deleteClientComment, loadClientComments, updateClientComment } from '../services/opsService'
 
 // Client log ("bitácora"): short comments like Trello card comments, tagged as an update,
@@ -11,15 +12,6 @@ export const COMMENT_KINDS = [
   ['done', '✅', 'Hecho'],
   ['blocked', '⛔', 'Bloqueado'],
 ]
-const URL_PATTERN = /(https?:\/\/[^\s<>"']+)/g
-
-function Linkified({ text }) {
-  const parts = text.split(URL_PATTERN)
-  return <>{parts.map((part, index) => (index % 2 === 1
-    ? <a key={index} href={part} target="_blank" rel="noreferrer">{part.length > 60 ? `${part.slice(0, 57)}…` : part}</a>
-    : <span key={index}>{part}</span>))}</>
-}
-
 function KindPicker({ value, onChange }) {
   const { t } = useLanguage()
   return <div className="client-log-kinds" role="radiogroup" aria-label={t('Tipo de comentario')}>
@@ -109,7 +101,7 @@ export default function ClientLog({ clientId, limit = null, onChanged, compact =
             <div className="client-log-form-actions"><KindPicker value={editing.kind} onChange={(value) => setEditing((current) => ({ ...current, kind: value }))} />
               <span><button type="button" className="primary-button compact-button" disabled={saving} onClick={saveEdit}>{t('Guardar')}</button> <button type="button" className="secondary-button compact-button" onClick={() => setEditing(null)}>{t('Cancelar')}</button></span></div>
           </div>
-          : <p className="client-log-body" data-no-translate><Linkified text={comment.body} /></p>}
+          : <LinkifiedText text={comment.body} className="client-log-body" />}
       </li>
     })}</ol>
     {limit && comments && comments.length > limit && <button type="button" className="text-button" onClick={() => setShowAll((value) => !value)}>
