@@ -83,9 +83,16 @@ const addDays = (date: string, days: number) => {
   return value.toISOString().slice(0, 10);
 };
 
+// Test submissions made by the team ("Test", "Test Lead", "This is a test", test@…).
+const isTestContact = (contact: Record<string, unknown>) => {
+  const name = `${contact.firstNameLowerCase ?? contact.firstName ?? ""} ${contact.lastNameLowerCase ?? contact.lastName ?? ""}`;
+  const emailUser = String(contact.email ?? "").split("@")[0];
+  return /\btest\b/i.test(name) || /^test/i.test(emailUser);
+};
+
 // A lead is a contact created in the period that entered a pipeline (has an opportunity).
 // Lead forms and integrations often create extra fragment contacts (only a phone or only an
-// email, no name) and test contacts; those never get an opportunity, so counting every contact
+// email, no name) that never get an opportunity, and test contacts; counting every contact
 // inflates the number versus what the team sees in Opportunities.
 // If the API response carries no opportunities field at all, every contact is counted.
 async function countLeads(target: Target, start: string, end: string) {
@@ -104,9 +111,9 @@ async function countLeads(target: Target, start: string, end: string) {
     if (rows.length < pageLimit || contacts.length >= total) break;
   }
   const hasOpportunityField = contacts.some((contact) => Array.isArray(contact.opportunities));
-  const leads = hasOpportunityField
+  const leads = (hasOpportunityField
     ? contacts.filter((contact) => Array.isArray(contact.opportunities) && contact.opportunities.length > 0)
-    : contacts;
+    : contacts).filter((contact) => !isTestContact(contact));
   const tag = (target.qualified_tag || "").trim().toLowerCase();
   const qualified = tag
     ? leads.filter((contact) =>
