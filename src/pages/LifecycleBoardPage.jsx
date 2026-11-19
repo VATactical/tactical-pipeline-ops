@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import BoardCardModal from '../components/BoardCardModal'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -82,7 +83,10 @@ function StageEditor({ stage, onSave, onCancel, onArchive, canArchive }) {
 export default function LifecycleBoardPage() {
   const { profile } = useAuth()
   const { t, language } = useLanguage()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const openCardId = searchParams.get('card')
+  const openCard = (clientId) => setSearchParams((current) => { const next = new URLSearchParams(current); next.set('card', clientId); return next })
+  const closeCard = useCallback(() => setSearchParams((current) => { const next = new URLSearchParams(current); next.delete('card'); return next }), [setSearchParams])
   const [board, setBoard] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -94,6 +98,8 @@ export default function LifecycleBoardPage() {
   const [editingStage, setEditingStage] = useState(null)
   const draggingRef = useRef(null)
   const listRefs = useRef({})
+  const boardRef = useRef(null)
+  const panRef = useRef(null)
 
   const isAdmin = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
   const canMove = profile?.role === 'superadmin' || Boolean(profile?.permissions?.clients_edit)
@@ -118,6 +124,32 @@ export default function LifecycleBoardPage() {
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
   }, [menuFor])
+
+  // The board fills the window height so its horizontal scrollbar is always visible at the bottom.
+  useEffect(() => {
+    const fit = () => {
+      const node = boardRef.current
+      if (!node) return
+      node.style.height = `${Math.max(320, window.innerHeight - node.getBoundingClientRect().top - 12)}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [board !== null, error, notice])
+
+  // Trello-style panning: drag the empty board background to scroll sideways.
+  const onPanStart = (event) => {
+    if (event.button !== 0 || event.target.closest('.board-card, button, input, textarea, select, a, form, label')) return
+    panRef.current = { x: event.clientX, left: boardRef.current.scrollLeft }
+    boardRef.current.classList.add('panning')
+  }
+  useEffect(() => {
+    const move = (event) => { if (panRef.current) boardRef.current.scrollLeft = panRef.current.left - (event.clientX - panRef.current.x) }
+    const end = () => { if (panRef.current) { panRef.current = null; boardRef.current?.classList.remove('panning') } }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', end)
+    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', end) }
+  }, [])
 
   const query = search.trim().toLowerCase()
   const columns = useMemo(() => {
@@ -229,7 +261,7 @@ export default function LifecycleBoardPage() {
     </header>
     {error && <p className="form-error" role="alert">{error}</p>}
     {notice && <p className="form-success" role="status">{notice}</p>}
-    {board && <div className="lifecycle-board" role="list" aria-label={t('Etapas del ciclo de vida')}>
+    {board && <div className="lifecycle-board" ref={boardRef} onMouseDown={onPanStart} role="list" aria-label={t('Etapas del ciclo de vida')}>
       {columns.map(({ stage, cards }, columnIndex) => {
         const isTarget = dropTarget?.stage === stage.key
         const allCount = board.clients.filter((client) => client.board_stage === stage.key).length
@@ -257,7 +289,7 @@ export default function LifecycleBoardPage() {
                 {isTarget && index >= 0 && dropTarget.index === index && <div className="board-drop-placeholder" />}
                 <article className={`board-card ${dragging === client.id ? 'dragging' : ''}`} data-card-id={client.id} draggable={canMove}
                   onDragStart={(event) => onDragStart(event, client)} onDragEnd={onDragEnd}
-                  onClick={() => navigate(`/clientes/${client.id}?tab=dossier`)} onKeyDown={(event) => { if (event.key === 'Enter') navigate(`/clientes/${client.id}?tab=dossier`) }}
+                  onClick={() => openCard(client.id)} onKeyDown={(event) => { if (event.key === 'Enter') openCard(client.id) }}
                   tabIndex={0} role="link" aria-label={`${client.code} ${client.business_name}`}>
                   <div className="board-card-top"><span className="board-code" data-no-translate>{client.code}</span><span className={`board-status ${STATUS_CLASS[client.status] || ''}`} data-no-translate>{client.status}</span>
                     {canMove && <button type="button" className="board-icon-button board-card-more" aria-label={t('Mover a')} aria-haspopup="menu" aria-expanded={menuFor === client.id} onClick={(event) => { event.stopPropagation(); setMenuFor((current) => current === client.id ? null : client.id) }}>⋯</button>}
@@ -286,5 +318,7 @@ export default function LifecycleBoardPage() {
         ? <section className="board-column slate"><StageEditor stage={editingStage} onSave={saveStage} onCancel={() => setEditingStage(null)} canArchive={false} onArchive={() => {}} /></section>
         : <button type="button" className="board-add-column" onClick={newStage}>+ {t('Agregar otra lista')}</button>)}
     </div>}
+    {board && openCardId && <BoardCardModal clientId={openCardId} stages={board.stages} stageLabel={stageLabel} canMove={canMove}
+      onMove={(clientId, stageKey) => moveCard(clientId, stageKey, null)} onChanged={refresh} onClose={closeCard} />}
   </div>
 }
