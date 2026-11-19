@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
+import { ClientLogFeed, EvidenceGaps, FocusStrip, TicketWatch, isOpenTicket, missingEvidenceSteps, recentBlockedComments } from '../components/DashboardFocus'
 import { useLanguage } from '../i18n/LanguageContext'
 import { downloadCommunicationsPdf } from '../lib/reportExports'
 import { loadCompanySettings } from '../services/companyService'
@@ -10,6 +11,7 @@ import { loadEodComplianceSummary } from '../services/eodService'
 import { loadTicketWorkspace } from '../services/ticketService'
 import {
   createTeamNote,
+  loadDashboardExtras,
   loadOperations,
   markGeneralNoteSeen,
   subscribeToOperations,
@@ -114,57 +116,118 @@ function EodComplianceCard({ summary }) {
   return <section className="content-card dashboard-eod-compliance"><div className="section-heading"><div><p className="eyebrow">Reportes diarios</p><h3>EOD de hoy</h3><p className="muted">{summary.workDate} · Envío dentro de TP OPS al finalizar el turno.</p></div><Link to="/eod-reports">Ver detalle</Link></div><div className="eod-compliance-counts"><span className="submitted">{summary.counts.submitted} enviados</span><span className="pending">{summary.counts.pending} pendientes</span></div><div className="dashboard-eod-users">{summary.rows.map((row) => <span className={row.state} key={row.member.id}>{row.member.full_name}: {row.state === 'submitted' ? 'Enviado' : 'Pendiente'}</span>)}</div></section>
 }
 
-function SuperadminDashboard({ data, blockers, onCreated, eodCompliance }) {
+function attentionReasons({ client, missingCount, clientBlockers, openTickets, blockedComments, suggestions, missingCaptures }) {
+  const reasons = []
+  if (client.status === 'ADS PAUSED') reasons.push(['danger', `⏸ ADS pausados${client.ads_pause_reason ? `: ${client.ads_pause_reason}` : ''}`])
+  if (blockedComments) reasons.push(['danger', `⛔ ${blockedComments} bloqueo(s) en bitácora`])
+  if (clientBlockers) reasons.push(['danger', `${clientBlockers} bloqueo(s) abiertos`])
+  if (launchOverdue(client)) reasons.push(['warning', '⏰ Deadline ADS vencido'])
+  if (openTickets) reasons.push(['info', `🎫 ${openTickets} ticket(s)`])
+  if (suggestions) reasons.push(['slack', `📥 ${suggestions} dato(s) de Slack`])
+  if (missingCaptures) reasons.push(['warning', `📷 ${missingCaptures} captura(s)`])
+  if (!client.intake_form_completed) reasons.push(['muted', 'Formulario pendiente'])
+  else if (missingCount > 0) reasons.push(['muted', `${missingCount} campos del dossier`])
+  return reasons
+}
+
+function SuperadminDashboard({ data, blockers, onCreated, eodCompliance, extras }) {
   const { locale, t } = useLanguage()
+  const members = new Map((data.directory || []).map((member) => [member.id, member]))
+  const missingCaptures = missingEvidenceSteps(data.workflowSteps, extras.evidenceStepIds)
+  const blockedComments = recentBlockedComments(extras.comments)
+  const openTicketList = data.tickets.filter(isOpenTicket)
   const clientSummaries = data.clients.map((client) => {
     const missingCount = dossierFields.filter((key) => isMissing(client[key])).length
-    const openTickets = data.tickets.filter((ticket) => !['Resolved', 'Closed'].includes(ticket.status) && ticket.clients?.some((link) => link.id === client.id)).length
+    const openTickets = openTicketList.filter((ticket) => ticket.clients?.some((link) => link.id === client.id)).length
     const clientBlockers = blockers.filter((blocker) => blocker.client_id === client.id).length
     const pendingSteps = data.workflowSteps.filter((step) => step.client_id === client.id && !step.completed)
-    return { client, missingCount, openTickets, clientBlockers, pendingSteps }
+    return {
+      client, missingCount, openTickets, clientBlockers, pendingSteps,
+      blockedComments: blockedComments.filter((comment) => comment.client_id === client.id).length,
+      suggestions: extras.suggestions.filter((item) => item.client_id === client.id).length,
+      missingCaptures: missingCaptures.filter((step) => step.client_id === client.id).length,
+    }
   })
   const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
-  const overdueTickets = data.tickets.filter((ticket) => !['Resolved', 'Closed'].includes(ticket.status) && ticket.next_follow_up && new Date(ticket.next_follow_up + 'T23:59:59') < new Date())
+  const overdueTickets = openTicketList.filter((ticket) => ticket.next_follow_up && new Date(ticket.next_follow_up + 'T23:59:59') < new Date())
   const stale = data.clients.filter(isStale)
   const lateLaunches = data.clients.filter(launchOverdue)
-  const attentionQueue = clientSummaries.filter(({ client, missingCount, clientBlockers }) => clientBlockers || client.status === 'ADS PAUSED' || launchOverdue(client) || !client.intake_form_completed || missingCount > 0)
-    .sort((a, b) => Number(Boolean(b.clientBlockers)) - Number(Boolean(a.clientBlockers)) || Number(b.client.status === 'ADS PAUSED') - Number(a.client.status === 'ADS PAUSED') || Number(launchOverdue(b.client)) - Number(launchOverdue(a.client)))
-    .slice(0, 6)
+  const paused = data.clients.filter((client) => client.status === 'ADS PAUSED')
+  const urgent = openTicketList.filter((ticket) => ticket.priority === 'Urgent').length
+  const score = (item) => (item.blockedComments || item.clientBlockers ? 40 : 0) + (item.client.status === 'ADS PAUSED' ? 30 : 0) + (launchOverdue(item.client) ? 20 : 0)
+    + item.openTickets * 3 + item.suggestions * 2 + item.missingCaptures * 2 + (item.client.intake_form_completed ? 0 : 1)
+  const attentionQueue = clientSummaries.filter((item) => score(item) > 0 || item.missingCount > 0)
+    .sort((a, b) => score(b) - score(a) || b.missingCount - a.missingCount)
+    .slice(0, 7)
+
+  const tiles = [
+    { key: 'tickets', icon: '🎫', value: openTicketList.length, label: 'Tickets abiertos', hint: urgent ? `${urgent} urgente(s)` : overdueTickets.length ? `${overdueTickets.length} seguimiento(s) vencido(s)` : 'Slack y TP OPS', to: '/tickets', tone: urgent ? 'danger' : 'info' },
+    { key: 'blocked', icon: '⛔', value: blockedComments.length + blockers.length, label: 'Bloqueos', hint: 'Bitácora, últimos 7 días', to: '/ciclo', tone: 'danger' },
+    { key: 'paused', icon: '⏸', value: paused.length, label: 'ADS pausados', hint: lateLaunches.length ? `${lateLaunches.length} deadline(s) vencido(s)` : 'Campañas detenidas', to: '/clientes', tone: 'warning' },
+    { key: 'slack', icon: '📥', value: extras.suggestions.length, label: 'Datos de Slack', hint: 'Por revisar en el dossier', to: '/ciclo', tone: 'slack' },
+    { key: 'captures', icon: '📷', value: missingCaptures.length, label: 'Capturas pendientes', hint: 'Pasos marcados sin captura', href: '#capturas-pendientes', tone: 'warning' },
+    ...(eodCompliance ? [{ key: 'eod', icon: '📝', value: eodCompliance.counts.pending, label: 'EOD pendientes', hint: `${eodCompliance.counts.submitted} enviados hoy`, to: '/eod-reports', tone: 'info' }] : []),
+  ]
 
   return <>
+    <FocusStrip tiles={tiles} />
     <ClientStatusCards clients={data.clients} />
-    <EodComplianceCard summary={eodCompliance} />
-    <section className="metric-grid compact" aria-label="Alertas operativas">
-      <article className="metric-card red"><span>{t('Seguimientos vencidos')}</span><strong>{overdueTickets.length}</strong><small>{t('Requieren seguimiento')}</small></article>
-      <article className="metric-card amber"><span>Sin actualización</span><strong>{stale.length}</strong><small>más de 3 días</small></article>
-      <article className="metric-card red"><span>Deadlines ADS vencidos</span><strong>{lateLaunches.length}</strong><small>campañas sin lanzar</small></article>
+    <section className="dashboard-grid">
+      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Prioridad ejecutiva')}</p><h3>{t('Clientes que requieren atención')}</h3></div><Link to="/ciclo">{t('Ciclo de vida')}</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">{t('No hay alertas críticas.')}</p>}{attentionQueue.map((item) => <Link to={`/clientes/${item.client.id}`} className="attention-row" key={item.client.id}><div><strong data-no-translate>{item.client.code} · {item.client.business_name}</strong><span className="attention-reasons">{attentionReasons(item).slice(0, 4).map(([tone, text]) => <em key={text} className={`attention-chip ${tone}`}>{t(text)}</em>)}</span></div><span>→</span></Link>)}</div></div>
+      <TicketWatch tickets={data.tickets} members={members} />
     </section>
     <section className="dashboard-grid">
-      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">Prioridad ejecutiva</p><h3>Clientes que requieren atención</h3></div><Link to="/clientes">Ver filtros</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">No hay alertas críticas.</p>}{attentionQueue.map(({ client, missingCount, clientBlockers }) => <Link to={`/clientes/${client.id}`} className="attention-row" key={client.id}><div><strong>{client.code} · {client.business_name}</strong><small>{client.status === 'ADS PAUSED' ? `ADS pausados: ${client.ads_pause_reason}` : !client.intake_form_completed ? 'Formulario pendiente' : clientBlockers ? `${clientBlockers} bloqueo(s)` : launchOverdue(client) ? 'Deadline ADS vencido' : `${missingCount} campos pendientes`}</small></div><span>→</span></Link>)}</div></div>
+      <ClientLogFeed comments={extras.comments} clients={data.clients} members={members} />
+      <div className="dashboard-stack">
+        <EodComplianceCard summary={eodCompliance} />
+        <EvidenceGaps steps={missingCaptures} clients={data.clients} />
+      </div>
+    </section>
+    <section className="metric-grid compact" aria-label="Alertas operativas">
+      <article className="metric-card red"><span>{t('Seguimientos vencidos')}</span><strong>{overdueTickets.length}</strong><small>{t('Requieren seguimiento')}</small></article>
+      <article className="metric-card amber"><span>{t('Sin actualización')}</span><strong>{stale.length}</strong><small>{t('más de 3 días')}</small></article>
+      <article className="metric-card red"><span>{t('Deadlines ADS vencidos')}</span><strong>{lateLaunches.length}</strong><small>{t('campañas sin lanzar')}</small></article>
     </section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades reportadas</p></article>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks' && item.entity_type !== 'calendar_events').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong data-no-translate>{item.actor_name}</strong><p>{t(item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó')} {t(item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : 'un registro operativo')}</p></div><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
-    <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} clientes totales</span><span>{incomplete} dossiers incompletos</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} clientes bloqueados</span></div></section>
-    <section>
-      <div className="section-heading"><div><p className="eyebrow">Control por cliente</p><h3>Seguimiento por cliente</h3></div><Link to="/clientes">Abrir pipeline</Link></div>
+    <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} {t('clientes totales')}</span><span>{incomplete} {t('dossiers incompletos')}</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} {t('clientes bloqueados')}</span></div></section>
+    <details className="client-grid-toggle">
+      <summary className="section-heading"><div><p className="eyebrow">{t('Control por cliente')}</p><h3>{t('Seguimiento por cliente')} <small>({data.clients.length})</small></h3></div><span className="text-button">{t('Mostrar / ocultar')}</span></summary>
       <div className="dossier-grid">{clientSummaries.map(({ client, openTickets, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers || client.status === 'ADS PAUSED' ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
         <div className="client-card-top"><div><span className="client-code">{client.code}</span><h3>{client.business_name}</h3></div><span className={`lifecycle ${client.status.toLowerCase().replaceAll(' ', '-')}`}>{client.status}</span></div>
         <div className="dossier-meta"><span>{t(client.phase)}</span><span>{openTickets} tickets abiertos</span>{client.status === 'ADS PAUSED' && <span className="pause-text">ADS pausados · {client.ads_pause_reason}</span>}{clientBlockers > 0 && <span className="danger-text">{clientBlockers} bloqueo{clientBlockers === 1 ? '' : 's'}</span>}</div>
         <div className="process-pending"><strong>Siguiente paso del proceso</strong>{pendingSteps.length ? <><p>{pendingSteps[0].title}</p><small>{pendingSteps[0].owner_name}</small></> : <p className="complete-note">Proceso completo · auditoría activa</p>}</div>
         <div className={`client-deadline ${launchOverdue(client) ? 'overdue' : ''}`}><span>Deadline ADS</span><b>{client.target_launch_date || 'Sin fecha'}</b></div><div className="next-step"><span>Próximo paso</span><p>{client.next_action}</p></div><span className="card-link">Ver expediente completo →</span>
       </Link>)}</div>
-    </section>
+    </details>
   </>
 }
 
-function RoleDashboard({ data, blockers, profile }) {
+function RoleDashboard({ data, blockers, profile, extras }) {
   const { t } = useLanguage()
+  const members = new Map((data.directory || []).map((member) => [member.id, member]))
   const open = data.tickets.filter((x) => x.assigned_to === profile?.id && x.status !== 'Resolved' && x.status !== 'Closed')
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile?.timezone || 'America/Managua' }).format(new Date())
   const overdue = open.filter((x) => x.next_follow_up && x.next_follow_up < today)
   const waiting = open.filter((x) => x.status === 'Waiting')
-  return <><ClientStatusCards clients={data.clients} />
-    <section className="metric-grid" aria-label="Resumen operativo"><article className="metric-card blue"><span>{t('Tickets abiertos')}</span><strong>{open.length}</strong><small>{t('Asignados a mí')}</small></article><article className="metric-card amber"><span>{t('Esperando respuesta')}</span><strong>{waiting.length}</strong><small>{t('Seguimientos programados')}</small></article><article className="metric-card red"><span>{t('Seguimientos vencidos')}</span><strong>{overdue.length}</strong><small>{t('Requieren seguimiento')}</small></article></section>
+  // My checklist work: steps of my role still open, and my checked steps that wait for a screenshot.
+  const mySteps = data.workflowSteps.filter((step) => step.owner_role === profile?.role)
+  const myPending = mySteps.filter((step) => !step.completed)
+  const myCaptures = missingEvidenceSteps(mySteps, extras.evidenceStepIds)
+  const sentEodToday = data.eodReports.some((report) => report.user_id === profile?.id && report.report_date === today)
+  const tiles = [
+    { key: 'tickets', icon: '🎫', value: open.length, label: 'Mis tickets', hint: overdue.length ? `${overdue.length} seguimiento(s) vencido(s)` : waiting.length ? `${waiting.length} esperando respuesta` : 'Asignados a mí', to: '/tickets', tone: overdue.length ? 'danger' : 'info' },
+    { key: 'steps', icon: '✅', value: myPending.length, label: 'Mis pasos del checklist', hint: 'Pendientes en mis clientes', to: '/ciclo', tone: 'info' },
+    { key: 'captures', icon: '📷', value: myCaptures.length, label: 'Capturas pendientes', hint: 'Pasos marcados sin captura', href: '#capturas-pendientes', tone: 'warning' },
+    { key: 'eod', icon: '📝', value: sentEodToday ? '✓' : '—', label: 'Mi EOD de hoy', hint: sentEodToday ? 'Enviado' : 'Pendiente', to: '/eod-reports', tone: sentEodToday ? 'success' : 'warning' },
+  ]
+  return <><FocusStrip tiles={tiles} />
+    <section className="dashboard-grid">
+      <TicketWatch tickets={data.tickets} members={members} onlyMine={profile?.id} title="Mis tickets" />
+      <ClientLogFeed comments={extras.comments} clients={data.clients} members={members} limit={6} />
+    </section>
+    {myCaptures.length > 0 && <EvidenceGaps steps={myCaptures} clients={data.clients} />}
+    <ClientStatusCards clients={data.clients} />
     <div className="dashboard-grid"><section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Seguimiento de clientes')}</p><h3>{t('Mis próximos seguimientos')}</h3></div><Link to="/tickets">{t('Ver todos')}</Link></div><div className="ticket-list">{open.slice(0, 6).map((ticket) => <Link className="ticket-list-row" key={ticket.id} to="/tickets"><span className="ticket-list-main"><b>{ticket.ticket_number}</b><strong>{ticket.title}</strong><small>{ticket.clients.map((client) => client.code).join(', ')}</small></span><span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(ticketStatusLabels[ticket.status] || ticket.status)}</span><small>{ticket.next_follow_up || t('Sin fecha')}</small></Link>)}{open.length === 0 && <p className="muted">{t('No tienes tickets abiertos asignados.')}</p>}</div></section>
     <section className="content-card alert-card"><p className="eyebrow">{t('Dependencias')}</p><h3>{t('Bloqueos abiertos')}</h3><div className="blocker-list">{blockers.map((item) => <article className="blocker-row" key={item.id}><span className="alert-dot red-dot" /><div><strong>{item.clients?.code} · {item.clients?.business_name}</strong><p>{item.title}</p><small>{t('Responsable')}: {item.owner_name}</small></div></article>)}</div></section></div>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Pipeline')}</p><h3>{t('Estado de clientes')}</h3></div><Link to="/clientes">{t('Ver clientes')}</Link></div><div className="pipeline-list">{data.clients.map((client) => <Link className="pipeline-row" to={'/clientes/' + client.id} key={client.id}><span className={'lifecycle ' + client.status.toLowerCase().replaceAll(' ', '-')}>{client.status}</span><div><strong>{client.code} · {client.business_name}</strong><small>{client.phase} · ADS {client.target_launch_date || t('Sin deadline')}</small></div><p><b>{t('Siguiente')}:</b> {client.next_action}</p><span className="row-arrow">→</span></Link>)}</div></section>
@@ -179,15 +242,18 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [eodCompliance, setEodCompliance] = useState(null)
+  const [extras, setExtras] = useState({ comments: [], suggestions: [], evidenceStepIds: new Set() })
   const refresh = useCallback(async () => {
     try {
-      const [operations, compliance, ticketWorkspace] = await Promise.all([
+      const [operations, compliance, ticketWorkspace, dashboardExtras] = await Promise.all([
         loadOperations(profile.id),
         loadEodComplianceSummary(profile),
         loadTicketWorkspace(),
+        loadDashboardExtras().catch(() => null),
       ])
       setData({ ...operations, tickets: ticketWorkspace.tickets || [], profile, refresh })
       setEodCompliance(compliance)
+      if (dashboardExtras) setExtras(dashboardExtras)
     } catch (loadError) { setError(loadError.message) }
   }, [profile])
 
@@ -202,6 +268,6 @@ export default function DashboardPage() {
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><span className="status-pill">Datos en vivo</span></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
-    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} eodCompliance={eodCompliance} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} />}
+    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} eodCompliance={eodCompliance} extras={extras} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} />}
   </div>
 }

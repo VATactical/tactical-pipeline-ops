@@ -171,6 +171,7 @@ export default function ClientDetailPage() {
   }
   // Checklist screenshots load apart so a storage hiccup never blocks the client page.
   const [stepEvidence, setStepEvidence] = useState([])
+  const [evidencePromptStep, setEvidencePromptStep] = useState('')
   const refreshEvidence = async () => {
     try { setStepEvidence(await loadStepEvidence(clientId)) }
     catch (evidenceError) { console.warn('Step evidence unavailable', evidenceError) }
@@ -278,9 +279,14 @@ export default function ClientDetailPage() {
         : t(saveError.message))
     } finally { setSaving(false) }
   }
+  // Checking a step that needs a screenshot opens the upload box right away (it is not blocked).
   const toggleStep = async (step) => {
-    try { await updateWorkflowStep(step.id, !step.completed); await refresh() }
-    catch (updateError) { setError(t(updateError.message)) }
+    try {
+      await updateWorkflowStep(step.id, !step.completed)
+      const hasEvidence = stepEvidence.some((item) => item.step_id === step.id)
+      setEvidencePromptStep(!step.completed && step.evidence === 'required' && !hasEvidence ? step.id : '')
+      await refresh()
+    } catch (updateError) { setError(t(updateError.message)) }
   }
   const applySuggestedStatus = async () => {
     if (!suggestedStatus) return
@@ -532,6 +538,10 @@ export default function ClientDetailPage() {
 
     <div className="client-tab-section tab-checklist client-workflow-groups">
       <section className="content-card client-checklist"><div className="section-heading"><div><p className="eyebrow">{t('Checklist de lanzamiento')}</p><h3>{workflowDone} {t('de')} {workflowSteps.length} {t('completadas')}</h3><p className="muted">{currentPhase ? `${t('Fase actual')}: ${t(checklistPhases.find(([key]) => key === currentPhase)?.[1] || '')}` : t('Checklist completo')}</p></div><button className="text-button" type="button" onClick={() => setShowAllWorkflowSteps((value) => !value)}>{showAllWorkflowSteps ? t('Ver solo la fase actual') : t('Ver checklist completo')}</button></div>
+        {(() => {
+          const missing = workflowSteps.filter((step) => step.completed && step.evidence === 'required' && !stepEvidence.some((item) => item.step_id === step.id))
+          return missing.length > 0 && <div className="checklist-evidence-hint">📷 {missing.length === 1 ? t('1 paso marcado espera su captura:') : t(`${missing.length} pasos marcados esperan su captura:`)} <span data-no-translate>{missing.map((step) => String(step.sort_order).padStart(2, '0')).join(', ')}</span></div>
+        })()}
         {suggestedStatus && canEdit && <div className="checklist-status-hint"><span>{t(`El checklist indica que el cliente ya está en ${suggestedStatus}.`)}</span><button className="primary-button compact-button" type="button" disabled={saving} onClick={applySuggestedStatus}>{t(`Cambiar estado a ${suggestedStatus}`)}</button></div>}
         {checklistPhases.filter(([phase]) => visibleWorkflowSteps.some((step) => step.phase === phase)).map(([phase, phaseLabel]) => {
           const phaseSteps = visibleWorkflowSteps.filter((step) => step.phase === phase)
@@ -541,8 +551,8 @@ export default function ClientDetailPage() {
             <div className="workflow-list">{phaseSteps.map((step) => {
               const evidence = stepEvidence.filter((item) => item.step_id === step.id)
               return <div className={`workflow-step-block ${step.completed ? 'completed' : ''}`} key={step.id}>
-                <label className={`workflow-step ${step.completed ? 'completed' : ''}`}><input type="checkbox" checked={step.completed} disabled={!canToggleStep(step)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{stepTitle(step)}{evidence.length > 0 && <span className="step-evidence-count" title={t('Capturas de evidencia')}> 📎{evidence.length}</span>}</strong><small>{t(step.owner_name)}</small>{step.notes && <small className="workflow-step-note" data-no-translate>{step.notes}</small>}</div></label>
-                <StepEvidence clientId={client.id} step={step} items={evidence} canUpload={canToggleStep(step)} canDelete={(item) => item.uploaded_by === profile?.id || canManageArchive} onChange={refreshEvidence} />
+                <label className={`workflow-step ${step.completed ? 'completed' : ''}`}><input type="checkbox" checked={step.completed} disabled={!canToggleStep(step)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{stepTitle(step)}{evidence.length > 0 && <span className="step-evidence-count" title={t('Capturas de evidencia')}> 📎{evidence.length}</span>}{step.evidence === 'required' && !evidence.length && <span className={`step-evidence-needed ${step.completed ? 'late' : ''}`} title={t('Este paso se confirma con una captura')}>📷 {t('Captura')}</span>}</strong><small>{t(step.owner_name)}</small>{step.notes && <small className="workflow-step-note" data-no-translate>{step.notes}</small>}</div></label>
+                <StepEvidence clientId={client.id} step={step} items={evidence} canUpload={canToggleStep(step)} canDelete={(item) => item.uploaded_by === profile?.id || canManageArchive} onChange={refreshEvidence} autoOpen={evidencePromptStep === step.id} />
               </div>
             })}</div>
           </div>
