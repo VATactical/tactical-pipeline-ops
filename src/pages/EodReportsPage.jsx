@@ -744,7 +744,8 @@ export default function EodReportsPage() {
             })}
           </div>}
           {!isStructuredEodReport(expandedReport.notes) && <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>}
-          {expandedReport.notes && <div className="eod-notes-block"><strong>{t(isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
+          {expandedReport.source === 'slack' && <p className="eod-slack-source"><span className="ticket-source-badge">Slack</span> {t('Enviado desde Slack con “Send to TP OPS”.')} {expandedReport.slack_permalink && <a href={expandedReport.slack_permalink} target="_blank" rel="noreferrer">{t('Ver en Slack')}</a>}</p>}
+          {expandedReport.notes && <div className="eod-notes-block"><strong>{t(expandedReport.source === 'slack' ? 'Reporte EOD de Slack' : isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><p className="formatted-text" data-no-translate>{expandedReport.notes}</p></div>}
           {canReviewAll && <section className="eod-modal-review">
             <h3>{t('Revisión del reporte')}</h3>
             <div className="eod-review-actions">
