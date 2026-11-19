@@ -397,3 +397,59 @@ export async function setClientPeriodSpend(clientId, periodStart, periodEnd, amo
 export function fetchClientGhlRange(clientId, from, to) {
   return syncClientGhlMetrics(clientId, { from, to })
 }
+
+// Checklist evidence: screenshots stored privately in the step-evidence bucket.
+const EVIDENCE_BUCKET = 'step-evidence'
+const EVIDENCE_MAX_SIDE = 1600
+
+// Downscale and convert to WebP in the browser so a screenshot weighs ~150-250 KB.
+async function compressImage(file) {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, EVIDENCE_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+  const width = Math.round(bitmap.width * scale)
+  const height = Math.round(bitmap.height * scale)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height)
+  bitmap.close?.()
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))
+  if (!blob) throw new Error('No se pudo procesar la imagen.')
+  return { blob, width, height }
+}
+
+export async function loadStepEvidence(clientId) {
+  const { data, error } = await supabase.from('client_step_evidence').select('*').eq('client_id', clientId).order('created_at')
+  if (error) throw error
+  const rows = data || []
+  if (!rows.length) return []
+  const { data: signed, error: signError } = await supabase.storage.from(EVIDENCE_BUCKET)
+    .createSignedUrls(rows.map((row) => row.storage_path), 60 * 60)
+  if (signError) throw signError
+  const urls = new Map((signed || []).map((item) => [item.path, item.signedUrl]))
+  return rows.map((row) => ({ ...row, url: urls.get(row.storage_path) || null }))
+}
+
+export async function uploadStepEvidence({ clientId, stepId, file }) {
+  if (!file?.type?.startsWith('image/')) throw new Error('Solo se pueden subir imágenes.')
+  if (file.size > 15 * 1024 * 1024) throw new Error('La imagen pesa más de 15 MB.')
+  const { blob, width, height } = await compressImage(file)
+  const path = `${clientId}/${stepId}/${crypto.randomUUID()}.webp`
+  const { error: uploadError } = await supabase.storage.from(EVIDENCE_BUCKET).upload(path, blob, { contentType: 'image/webp', upsert: false })
+  if (uploadError) throw uploadError
+  const { error } = await supabase.from('client_step_evidence').insert({
+    step_id: stepId, client_id: clientId, storage_path: path,
+    file_name: (file.name || 'captura').slice(0, 200), size_bytes: blob.size, width, height,
+  })
+  if (error) {
+    await supabase.storage.from(EVIDENCE_BUCKET).remove([path])
+    throw error
+  }
+}
+
+export async function deleteStepEvidence(evidence) {
+  const { data, error } = await supabase.from('client_step_evidence').delete().eq('id', evidence.id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Solo quien subió la captura o un administrador de operaciones puede eliminarla.')
+  await supabase.storage.from(EVIDENCE_BUCKET).remove([evidence.storage_path])
+}

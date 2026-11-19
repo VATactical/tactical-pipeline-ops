@@ -5,10 +5,11 @@ import AdsReportsPanel from '../components/AdsReportsPanel'
 import GhlMetricsPanel from '../components/GhlMetricsPanel'
 import { NavIcon, usePageTrail } from '../components/navigation'
 import ClientOpsPanel from '../components/ClientOpsPanel'
+import StepEvidence from '../components/StepEvidence'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
-import { createClientNote, deleteArchivedClient, deleteClientNote, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateWorkflowStep } from '../services/opsService'
+import { createClientNote, deleteArchivedClient, deleteClientNote, loadClient, markGoogleDocsUpdated, recordDossierEvent, revealClientMetaToken, saveClientMetaToken, updateClient, reassignClientCode, updateClientNote, updateWorkflowStep, loadStepEvidence } from '../services/opsService'
 
 // Dossier sections follow the GHL Client Onboarding Form, then what is confirmed on the
 // onboarding call, then each platform. Field tuple: [label, key, type, source, optional].
@@ -164,7 +165,14 @@ export default function ClientDetailPage() {
     const result = await loadClient(clientId)
     setData(result); setDraft(result.client)
   }
+  // Checklist screenshots load apart so a storage hiccup never blocks the client page.
+  const [stepEvidence, setStepEvidence] = useState([])
+  const refreshEvidence = async () => {
+    try { setStepEvidence(await loadStepEvidence(clientId)) }
+    catch (evidenceError) { console.warn('Step evidence unavailable', evidenceError) }
+  }
   useEffect(() => { refresh().catch((loadError) => setError(loadError.message)) }, [clientId])
+  useEffect(() => { refreshEvidence() }, [clientId])
   useEffect(() => {
     const header = clientHeaderRef.current
     if (!header || typeof IntersectionObserver === 'undefined') return
@@ -525,7 +533,13 @@ export default function ClientDetailPage() {
           const allPhaseSteps = workflowSteps.filter((step) => step.phase === phase)
           return <div className="checklist-phase" key={phase}>
             <h4>{t(phaseLabel)} <small>{allPhaseSteps.filter((step) => step.completed).length}/{allPhaseSteps.length}</small></h4>
-            <div className="workflow-list">{phaseSteps.map((step) => <label className={`workflow-step ${step.completed ? 'completed' : ''}`} key={step.id}><input type="checkbox" checked={step.completed} disabled={!canToggleStep(step)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{stepTitle(step)}</strong><small>{t(step.owner_name)}</small>{step.notes && <small className="workflow-step-note" data-no-translate>{step.notes}</small>}</div></label>)}</div>
+            <div className="workflow-list">{phaseSteps.map((step) => {
+              const evidence = stepEvidence.filter((item) => item.step_id === step.id)
+              return <div className={`workflow-step-block ${step.completed ? 'completed' : ''}`} key={step.id}>
+                <label className={`workflow-step ${step.completed ? 'completed' : ''}`}><input type="checkbox" checked={step.completed} disabled={!canToggleStep(step)} onChange={() => toggleStep(step)} /><span className="workflow-order">{String(step.sort_order).padStart(2, '0')}</span><div><strong>{stepTitle(step)}{evidence.length > 0 && <span className="step-evidence-count" title={t('Capturas de evidencia')}> 📎{evidence.length}</span>}</strong><small>{t(step.owner_name)}</small>{step.notes && <small className="workflow-step-note" data-no-translate>{step.notes}</small>}</div></label>
+                <StepEvidence clientId={client.id} step={step} items={evidence} canUpload={canToggleStep(step)} canDelete={(item) => item.uploaded_by === profile?.id || canManageArchive} onChange={refreshEvidence} />
+              </div>
+            })}</div>
           </div>
         })}
       </section>
