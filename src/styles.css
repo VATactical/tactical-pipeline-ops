@@ -3406,3 +3406,19 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .eod-reminder strong { color: #7a5200; }
 .eod-reminder p { margin: .15rem 0 0; color: #7a6235; font-size: .82rem; }
 @media (max-width: 640px) { .eod-reminder { flex-wrap: wrap; } .hbar-row { grid-template-columns: 1fr; gap: .2rem; } }
+
+/* Checklist screenshots: eye to view, pencil to edit (max 2) */
+.step-evidence-icon { position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--tp-border-strong); border-radius: 8px; background: var(--tp-surface); color: var(--tp-text-muted); cursor: pointer; }
+.step-evidence-icon:hover, .step-evidence-icon.active { border-color: var(--tp-accent); color: var(--tp-accent); background: var(--tp-accent-soft); }
+.step-evidence-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.step-evidence-icon b { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--tp-accent); color: #fff; font-size: .62rem; line-height: 16px; }
+.step-evidence-drop-actions { display: inline-flex; align-items: center; gap: .5rem; }
+.step-evidence-edit { display: grid; gap: .5rem; margin-top: .5rem; padding: .7rem .8rem; border: 1px solid var(--tp-border); border-radius: 10px; background: var(--tp-surface-muted); }
+.step-evidence-edit-items { display: flex; flex-wrap: wrap; gap: .6rem; }
+.step-evidence-edit-items figure { position: relative; margin: 0; }
+.step-evidence-edit-items .step-evidence-thumb { width: 96px; height: 72px; }
+.step-evidence-remove { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; padding: 0; border: 2px solid var(--tp-surface); border-radius: 99px; background: var(--tp-danger); color: #fff; font-size: .9rem; font-weight: 800; line-height: 1; cursor: pointer; }
+.step-evidence-slot { display: grid; place-items: center; align-content: center; width: 96px; height: 72px; border: 1px dashed var(--tp-border-strong); border-radius: 6px; background: var(--tp-surface); color: var(--tp-accent); font-size: 1.2rem; font-weight: 800; cursor: pointer; }
+.step-evidence-slot small { font-size: .66rem; font-weight: 700; }
+.step-evidence-edit-foot { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.step-evidence-pager { display: inline-flex; align-items: center; gap: .4rem; }
