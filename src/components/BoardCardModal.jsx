@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import ClientLog from './ClientLog'
 import ClientTickets from './ClientTickets'
+import DossierSuggestions from './DossierSuggestions'
 import { createClientNote, loadClient, updateWorkflowStep } from '../services/opsService'
 
 // Trello-style quick view of a client opened from the lifecycle board: summary, checklist,
@@ -111,6 +112,7 @@ export default function BoardCardModal({ clientId, stages, stageLabel, canMove, 
 
         <div className="board-modal-body">
           <main>
+            <DossierSuggestions clientId={client.id} compact className="board-modal-section" onApplied={() => { reload(); onChanged?.() }} />
             <ModalTickets clientId={client.id} />
             {summary.length > 0 && <section className="board-modal-section"><h3>{t('Resumen')}</h3>
               <dl className="board-modal-summary">{summary.map(([label, value]) => <div key={label}><dt>{t(label)}</dt><dd data-no-translate>{text(value)}</dd></div>)}</dl>

@@ -456,7 +456,7 @@ export async function deleteStepEvidence(evidence) {
 
 // Lifecycle board (Trello replacement): columns, client cards and moves.
 export async function loadLifecycleBoard() {
-  const [stagesResult, clientsResult, stepsResult, commentsResult, ticketsResult] = await runWithSessionRetry(() => Promise.all([
+  const [stagesResult, clientsResult, stepsResult, commentsResult, ticketsResult, suggestionsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('lifecycle_board_stages').select('*').eq('archived', false).order('sort_order'),
     supabase.from('clients')
       .select('id, code, business_name, owner_name, status, phase, daily_budget, board_stage, board_position, board_stage_changed_at, target_launch_date, ads_pause_reason, updated_at')
@@ -464,6 +464,7 @@ export async function loadLifecycleBoard() {
     supabase.from('client_workflow_steps').select('client_id, completed'),
     supabase.from('client_comments').select('client_id').is('deleted_at', null),
     supabase.from('ticket_clients').select('client_id, tickets!inner(status)').not('tickets.status', 'in', '("Resolved","Closed")'),
+    supabase.from('client_dossier_suggestions').select('client_id').eq('status', 'pending'),
   ]))
   const error = stagesResult.error || clientsResult.error || stepsResult.error
   if (error) throw error
@@ -479,6 +480,8 @@ export async function loadLifecycleBoard() {
   for (const row of commentsResult.data || []) commentCount.set(row.client_id, (commentCount.get(row.client_id) || 0) + 1)
   const ticketCount = new Map()
   for (const row of ticketsResult.data || []) if (row.client_id) ticketCount.set(row.client_id, (ticketCount.get(row.client_id) || 0) + 1)
+  const suggestionCount = new Map()
+  for (const row of suggestionsResult?.data || []) suggestionCount.set(row.client_id, (suggestionCount.get(row.client_id) || 0) + 1)
   return {
     stages: stagesResult.data || [],
     clients: (clientsResult.data || []).map((client) => ({
@@ -486,6 +489,7 @@ export async function loadLifecycleBoard() {
       progress: progress.get(client.id) || { done: 0, total: 0 },
       commentCount: commentCount.get(client.id) || 0,
       openTickets: ticketCount.get(client.id) || 0,
+      slackSuggestions: suggestionCount.get(client.id) || 0,
     })),
   }
 }
@@ -530,10 +534,10 @@ export async function loadClientComments(clientId) {
   return (commentsResult.data || []).map((comment) => ({ ...comment, author: members.get(comment.author_id) || null }))
 }
 
-export async function addClientComment({ clientId, profileId, kind, body }) {
+export async function addClientComment({ clientId, profileId, kind, body, sendToSlack = false }) {
   const clean = body.trim()
   if (!clean) throw new Error('Escribe el comentario.')
-  const { error } = await supabase.from('client_comments').insert({ client_id: clientId, author_id: profileId, kind, body: clean })
+  const { error } = await supabase.from('client_comments').insert({ client_id: clientId, author_id: profileId, kind, body: clean, send_to_slack: Boolean(sendToSlack) })
   if (error) throw error
 }
 
@@ -568,5 +572,19 @@ export async function syncSlackTickets() {
     const detail = await error.context?.json?.().catch(() => null)
     throw new Error(detail?.error || error.message)
   }
+  return data
+}
+
+// Dossier values found in the client's Slack channel, waiting for someone to apply or dismiss them.
+export async function loadDossierSuggestions(clientId) {
+  const { data, error } = await supabase.from('client_dossier_suggestions')
+    .select('*').eq('client_id', clientId).eq('status', 'pending').order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function resolveDossierSuggestion(suggestionId, apply) {
+  const { data, error } = await supabase.rpc('resolve_dossier_suggestion', { p_id: suggestionId, p_apply: Boolean(apply) })
+  if (error) throw error
   return data
 }
