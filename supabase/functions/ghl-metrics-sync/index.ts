@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 
-// Pulls leads, qualified leads and booked appointments for the current billing
+// Pulls leads (contacts with an opportunity), qualified leads and booked appointments for the current billing
 // period of each client from its GHL sub-account (API v2, Private Integration Token).
 //
 // Callers:
@@ -78,20 +78,36 @@ const addDays = (date: string, days: number) => {
   return value.toISOString().slice(0, 10);
 };
 
-async function countContacts(target: Target, start: string, end: string, tag?: string) {
+// A lead is a contact created in the period that entered a pipeline (has an opportunity).
+// Lead forms and integrations often create extra fragment contacts (only a phone or only an
+// email, no name) and test contacts; those never get an opportunity, so counting every contact
+// inflates the number versus what the team sees in Opportunities.
+// If the API response carries no opportunities field at all, every contact is counted.
+async function countLeads(target: Target, start: string, end: string) {
   const dateFilter = { field: "dateAdded", operator: "range", value: { gte: dayStart(start), lte: dayEnd(end) } };
-  const search = (filters: unknown[]) =>
-    ghl(target.token, "/contacts/search", "2021-07-28", {
+  const pageLimit = 100;
+  const contacts: Array<Record<string, unknown>> = [];
+  let total = 0;
+  for (let page = 1; page <= 50; page += 1) {
+    const body = await ghl(target.token, "/contacts/search", "2021-07-28", {
       method: "POST",
-      body: JSON.stringify({ locationId: target.location_id, page: 1, pageLimit: 1, filters }),
+      body: JSON.stringify({ locationId: target.location_id, page, pageLimit, filters: [dateFilter] }),
     });
-  if (!tag) return Number((await search([dateFilter])).total ?? 0);
-  try {
-    return Number((await search([dateFilter, { field: "tags", operator: "contains", value: tag }])).total ?? 0);
-  } catch {
-    // Some accounts only accept an array for the tags filter.
-    return Number((await search([dateFilter, { field: "tags", operator: "contains", value: [tag] }])).total ?? 0);
+    const rows = (body.contacts as Array<Record<string, unknown>> | undefined) || [];
+    total = Number(body.total ?? rows.length);
+    contacts.push(...rows);
+    if (rows.length < pageLimit || contacts.length >= total) break;
   }
+  const hasOpportunityField = contacts.some((contact) => Array.isArray(contact.opportunities));
+  const leads = hasOpportunityField
+    ? contacts.filter((contact) => Array.isArray(contact.opportunities) && contact.opportunities.length > 0)
+    : contacts;
+  const tag = (target.qualified_tag || "").trim().toLowerCase();
+  const qualified = tag
+    ? leads.filter((contact) =>
+      Array.isArray(contact.tags) && contact.tags.some((value) => String(value).trim().toLowerCase() === tag)).length
+    : 0;
+  return { leads: leads.length, qualified, contacts: total };
 }
 
 async function countAppointments(target: Target, start: string, end: string) {
@@ -136,9 +152,8 @@ async function countAppointments(target: Target, start: string, end: string) {
 type Period = { period_start: string; period_end: string };
 
 async function countPeriod(target: Target, start: string, end: string) {
-  const [leads, qualified, appointments] = await Promise.all([
-    countContacts(target, start, end),
-    target.qualified_tag ? countContacts(target, start, end, target.qualified_tag) : Promise.resolve(0),
+  const [{ leads, qualified }, appointments] = await Promise.all([
+    countLeads(target, start, end),
     countAppointments(target, start, end),
   ]);
   return {

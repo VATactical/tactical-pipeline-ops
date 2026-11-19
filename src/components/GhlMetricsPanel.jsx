@@ -182,7 +182,7 @@ export default function GhlMetricsPanel({ client, canEdit, onClientUpdated }) {
     </form>}
 
     <div className="metric-grid compact ads-metrics-grid">
-      <article className="metric-card green"><span>{t('Leads')}</span><strong>{synced ? shown.leads : '—'}</strong><small>{t('registrados en GHL')}</small></article>
+      <article className="metric-card green"><span>{t('Leads')}</span><strong>{synced ? shown.leads : '—'}</strong><small>{t('en el pipeline de GHL')}</small></article>
       <article className="metric-card teal"><span>{t('Calificados')}</span><strong>{synced ? shown.qualified_leads : '—'}</strong><small data-no-translate>{client.ghl_qualified_tag ? `#${client.ghl_qualified_tag}` : ''}</small></article>
       <article className="metric-card amber"><span>{t('Citas agendadas')}</span><strong>{synced ? shown.appointments_booked : '—'}</strong><small>{bookingRate !== null ? `${bookingRate}% ${t('de los leads')}` : t('no canceladas')}</small></article>
       {selected === 'current'
