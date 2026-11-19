@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
-import { ClientLogFeed, EvidenceGaps, FocusStrip, TicketWatch, isOpenTicket, missingEvidenceSteps, recentBlockedComments } from '../components/DashboardFocus'
+import { ClientLogFeed, FocusStrip, TicketWatch, isOpenTicket, recentBlockedComments } from '../components/DashboardFocus'
+import { ChartCard, ColumnChart, HBarChart, SERIES, StatRow } from '../components/DashboardCharts'
 import { useLanguage } from '../i18n/LanguageContext'
 import { downloadCommunicationsPdf } from '../lib/reportExports'
 import { loadCompanySettings } from '../services/companyService'
-import { loadEodComplianceSummary } from '../services/eodService'
 import { loadTicketWorkspace } from '../services/ticketService'
 import {
   createTeamNote,
@@ -111,29 +111,106 @@ function GeneralNotes({ notes, members, profile, onUpdated }) {
   return <section className="content-card communications-card"><div className="section-heading"><div><p className="eyebrow">{t('Comunicaciones')}</p><h3>{t(historyOpen ? 'Historial de notas' : 'Notas generales')}</h3><p className="muted">{t('Después de marcar una nota como vista permanecerá aquí durante 24 horas.')}</p></div><div className="section-actions"><button className="secondary-button" type="button" onClick={exportPdf}>{t('Exportar notas PDF')}</button><button className="text-button" type="button" onClick={() => setHistoryOpen((current) => !current)}>{historyOpen ? t('Ver activas') : `${t('Historial')} (${history.length})`}</button></div></div>{error && <p className="form-error">{error}</p>}<div className="note-list">{visible.length === 0 && <p className="muted">{t(historyOpen ? 'No hay notas en el historial.' : 'No hay comunicaciones activas.')}</p>}{visible.map((note) => <article className="note-card communication-note" key={note.id}><div><strong data-no-translate>{note.title}</strong>{note.receipt && !historyOpen && <span className="seen-badge">{t('Visto · visible 24 h')}</span>}</div>{note.body && <LinkifiedText text={note.body} className="formatted-text" />}<small><span data-no-translate>{note.author?.full_name || t('Equipo')}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.created_at))}</small><div className="communication-actions">{!historyOpen && !note.receipt && <button className="secondary-button" type="button" disabled={busy === `seen-${note.id}`} onClick={() => markSeen(note)}>{t(busy === `seen-${note.id}` ? 'Guardando…' : 'Marcar como visto')}</button>}<Link to="/tickets">{t('Seguimiento de tickets')}</Link></div></article>)}</div></section>
 }
 
-function EodComplianceCard({ summary }) {
-  if (!summary) return null
-  return <section className="content-card dashboard-eod-compliance"><div className="section-heading"><div><p className="eyebrow">Reportes diarios</p><h3>EOD de hoy</h3><p className="muted">{summary.workDate} · Envío dentro de TP OPS al finalizar el turno.</p></div><Link to="/eod-reports">Ver detalle</Link></div><div className="eod-compliance-counts"><span className="submitted">{summary.counts.submitted} enviados</span><span className="pending">{summary.counts.pending} pendientes</span></div><div className="dashboard-eod-users">{summary.rows.map((row) => <span className={row.state} key={row.member.id}>{row.member.full_name}: {row.state === 'submitted' ? 'Enviado' : 'Pendiente'}</span>)}</div></section>
-}
 
-function attentionReasons({ client, missingCount, clientBlockers, openTickets, blockedComments, suggestions, missingCaptures }) {
+function attentionReasons({ client, missingCount, clientBlockers, openTickets, blockedComments, suggestions }) {
   const reasons = []
-  if (client.status === 'ADS PAUSED') reasons.push(['danger', `⏸ ADS pausados${client.ads_pause_reason ? `: ${client.ads_pause_reason}` : ''}`])
+  if (client.status === 'ADS PAUSED') reasons.push(['danger', client.ads_pause_reason ? `⏸ ADS pausados: ${client.ads_pause_reason}` : '⏸ ADS pausados'])
   if (blockedComments) reasons.push(['danger', `⛔ ${blockedComments} bloqueo(s) en bitácora`])
   if (clientBlockers) reasons.push(['danger', `${clientBlockers} bloqueo(s) abiertos`])
   if (launchOverdue(client)) reasons.push(['warning', '⏰ Deadline ADS vencido'])
   if (openTickets) reasons.push(['info', `🎫 ${openTickets} ticket(s)`])
   if (suggestions) reasons.push(['slack', `📥 ${suggestions} dato(s) de Slack`])
-  if (missingCaptures) reasons.push(['warning', `📷 ${missingCaptures} captura(s)`])
   if (!client.intake_form_completed) reasons.push(['muted', 'Formulario pendiente'])
   else if (missingCount > 0) reasons.push(['muted', `${missingCount} campos del dossier`])
   return reasons
 }
 
-function SuperadminDashboard({ data, blockers, onCreated, eodCompliance, extras }) {
+const LIVE_STATUSES = new Set(['ADS LIVE', 'ADS PAUSED', 'CRUISE CONTROL'])
+const shortDate = (date, locale) => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date)
+const mondayOf = (date) => { const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())); day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7)); return day }
+
+// Chart data shared by both dashboards.
+function useDashboardCharts(data, extras, locale) {
+  return useMemo(() => {
+    const clients = data.clients
+    // Leads and appointments in the latest 30-day GHL window, per client with ads.
+    const leadRows = clients
+      .filter((client) => extras.metrics.has(client.id))
+      .map((client) => { const row = extras.metrics.get(client.id); return { label: `${client.code} · ${client.business_name}`, title: `${row.period_start} → ${row.period_end}`, values: [row.leads || 0, row.appointments_booked || 0] } })
+      .filter((row) => row.values[0] || row.values[1])
+      .sort((a, b) => b.values[0] - a.values[0])
+    const leads = leadRows.reduce((sum, row) => sum + row.values[0], 0)
+    const appointments = leadRows.reduce((sum, row) => sum + row.values[1], 0)
+    // Clients per lifecycle stage, in board order.
+    const stageRows = extras.stages.map((stage) => ({
+      label: locale.startsWith('en') && stage.name_en ? stage.name_en : stage.name,
+      values: [clients.filter((client) => client.board_stage === stage.key).length],
+    })).filter((row) => row.values[0] > 0)
+    // Tickets opened vs resolved per week (last 8 weeks).
+    const thisMonday = mondayOf(new Date())
+    const weeks = Array.from({ length: 8 }, (_, index) => { const start = new Date(thisMonday); start.setUTCDate(start.getUTCDate() - 7 * (7 - index)); return start })
+    const weekIndex = (value) => { const time = new Date(value).getTime(); for (let index = weeks.length - 1; index >= 0; index -= 1) if (time >= weeks[index].getTime()) return index; return -1 }
+    const ticketWeeks = weeks.map((start) => ({ label: shortDate(start, locale), title: `${shortDate(start, locale)} – ${shortDate(new Date(start.getTime() + 6 * 86400000), locale)}`, values: [0, 0] }))
+    for (const ticket of data.tickets) {
+      const opened = weekIndex(ticket.created_at)
+      if (opened >= 0) ticketWeeks[opened].values[0] += 1
+      if (!isOpenTicket(ticket) && ticket.resolved_at) { const closed = weekIndex(ticket.resolved_at); if (closed >= 0) ticketWeeks[closed].values[1] += 1 }
+    }
+    // Client log per day (last 14 days): updates, blockers, done.
+    const days = Array.from({ length: 14 }, (_, index) => { const day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - (13 - index)); return day })
+    const logDays = days.map((day) => ({ label: String(day.getDate()), title: new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(day), values: [0, 0, 0] }))
+    const order = { update: 0, blocked: 1, done: 2 }
+    for (const comment of extras.comments) {
+      const created = new Date(comment.created_at); created.setHours(0, 0, 0, 0)
+      const index = days.findIndex((day) => day.getTime() === created.getTime())
+      if (index >= 0) logDays[index].values[order[comment.kind] ?? 0] += 1
+    }
+    // Checklist progress of clients that are not live yet.
+    const progressRows = clients.filter((client) => !LIVE_STATUSES.has(client.status)).map((client) => {
+      const steps = data.workflowSteps.filter((step) => step.client_id === client.id)
+      const done = steps.filter((step) => step.completed).length
+      return { label: `${client.code} · ${client.business_name}`, values: [steps.length ? Math.round((done / steps.length) * 100) : 0], title: `${done}/${steps.length}` }
+    }).sort((a, b) => b.values[0] - a.values[0])
+    return { leadRows, leads, appointments, stageRows, ticketWeeks, logDays, progressRows }
+  }, [data, extras, locale])
+}
+
+function EodReminder({ profile, extras }) {
+  const { t } = useLanguage()
+  const filesEod = profile?.role !== 'superadmin' && Boolean(profile?.permissions?.eod_reports)
+  if (!filesEod || !extras.eodChecked || extras.myEodToday) return null
+  return <section className="eod-reminder" role="alert">
+    <span aria-hidden="true">📝</span>
+    <div><strong>{t('Aún no has enviado tu EOD de hoy.')}</strong><p>{t('Escríbelo en TP OPS o, si ya lo publicaste en #eod-reports, usa “Send to TP OPS” en el mensaje.')}</p></div>
+    <Link className="primary-button compact-button" to="/eod-reports">{t('Enviar EOD')}</Link>
+  </section>
+}
+
+function DashboardChartsGrid({ charts }) {
+  return <>
+    <section className="dashboard-charts">
+      <ChartCard eyebrow="Resultados" title="Leads y citas por cliente" subtitle="Últimos 30 días en GHL">
+        <HBarChart rows={charts.leadRows} series={[{ name: 'Leads', color: SERIES.blue }, { name: 'Citas', color: SERIES.orange }]} empty="Aún no hay métricas de GHL." />
+      </ChartCard>
+      <ChartCard eyebrow="Ciclo de vida" title="Clientes por etapa" action={<Link to="/ciclo">Ciclo de vida</Link>}>
+        <HBarChart rows={charts.stageRows} series={[{ name: 'Clientes', color: SERIES.blue }]} />
+      </ChartCard>
+    </section>
+    <section className="dashboard-charts">
+      <ChartCard eyebrow="Tickets" title="Tickets por semana" subtitle="Abiertos y resueltos, últimas 8 semanas" action={<Link to="/tickets">Tickets</Link>}>
+        <ColumnChart columns={charts.ticketWeeks} series={[{ name: 'Abiertos', color: SERIES.orange }, { name: 'Resueltos', color: SERIES.blue }]} />
+      </ChartCard>
+      <ChartCard eyebrow="Bitácora" title="Avances y bloqueos" subtitle="Comentarios por día, últimos 14 días">
+        <ColumnChart columns={charts.logDays} series={[{ name: 'Avances', color: SERIES.blue }, { name: 'Bloqueos', color: SERIES.orange }, { name: 'Hechos', color: SERIES.aqua }]} stacked />
+      </ChartCard>
+    </section>
+  </>
+}
+
+function SuperadminDashboard({ data, blockers, extras, profile }) {
   const { locale, t } = useLanguage()
   const members = new Map((data.directory || []).map((member) => [member.id, member]))
-  const missingCaptures = missingEvidenceSteps(data.workflowSteps, extras.evidenceStepIds)
+  const charts = useDashboardCharts(data, extras, locale)
   const blockedComments = recentBlockedComments(extras.comments)
   const openTicketList = data.tickets.filter(isOpenTicket)
   const clientSummaries = data.clients.map((client) => {
@@ -145,48 +222,38 @@ function SuperadminDashboard({ data, blockers, onCreated, eodCompliance, extras 
       client, missingCount, openTickets, clientBlockers, pendingSteps,
       blockedComments: blockedComments.filter((comment) => comment.client_id === client.id).length,
       suggestions: extras.suggestions.filter((item) => item.client_id === client.id).length,
-      missingCaptures: missingCaptures.filter((step) => step.client_id === client.id).length,
     }
   })
   const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
-  const overdueTickets = openTicketList.filter((ticket) => ticket.next_follow_up && new Date(ticket.next_follow_up + 'T23:59:59') < new Date())
-  const stale = data.clients.filter(isStale)
-  const lateLaunches = data.clients.filter(launchOverdue)
-  const paused = data.clients.filter((client) => client.status === 'ADS PAUSED')
   const urgent = openTicketList.filter((ticket) => ticket.priority === 'Urgent').length
+  const live = data.clients.filter((client) => client.status === 'ADS LIVE').length
+  const paused = data.clients.filter((client) => client.status === 'ADS PAUSED').length
+  const onboarding = data.clients.filter((client) => !LIVE_STATUSES.has(client.status)).length
   const score = (item) => (item.blockedComments || item.clientBlockers ? 40 : 0) + (item.client.status === 'ADS PAUSED' ? 30 : 0) + (launchOverdue(item.client) ? 20 : 0)
-    + item.openTickets * 3 + item.suggestions * 2 + item.missingCaptures * 2 + (item.client.intake_form_completed ? 0 : 1)
+    + item.openTickets * 3 + item.suggestions * 2 + (item.client.intake_form_completed ? 0 : 1)
   const attentionQueue = clientSummaries.filter((item) => score(item) > 0 || item.missingCount > 0)
     .sort((a, b) => score(b) - score(a) || b.missingCount - a.missingCount)
     .slice(0, 7)
-
-  const tiles = [
-    { key: 'tickets', icon: '🎫', value: openTicketList.length, label: 'Tickets abiertos', hint: urgent ? `${urgent} urgente(s)` : overdueTickets.length ? `${overdueTickets.length} seguimiento(s) vencido(s)` : 'Slack y TP OPS', to: '/tickets', tone: urgent ? 'danger' : 'info' },
-    { key: 'blocked', icon: '⛔', value: blockedComments.length + blockers.length, label: 'Bloqueos', hint: 'Bitácora, últimos 7 días', to: '/ciclo', tone: 'danger' },
-    { key: 'paused', icon: '⏸', value: paused.length, label: 'ADS pausados', hint: lateLaunches.length ? `${lateLaunches.length} deadline(s) vencido(s)` : 'Campañas detenidas', to: '/clientes', tone: 'warning' },
-    { key: 'slack', icon: '📥', value: extras.suggestions.length, label: 'Datos de Slack', hint: 'Por revisar en el dossier', to: '/ciclo', tone: 'slack' },
-    { key: 'captures', icon: '📷', value: missingCaptures.length, label: 'Capturas pendientes', hint: 'Pasos marcados sin captura', href: '#capturas-pendientes', tone: 'warning' },
-    ...(eodCompliance ? [{ key: 'eod', icon: '📝', value: eodCompliance.counts.pending, label: 'EOD pendientes', hint: `${eodCompliance.counts.submitted} enviados hoy`, to: '/eod-reports', tone: 'info' }] : []),
+  const stats = [
+    { label: 'Clientes activos', value: data.clients.length, hint: `${live} ADS LIVE · ${paused} pausados · ${onboarding} en onboarding` },
+    { label: 'Leads (30 días)', value: charts.leads, hint: `${charts.appointments} citas agendadas` },
+    { label: 'Tickets abiertos', value: openTicketList.length, hint: urgent ? `${urgent} urgente(s)` : 'Slack y TP OPS' },
+    { label: 'Bloqueos (7 días)', value: blockedComments.length + blockers.length, hint: 'Bitácora y bloqueos abiertos' },
   ]
 
   return <>
-    <FocusStrip tiles={tiles} />
-    <ClientStatusCards clients={data.clients} />
-    <section className="dashboard-grid">
+    <EodReminder profile={profile} extras={extras} />
+    <StatRow stats={stats} />
+    <DashboardChartsGrid charts={charts} />
+    <section className="dashboard-charts">
+      <ChartCard eyebrow="Checklist" title="Avance de clientes en onboarding" subtitle="Porcentaje del checklist completado">
+        <HBarChart rows={charts.progressRows} series={[{ name: 'Avance', color: SERIES.aqua }]} suffix="%" max={100} empty="No hay clientes en onboarding." />
+      </ChartCard>
       <div className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Prioridad ejecutiva')}</p><h3>{t('Clientes que requieren atención')}</h3></div><Link to="/ciclo">{t('Ciclo de vida')}</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">{t('No hay alertas críticas.')}</p>}{attentionQueue.map((item) => <Link to={`/clientes/${item.client.id}`} className="attention-row" key={item.client.id}><div><strong data-no-translate>{item.client.code} · {item.client.business_name}</strong><span className="attention-reasons">{attentionReasons(item).slice(0, 4).map(([tone, text]) => <em key={text} className={`attention-chip ${tone}`}>{t(text)}</em>)}</span></div><span>→</span></Link>)}</div></div>
-      <TicketWatch tickets={data.tickets} members={members} />
     </section>
     <section className="dashboard-grid">
       <ClientLogFeed comments={extras.comments} clients={data.clients} members={members} />
-      <div className="dashboard-stack">
-        <EodComplianceCard summary={eodCompliance} />
-        <EvidenceGaps steps={missingCaptures} clients={data.clients} />
-      </div>
-    </section>
-    <section className="metric-grid compact" aria-label="Alertas operativas">
-      <article className="metric-card red"><span>{t('Seguimientos vencidos')}</span><strong>{overdueTickets.length}</strong><small>{t('Requieren seguimiento')}</small></article>
-      <article className="metric-card amber"><span>{t('Sin actualización')}</span><strong>{stale.length}</strong><small>{t('más de 3 días')}</small></article>
-      <article className="metric-card red"><span>{t('Deadlines ADS vencidos')}</span><strong>{lateLaunches.length}</strong><small>{t('campañas sin lanzar')}</small></article>
+      <TicketWatch tickets={data.tickets} members={members} />
     </section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades reportadas</p></article>)}</div></section>
     <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks' && item.entity_type !== 'calendar_events').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong data-no-translate>{item.actor_name}</strong><p>{t(item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó')} {t(item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : 'un registro operativo')}</p></div><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
@@ -204,29 +271,27 @@ function SuperadminDashboard({ data, blockers, onCreated, eodCompliance, extras 
 }
 
 function RoleDashboard({ data, blockers, profile, extras }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const members = new Map((data.directory || []).map((member) => [member.id, member]))
+  const charts = useDashboardCharts(data, extras, locale)
   const open = data.tickets.filter((x) => x.assigned_to === profile?.id && x.status !== 'Resolved' && x.status !== 'Closed')
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile?.timezone || 'America/Managua' }).format(new Date())
   const overdue = open.filter((x) => x.next_follow_up && x.next_follow_up < today)
   const waiting = open.filter((x) => x.status === 'Waiting')
-  // My checklist work: steps of my role still open, and my checked steps that wait for a screenshot.
-  const mySteps = data.workflowSteps.filter((step) => step.owner_role === profile?.role)
-  const myPending = mySteps.filter((step) => !step.completed)
-  const myCaptures = missingEvidenceSteps(mySteps, extras.evidenceStepIds)
-  const sentEodToday = data.eodReports.some((report) => report.user_id === profile?.id && report.report_date === today)
+  // My checklist work: steps of my role still open in my clients.
+  const myPending = data.workflowSteps.filter((step) => step.owner_role === profile?.role && !step.completed)
   const tiles = [
     { key: 'tickets', icon: '🎫', value: open.length, label: 'Mis tickets', hint: overdue.length ? `${overdue.length} seguimiento(s) vencido(s)` : waiting.length ? `${waiting.length} esperando respuesta` : 'Asignados a mí', to: '/tickets', tone: overdue.length ? 'danger' : 'info' },
     { key: 'steps', icon: '✅', value: myPending.length, label: 'Mis pasos del checklist', hint: 'Pendientes en mis clientes', to: '/ciclo', tone: 'info' },
-    { key: 'captures', icon: '📷', value: myCaptures.length, label: 'Capturas pendientes', hint: 'Pasos marcados sin captura', href: '#capturas-pendientes', tone: 'warning' },
-    { key: 'eod', icon: '📝', value: sentEodToday ? '✓' : '—', label: 'Mi EOD de hoy', hint: sentEodToday ? 'Enviado' : 'Pendiente', to: '/eod-reports', tone: sentEodToday ? 'success' : 'warning' },
+    { key: 'leads', icon: '📈', value: charts.leads, label: 'Leads (30 días)', hint: `${charts.appointments} citas agendadas`, tone: 'info' },
   ]
-  return <><FocusStrip tiles={tiles} />
+  return <><EodReminder profile={profile} extras={extras} />
+    <FocusStrip tiles={tiles} />
     <section className="dashboard-grid">
       <TicketWatch tickets={data.tickets} members={members} onlyMine={profile?.id} title="Mis tickets" />
       <ClientLogFeed comments={extras.comments} clients={data.clients} members={members} limit={6} />
     </section>
-    {myCaptures.length > 0 && <EvidenceGaps steps={myCaptures} clients={data.clients} />}
+    <DashboardChartsGrid charts={charts} />
     <ClientStatusCards clients={data.clients} />
     <div className="dashboard-grid"><section className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Seguimiento de clientes')}</p><h3>{t('Mis próximos seguimientos')}</h3></div><Link to="/tickets">{t('Ver todos')}</Link></div><div className="ticket-list">{open.slice(0, 6).map((ticket) => <Link className="ticket-list-row" key={ticket.id} to="/tickets"><span className="ticket-list-main"><b>{ticket.ticket_number}</b><strong>{ticket.title}</strong><small>{ticket.clients.map((client) => client.code).join(', ')}</small></span><span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(ticketStatusLabels[ticket.status] || ticket.status)}</span><small>{ticket.next_follow_up || t('Sin fecha')}</small></Link>)}{open.length === 0 && <p className="muted">{t('No tienes tickets abiertos asignados.')}</p>}</div></section>
     <section className="content-card alert-card"><p className="eyebrow">{t('Dependencias')}</p><h3>{t('Bloqueos abiertos')}</h3><div className="blocker-list">{blockers.map((item) => <article className="blocker-row" key={item.id}><span className="alert-dot red-dot" /><div><strong>{item.clients?.code} · {item.clients?.business_name}</strong><p>{item.title}</p><small>{t('Responsable')}: {item.owner_name}</small></div></article>)}</div></section></div>
@@ -241,18 +306,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [eodCompliance, setEodCompliance] = useState(null)
-  const [extras, setExtras] = useState({ comments: [], suggestions: [], evidenceStepIds: new Set() })
+  const [extras, setExtras] = useState({ comments: [], suggestions: [], metrics: new Map(), stages: [], myEodToday: true, eodChecked: false })
   const refresh = useCallback(async () => {
     try {
-      const [operations, compliance, ticketWorkspace, dashboardExtras] = await Promise.all([
+      const [operations, ticketWorkspace, dashboardExtras] = await Promise.all([
         loadOperations(profile.id),
-        loadEodComplianceSummary(profile),
         loadTicketWorkspace(),
-        loadDashboardExtras().catch(() => null),
+        loadDashboardExtras(profile).catch(() => null),
       ])
       setData({ ...operations, tickets: ticketWorkspace.tickets || [], profile, refresh })
-      setEodCompliance(compliance)
       if (dashboardExtras) setExtras(dashboardExtras)
     } catch (loadError) { setError(loadError.message) }
   }, [profile])
@@ -268,6 +330,6 @@ export default function DashboardPage() {
   return <div className="page-stack">
     <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><span className="status-pill">Datos en vivo</span></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
-    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} onCreated={handleCreated} eodCompliance={eodCompliance} extras={extras} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} />}
+    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} extras={extras} profile={profile} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} />}
   </div>
 }
