@@ -3218,3 +3218,55 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
   .board-modal-summary { grid-template-columns: 1fr; }
   .board-modal-stage { flex-wrap: wrap; } .board-modal-stage select { min-width: 0; width: 100%; }
 }
+
+/* Client log (bitácora) */
+.client-log { display: grid; gap: .7rem; }
+.client-log-form { display: grid; gap: .45rem; }
+.client-log-form textarea { margin: 0; min-height: 42px; resize: vertical; font-size: .86rem; }
+.client-log-form-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
+.client-log-kinds { display: flex; flex-wrap: wrap; gap: .3rem; }
+.client-log-kind { padding: .3rem .6rem; border: 1px solid #cfdbe6; border-radius: 99px; background: #fff; color: #3c5368; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.client-log-kind.selected.update { border-color: #2f7fd1; background: #e8f1fb; color: #1d5ea3; }
+.client-log-kind.selected.done { border-color: #2fa86a; background: #e5f6ec; color: #17683f; }
+.client-log-kind.selected.blocked { border-color: #d64545; background: #fde8e8; color: #9f2a2a; }
+.client-log-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.client-log-item { padding: .6rem .75rem; border: 1px solid #dbe3ea; border-left: 4px solid #2f7fd1; border-radius: 9px; background: #fff; }
+.client-log-item.done { border-left-color: #2fa86a; }
+.client-log-item.blocked { border-left-color: #d64545; background: #fff8f8; }
+.client-log-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .55rem; font-size: .76rem; }
+.client-log-meta strong { color: #13283c; font-size: .8rem; }
+.client-log-meta small { color: #7890a8; }
+.client-log-badge { padding: .05rem .4rem; border-radius: 5px; background: #e8f1fb; color: #1d5ea3; font-size: .68rem; font-weight: 800; }
+.client-log-badge.done { background: #e5f6ec; color: #17683f; }
+.client-log-badge.blocked { background: #fde8e8; color: #9f2a2a; }
+.client-log-actions { margin-left: auto; display: inline-flex; gap: .4rem; }
+.client-log-actions .text-button { font-size: .72rem; padding: 0; }
+.client-log-actions .text-button.danger { color: #b33a3a; }
+.client-log-body { margin: .35rem 0 0; color: #23384c; font-size: .84rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.client-log-body a { color: #0e81aa; font-weight: 600; }
+.client-log-edit { display: grid; gap: .4rem; margin-top: .4rem; }
+.client-log-edit textarea { margin: 0; font-size: .84rem; }
+.client-log-empty { margin: 0; }
+
+/* Client tickets */
+.client-tickets { display: grid; gap: .5rem; }
+.client-ticket-list { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.client-ticket { padding: .55rem .7rem; border: 1px solid #dbe3ea; border-left: 4px solid #d79a19; border-radius: 9px; background: #fff; }
+.client-ticket.stale { border-left-color: #d64545; }
+.client-ticket.closed { border-left-color: #9fb1c2; opacity: .8; }
+.client-ticket-head { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; font-size: .74rem; }
+.client-ticket-code { color: #13283c; font-weight: 900; text-decoration: none; }
+.client-ticket-code:hover { text-decoration: underline; }
+.client-ticket-age { color: #a12d2d; font-weight: 800; }
+.client-ticket.closed .client-ticket-age { display: none; }
+.client-ticket-urgent { padding: .05rem .35rem; border-radius: 5px; background: #d64545; color: #fff; font-weight: 800; font-size: .66rem; }
+.client-ticket-source, .ticket-source-badge { padding: .05rem .35rem; border-radius: 5px; background: #4a154b; color: #fff; font-size: .64rem; font-weight: 800; letter-spacing: .02em; }
+.client-ticket p { margin: .3rem 0 0; color: #23384c; font-size: .82rem; line-height: 1.4; }
+.client-ticket-foot { display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin-top: .3rem; color: #6a8197; font-size: .72rem; }
+.client-ticket-foot a { color: #0e81aa; font-weight: 700; }
+.board-card-meta .board-ticket-badge { color: #a12d2d; }
+.ticket-slack-panel { display: grid; gap: .3rem; margin: .2rem 0 .8rem; padding: .7rem .8rem; border: 1px solid #e3d3e4; border-radius: 9px; background: #faf5fa; }
+.ticket-slack-panel p { margin: 0; color: #23384c; font-size: .84rem; }
+.ticket-slack-panel .eyebrow { color: #4a154b; }
+.ticket-slack-panel div { display: flex; flex-wrap: wrap; gap: .3rem .9rem; color: #6a8197; font-size: .74rem; }
+.ticket-slack-panel a { color: #0e81aa; font-weight: 700; }

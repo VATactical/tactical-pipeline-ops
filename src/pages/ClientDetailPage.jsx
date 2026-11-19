@@ -6,6 +6,8 @@ import GhlMetricsPanel from '../components/GhlMetricsPanel'
 import { NavIcon, usePageTrail } from '../components/navigation'
 import ClientOpsPanel from '../components/ClientOpsPanel'
 import StepEvidence from '../components/StepEvidence'
+import ClientLog from '../components/ClientLog'
+import ClientTickets from '../components/ClientTickets'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
@@ -142,7 +144,7 @@ export default function ClientDetailPage() {
     ['dossier', 'Dossier'],
     ['checklist', 'Checklist'],
     ['ads', 'Ads'],
-    ['notes', 'Notas'],
+    ['notes', 'Bitácora y notas'],
     ['audit', 'Auditoría'],
   ]
   const requestedTab = searchParams.get('tab')
@@ -553,6 +555,14 @@ export default function ClientDetailPage() {
       <AdsReportsPanel client={client} canEdit={canEdit} />
     </div>
     {adStatusEvents.length > 0 && <section className="content-card client-tab-section tab-ads"><div className="section-heading"><div><p className="eyebrow">Historial ADS</p><h3>Pausas y reactivaciones</h3></div><span className="muted">{adStatusEvents.length} eventos</span></div><div className="ads-status-history">{adStatusEvents.map((event) => <article key={event.id}><span className={`lifecycle ${event.event_type === 'paused' ? 'ads-paused' : 'ads-live'}`}>{event.event_type === 'paused' ? 'PAUSADO' : 'REACTIVADO'}</span><div><strong>{event.event_type === 'paused' ? 'Pausó la campaña' : 'Reactivó la campaña'}</strong><p data-no-translate>{event.note}</p><small><span data-no-translate>{event.actor_name}</span> · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}</small></div></article>)}</div></section>}
+    <section className="content-card client-tab-section tab-notes client-log-section">
+      <div className="section-heading"><div><p className="eyebrow">{t('Bitácora')}</p><h3>{t('Avances, entregas y bloqueos')}</h3></div></div>
+      <ClientLog clientId={client.id} />
+    </section>
+    <section className="content-card client-tab-section tab-notes">
+      <div className="section-heading"><div><p className="eyebrow">{t('Tickets')}</p><h3>{t('Tickets del cliente')}</h3></div><Link className="text-button" to="/tickets">{t('Ver todos')}</Link></div>
+      <ClientTickets clientId={client.id} />
+    </section>
     <section className="content-card client-tab-section tab-notes">
       <div className="section-heading"><div><p className="eyebrow">{t('Notas del cliente')}</p><h3>{t('Contexto compartido')}</h3></div><span className="muted">{notes.length} {t('notas')}</span></div>
       {canCreateNotes && <form className="client-note-form" onSubmit={addClientNote}>

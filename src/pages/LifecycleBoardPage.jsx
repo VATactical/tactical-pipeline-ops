@@ -301,6 +301,8 @@ export default function LifecycleBoardPage() {
                     {progress.total > 0 && <span title={t('Checklist')}>☑ {progress.done}/{progress.total}</span>}
                     <span title={t('Días en esta etapa')}>⏱ {days} {t(days === 1 ? 'día' : 'días')}</span>
                     {Number(client.daily_budget) > 0 && <span title={t('Presupuesto diario')}>${Number(client.daily_budget)}/{t('día')}</span>}
+                    {client.commentCount > 0 && <span title={t('Comentarios en la bitácora')}>💬 {client.commentCount}</span>}
+                    {client.openTickets > 0 && <span className="board-ticket-badge" title={t('Tickets abiertos')}>🎫 {client.openTickets}</span>}
                   </div>
                   {menuFor === client.id && <CardMenu client={client} stages={board.stages} stageLabel={stageLabel} onMove={(stageKey) => moveCard(client.id, stageKey, null)} onClose={() => setMenuFor(null)} />}
                 </article>

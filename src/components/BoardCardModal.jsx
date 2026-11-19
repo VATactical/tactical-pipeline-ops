@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
+import ClientLog from './ClientLog'
+import ClientTickets from './ClientTickets'
 import { createClientNote, loadClient, updateWorkflowStep } from '../services/opsService'
 
 // Trello-style quick view of a client opened from the lifecycle board: summary, checklist,
@@ -12,6 +14,14 @@ const STATUS_CLASS = { ONBOARDING: 'onboarding', 'A2P SUBMITTED': 'a2p', 'ADS LI
 
 const text = (value) => (value == null ? '' : String(value).trim())
 const isPlaceholder = (value) => !text(value) || /^(pendiente|pending|n\/a|na|-|not provided)$/i.test(text(value))
+
+function ModalTickets({ clientId }) {
+  const { t } = useLanguage()
+  return <section className="board-modal-section board-modal-tickets">
+    <h3>🎫 {t('Tickets')}</h3>
+    <ClientTickets clientId={clientId} />
+  </section>
+}
 
 export default function BoardCardModal({ clientId, stages, stageLabel, canMove, onMove, onChanged, onClose }) {
   const { profile } = useAuth()
@@ -101,6 +111,7 @@ export default function BoardCardModal({ clientId, stages, stageLabel, canMove, 
 
         <div className="board-modal-body">
           <main>
+            <ModalTickets clientId={client.id} />
             {summary.length > 0 && <section className="board-modal-section"><h3>{t('Resumen')}</h3>
               <dl className="board-modal-summary">{summary.map(([label, value]) => <div key={label}><dt>{t(label)}</dt><dd data-no-translate>{text(value)}</dd></div>)}</dl>
             </section>}
@@ -116,6 +127,11 @@ export default function BoardCardModal({ clientId, stages, stageLabel, canMove, 
                 <label><input type="checkbox" checked={step.completed} disabled={!canToggle(step) || savingStep === step.id} onChange={() => toggleStep(step)} />
                   <span>{stepTitle(step)}<small>{t(step.owner_name)}</small></span></label>
               </li>)}</ul>
+            </section>
+
+            <section className="board-modal-section">
+              <h3>{t('Bitácora')}</h3>
+              <ClientLog clientId={client.id} limit={8} compact onChanged={() => { reload(); onChanged?.() }} />
             </section>
 
             <section className="board-modal-section">

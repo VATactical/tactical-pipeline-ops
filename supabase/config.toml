@@ -19,3 +19,6 @@ verify_jwt = true
 
 [functions.eod-payroll-integrations]
 verify_jwt = true
+
+[functions.slack-ticket-sync]
+verify_jwt = false

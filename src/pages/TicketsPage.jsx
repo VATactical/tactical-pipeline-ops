@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { addTicketUpdate, createTicket, loadTicketWorkspace, updateTicket } from '../services/ticketService'
+import { syncSlackTickets } from '../services/opsService'
 
 const statuses = ['Open', 'In progress', 'Waiting', 'Resolved', 'Closed']
 const priorities = ['Low', 'Medium', 'High', 'Urgent']
@@ -63,7 +64,7 @@ export default function TicketsPage() {
   const [clients, setClients] = useState([])
   const [profiles, setProfiles] = useState([])
   const [selectedId, setSelectedId] = useState('')
-  const [filter, setFilter] = useState('All')
+  const [filter, setFilter] = useState('Active')
   const [query, setQuery] = useState('')
   const [draft, setDraft] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -74,6 +75,9 @@ export default function TicketsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [searchParams] = useSearchParams()
+  const linkedTicketId = searchParams.get('ticket')
 
   const refresh = async (keepSelection = true) => {
     setError('')
@@ -82,7 +86,8 @@ export default function TicketsPage() {
       setTickets(result.tickets)
       setClients(result.clients)
       setProfiles(result.profiles)
-      if (!keepSelection || !selectedId) setSelectedId(result.tickets[0]?.id || '')
+      if (linkedTicketId && !keepSelection && result.tickets.some((ticket) => ticket.id === linkedTicketId)) setSelectedId(linkedTicketId)
+      else if (!keepSelection || !selectedId) setSelectedId(result.tickets[0]?.id || '')
       else if (!result.tickets.some((ticket) => ticket.id === selectedId)) setSelectedId(result.tickets[0]?.id || '')
     } catch (loadError) {
       setError(loadError.message || t('No fue posible cargar los tickets.'))
@@ -119,7 +124,7 @@ export default function TicketsPage() {
   }), [tickets, today])
 
   const filtered = useMemo(() => tickets.filter((ticket) => {
-    const matchesStatus = filter === 'All' || ticket.status === filter
+    const matchesStatus = filter === 'All' || (filter === 'Active' ? !terminalStatuses.has(ticket.status) : ticket.status === filter)
     const haystack = [
       ticket.ticket_number,
       ticket.title,
@@ -215,12 +220,31 @@ export default function TicketsPage() {
     }
   }
 
+  // Pull Viktor's latest blocker sweep from Slack right now (it also runs every hour).
+  const handleSlackSync = async () => {
+    setSyncing(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await syncSlackTickets()
+      await refresh(true)
+      setNotice(`${t('Sincronizado con Slack')}: ${result.open ?? 0} ${t('abiertos')} · ${result.created ?? 0} ${t('nuevos')} · ${result.updated ?? 0} ${t('actualizados')}.`)
+    } catch (syncError) {
+      setError(syncError.message || t('No fue posible sincronizar con Slack.'))
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (loading) return <LoadingScreen />
 
   return <div className="page-stack tickets-page">
     <header className="page-header">
       <div><p className="eyebrow">{t('Seguimiento de clientes')}</p><h2>{t('Tickets')}</h2><p className="muted">{t('Registra el responsable, estado y próximo seguimiento de cada ticket.')}</p></div>
-      <button className="primary-button" type="button" onClick={openCreate}>{t('Nuevo ticket')}</button>
+      <div className="header-actions">
+        <button className="secondary-button" type="button" disabled={syncing} onClick={handleSlackSync} title={t('Trae los tickets que Viktor registra en #blocked-accounts-and-pending-tasks')}>{syncing ? t('Sincronizando…') : t('Sincronizar con Slack')}</button>
+        <button className="primary-button" type="button" onClick={openCreate}>{t('Nuevo ticket')}</button>
+      </div>
     </header>
 
     {error && <p className="form-error" role="alert">{error}</p>}
@@ -252,7 +276,7 @@ export default function TicketsPage() {
     <section className="content-card ticket-workspace">
       <div className="ticket-toolbar">
         <label className="ticket-search">{t('Buscar ticket o cliente')}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="TKT-023, C19, Meta…" /></label>
-        <label>{t('Estado')}<select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="All">{t('Todos los estados')}</option>{statuses.map((status) => <option key={status} value={status}>{t(statusLabels[status])}</option>)}</select></label>
+        <label>{t('Estado')}<select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="Active">{t('Activos (sin resueltos)')}</option><option value="All">{t('Todos los estados')}</option>{statuses.map((status) => <option key={status} value={status}>{t(statusLabels[status])}</option>)}</select></label>
       </div>
 
       {filtered.length === 0
@@ -263,6 +287,7 @@ export default function TicketsPage() {
               <span className="ticket-list-main"><b>{ticket.ticket_number}</b><strong>{ticket.title}</strong><small>{ticket.clients.map((client) => client.code).join(', ') || t('Sin cliente vinculado')}</small></span>
               <span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[ticket.status])}</span>
               {ticket.needs_confirmation && <span className="ticket-verify-badge">{t('Por confirmar')}</span>}
+              {ticket.source === 'slack' && <span className="ticket-source-badge">Slack</span>}
             </button>)}
           </div>
 
@@ -271,6 +296,16 @@ export default function TicketsPage() {
             <div className="ticket-client-links">{selectedTicket.clients.map((client) => client.id
               ? <Link key={client.id} to={'/clientes/' + client.id}>{client.code} · {client.businessName}</Link>
               : <span key={client.code}>{client.code} · {client.businessName}</span>)}</div>
+
+            {selectedTicket.source === 'slack' && <div className="ticket-slack-panel">
+              <p className="eyebrow">{t('Último estado en Slack (Viktor)')}</p>
+              <p data-no-translate>{selectedTicket.slack_summary || '—'}</p>
+              <div>
+                {selectedTicket.slack_owner_name && <span>👤 <span data-no-translate>{selectedTicket.slack_owner_name}</span></span>}
+                {selectedTicket.slack_synced_at && <span>{t('Sincronizado')}: {formatDate(selectedTicket.slack_synced_at.slice(0, 10), locale)}</span>}
+                {selectedTicket.source_url && <a href={selectedTicket.source_url} target="_blank" rel="noreferrer">{t('Ver en Slack')} ↗</a>}
+              </div>
+            </div>}
 
             <form className="ticket-detail-form" onSubmit={handleSave}>
               {!canEditTicket && <p className="ticket-permission-note">{t('Solo el responsable, quien creó el ticket o un administrador de operaciones puede editarlo.')}</p>}

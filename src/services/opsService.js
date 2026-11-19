@@ -456,12 +456,14 @@ export async function deleteStepEvidence(evidence) {
 
 // Lifecycle board (Trello replacement): columns, client cards and moves.
 export async function loadLifecycleBoard() {
-  const [stagesResult, clientsResult, stepsResult] = await runWithSessionRetry(() => Promise.all([
+  const [stagesResult, clientsResult, stepsResult, commentsResult, ticketsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('lifecycle_board_stages').select('*').eq('archived', false).order('sort_order'),
     supabase.from('clients')
       .select('id, code, business_name, owner_name, status, phase, daily_budget, board_stage, board_position, board_stage_changed_at, target_launch_date, ads_pause_reason, updated_at')
       .eq('archived', false),
     supabase.from('client_workflow_steps').select('client_id, completed'),
+    supabase.from('client_comments').select('client_id').is('deleted_at', null),
+    supabase.from('ticket_clients').select('client_id, tickets!inner(status)').not('tickets.status', 'in', '("Resolved","Closed")'),
   ]))
   const error = stagesResult.error || clientsResult.error || stepsResult.error
   if (error) throw error
@@ -472,9 +474,19 @@ export async function loadLifecycleBoard() {
     if (step.completed) item.done += 1
     progress.set(step.client_id, item)
   }
+  // Comments and tickets only add badges: if those tables fail, the board still loads.
+  const commentCount = new Map()
+  for (const row of commentsResult.data || []) commentCount.set(row.client_id, (commentCount.get(row.client_id) || 0) + 1)
+  const ticketCount = new Map()
+  for (const row of ticketsResult.data || []) if (row.client_id) ticketCount.set(row.client_id, (ticketCount.get(row.client_id) || 0) + 1)
   return {
     stages: stagesResult.data || [],
-    clients: (clientsResult.data || []).map((client) => ({ ...client, progress: progress.get(client.id) || { done: 0, total: 0 } })),
+    clients: (clientsResult.data || []).map((client) => ({
+      ...client,
+      progress: progress.get(client.id) || { done: 0, total: 0 },
+      commentCount: commentCount.get(client.id) || 0,
+      openTickets: ticketCount.get(client.id) || 0,
+    })),
   }
 }
 
@@ -505,4 +517,56 @@ export async function saveBoardStage(stage) {
     : supabase.from('lifecycle_board_stages').update(payload).eq('key', stage.key)
   const { error } = await query
   if (error) throw error
+}
+
+// Client log ("bitácora"): quick comments on a client.
+export async function loadClientComments(clientId) {
+  const [commentsResult, directoryResult] = await runWithSessionRetry(() => Promise.all([
+    supabase.from('client_comments').select('*').eq('client_id', clientId).is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+    supabase.rpc('get_team_directory'),
+  ]))
+  if (commentsResult.error) throw commentsResult.error
+  const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
+  return (commentsResult.data || []).map((comment) => ({ ...comment, author: members.get(comment.author_id) || null }))
+}
+
+export async function addClientComment({ clientId, profileId, kind, body }) {
+  const clean = body.trim()
+  if (!clean) throw new Error('Escribe el comentario.')
+  const { error } = await supabase.from('client_comments').insert({ client_id: clientId, author_id: profileId, kind, body: clean })
+  if (error) throw error
+}
+
+export async function updateClientComment(commentId, { kind, body }) {
+  const clean = body.trim()
+  if (!clean) throw new Error('Escribe el comentario.')
+  const { data, error } = await supabase.from('client_comments').update({ kind, body: clean }).eq('id', commentId).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Solo quien escribió el comentario o un administrador de operaciones puede editarlo.')
+}
+
+export async function deleteClientComment(commentId) {
+  const { data, error } = await supabase.from('client_comments').update({ deleted_at: new Date().toISOString() }).eq('id', commentId).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('Solo quien escribió el comentario o un administrador de operaciones puede eliminarlo.')
+}
+
+// Tickets of one client (TOPS Tickets module, including the ones synced from Slack).
+const CLOSED_TICKET_STATUSES = ['Resolved', 'Closed']
+export async function loadClientTickets(clientId) {
+  const { data, error } = await supabase.from('ticket_clients')
+    .select('ticket_id, tickets(id, ticket_number, title, status, priority, source, slack_summary, slack_owner_name, source_url, created_at, updated_at, assigned_to)')
+    .eq('client_id', clientId)
+  if (error) throw error
+  return (data || []).map((row) => row.tickets).filter(Boolean)
+    .sort((a, b) => Number(CLOSED_TICKET_STATUSES.includes(a.status)) - Number(CLOSED_TICKET_STATUSES.includes(b.status)) || a.ticket_number.localeCompare(b.ticket_number, undefined, { numeric: true }))
+}
+
+export async function syncSlackTickets() {
+  const { data, error } = await supabase.functions.invoke('slack-ticket-sync', { body: {} })
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null)
+    throw new Error(detail?.error || error.message)
+  }
+  return data
 }
