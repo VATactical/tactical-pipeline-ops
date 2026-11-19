@@ -17,6 +17,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 // a Meta ad account ID and a token is available: the portfolio-wide META_ACCESS_TOKEN secret
 // (system user with ads_read) or, as a fallback, the client's own token in private.client_secrets.
 // A Meta failure never blocks the GHL counts; it is stored in meta_spend_error.
+//
+// Slack cross-check: with the SLACK_BOT_TOKEN secret (scopes channels:history, channels:join,
+// groups:history), the LeadConnector notices in the client channel are counted for the same
+// period (new lead / appointment booked). It is a verification only and never blocks the sync.
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
 const META_GRAPH = "https://graph.facebook.com/v23.0";
@@ -36,6 +40,7 @@ type Target = {
   billing_cycle_days: number;
   meta_ad_account_id: string;
   meta_token: string;
+  slack_channel_id: string;
 };
 
 function adminClient() {
@@ -183,6 +188,71 @@ async function metaSpend(target: Target, start: string, end: string): Promise<nu
   return (body.data || []).reduce((total, row) => total + (Number(row.spend) || 0), 0);
 }
 
+// Counts LeadConnector notices in the client Slack channel for the period.
+const SLACK_API = "https://slack.com/api";
+const isTestNotice = (text: string) => /\btest\b/i.test(text.split("\n").slice(0, 3).join(" "));
+// Only the headline decides: lead notices often say "book an appointment" further down.
+const isAppointmentNotice = (text: string) => /appointment|booked|locked in|scheduled|\bcita\b/i.test(text.split("\n")[0] || "");
+const isLeadNotice = (text: string) => /\blead\b|lead information|nuevo lead/i.test(text.split("\n").slice(0, 3).join(" "));
+
+async function slack(token: string, method: string, params: Record<string, string>) {
+  const response = await fetch(`${SLACK_API}/${method}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(params),
+  });
+  return await response.json().catch(() => ({ ok: false, error: `http_${response.status}` })) as Record<string, unknown>;
+}
+
+async function slackColumns(target: Target, start: string, end: string) {
+  const token = Deno.env.get("SLACK_BOT_TOKEN") || "";
+  if (!token || !target.slack_channel_id) return {};
+  try {
+    const oldest = String(new Date(dayStart(start)).getTime() / 1000);
+    const latest = String(new Date(dayEnd(end)).getTime() / 1000);
+    let leads = 0;
+    let appointments = 0;
+    let first: number | null = null;
+    let cursor = "";
+    let joined = false;
+    for (let page = 0; page < 20; page += 1) {
+      const params: Record<string, string> = { channel: target.slack_channel_id, oldest, latest, limit: "200", inclusive: "true" };
+      if (cursor) params.cursor = cursor;
+      const body = await slack(token, "conversations.history", params);
+      if (!body.ok && body.error === "not_in_channel" && !joined) {
+        joined = true;
+        const join = await slack(token, "conversations.join", { channel: target.slack_channel_id });
+        if (!join.ok) throw new Error(`Slack: ${join.error}`);
+        page -= 1;
+        continue;
+      }
+      if (!body.ok) throw new Error(`Slack: ${body.error}`);
+      for (const message of (body.messages as Array<Record<string, unknown>>) || []) {
+        const profile = message.bot_profile as { name?: string } | undefined;
+        const author = String(profile?.name || message.username || "");
+        if (!message.bot_id || !/leadconnector|highlevel|ghl/i.test(author)) continue;
+        const text = String(message.text || "");
+        if (isTestNotice(text)) continue;
+        const kind = isAppointmentNotice(text) ? "appointment" : isLeadNotice(text) ? "lead" : null;
+        if (!kind) continue;
+        if (kind === "lead") leads += 1; else appointments += 1;
+        const ts = Number(message.ts) * 1000;
+        if (first === null || ts < first) first = ts;
+      }
+      cursor = String((body.response_metadata as { next_cursor?: string } | undefined)?.next_cursor || "");
+      if (!body.has_more || !cursor) break;
+    }
+    return {
+      slack_leads: leads,
+      slack_appointments: appointments,
+      slack_first_notice_at: first === null ? null : new Date(first).toISOString(),
+      slack_error: "",
+    };
+  } catch (error) {
+    return { slack_error: String((error as Error).message || error).slice(0, 300) };
+  }
+}
+
 // Spend columns for a stored period; on error the last good meta_spend is kept.
 async function spendColumns(target: Target, start: string, end: string) {
   try {
@@ -220,7 +290,10 @@ async function storePeriod(admin: ReturnType<typeof adminClient>, target: Target
     synced_at: new Date().toISOString(),
     synced_by: actorId,
   };
-  const spend = await spendColumns(target, period.period_start, period.period_end);
+  const [spend, slackCheck] = await Promise.all([
+    spendColumns(target, period.period_start, period.period_end),
+    slackColumns(target, period.period_start, period.period_end),
+  ]);
   try {
     Object.assign(row, await countPeriod(target, period.period_start, period.period_end), { sync_status: "ok", error_message: "" });
   } catch (error) {
@@ -232,13 +305,13 @@ async function storePeriod(admin: ReturnType<typeof adminClient>, target: Target
       .eq("client_id", target.client_id).eq("period_start", period.period_start).maybeSingle();
     if (existing) {
       const { error } = await admin.from("client_ghl_metrics").update({
-        sync_status: "error", error_message: row.error_message, synced_at: row.synced_at, synced_by: actorId, ...spend,
+        sync_status: "error", error_message: row.error_message, synced_at: row.synced_at, synced_by: actorId, ...spend, ...slackCheck,
       }).eq("id", existing.id);
       if (error) throw error;
       return row;
     }
   }
-  Object.assign(row, spend);
+  Object.assign(row, spend, slackCheck);
   const { error } = await admin.from("client_ghl_metrics").upsert(row, { onConflict: "client_id,period_start" });
   if (error) throw error;
   return row;
@@ -292,11 +365,12 @@ Deno.serve(async (request: Request) => {
     if (wantsRange) {
       const target = (targets as Target[])[0];
       try {
-        const [counts, spend] = await Promise.all([
+        const [counts, spend, slackCheck] = await Promise.all([
           countPeriod(target, body.from!, body.to!),
           spendColumns(target, body.from!, body.to!),
+          slackColumns(target, body.from!, body.to!),
         ]);
-        return json({ clientId: target.client_id, period_start: body.from, period_end: body.to, ...counts, ...spend });
+        return json({ clientId: target.client_id, period_start: body.from, period_end: body.to, ...counts, ...spend, ...slackCheck });
       } catch (error) {
         return json({ error: String((error as Error).message || error).slice(0, 500) }, 502);
       }
