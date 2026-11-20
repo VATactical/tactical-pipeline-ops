@@ -97,6 +97,15 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Domain: ${pending(client.domain)}
 • Landing Page: ${pending(client.landing_page_url)}
 
+[CAMPAIGNS (MEDIA BUYER)]
+
+• Ad Account Name: ${pending(client.ad_account_name)}
+• Conversion Location: ${pending(client.conversion_location)}
+• Instant Form: ${pending(client.instant_form_name)}
+• Ad Creatives: ${pending(client.ad_creatives_link)}
+• Booking Calendar: ${pending(client.booking_calendar_link)}
+• Campaign Result: ${pending(client.ad_result_status)}
+
 [FILES & AUTOMATIONS]
 
 • Google Drive Folder: ${pending(client.drive_folder_link)}
