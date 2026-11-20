@@ -128,7 +128,7 @@ export default function MediaBuyerPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [statusFilter, setStatusFilter] = useState('launched')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [resultFilter, setResultFilter] = useState('')
   const [conversionFilter, setConversionFilter] = useState('')
   const [search, setSearch] = useState('')
@@ -186,7 +186,7 @@ export default function MediaBuyerPage() {
     </header>
 
     <div className="mb-counters">
-      {AD_STATUSES.map((status) => <button type="button" key={status} className={`mb-counter ${STATUS_CLASS[status]} ${statusFilter === status ? 'selected' : ''}`} onClick={() => setStatusFilter(statusFilter === status ? 'launched' : status)}>
+      {AD_STATUSES.map((status) => <button type="button" key={status} className={`mb-counter ${STATUS_CLASS[status]} ${statusFilter === status ? 'selected' : ''}`} onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}>
         <span>{status}</span><strong>{counts[status] || 0}</strong>
       </button>)}
     </div>
@@ -194,7 +194,7 @@ export default function MediaBuyerPage() {
     <div className="mb-filters">
       <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Buscar cliente')} />
       <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-        <option value="launched">{t('Con anuncios (sin Draft)')}</option><option value="all">{t('Todos los clientes')}</option>
+        <option value="all">{t('Todos los clientes')}</option><option value="launched">{t('Con anuncios (sin Draft)')}</option>
         {AD_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
       </select>
       <select value={resultFilter} onChange={(event) => setResultFilter(event.target.value)}>
