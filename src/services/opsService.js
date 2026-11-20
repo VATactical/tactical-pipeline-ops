@@ -634,3 +634,21 @@ export async function suggestNextClientCode() {
   const highest = Math.max(0, ...(data || []).map((row) => Number(String(row.code).match(/^C(\d+)$/i)?.[1] || 0)))
   return `C${highest + 1}`
 }
+
+// Client's GHL / LeadConnector login in the credential vault (values only for sensitive-credential users).
+export async function loadGhlLoginStatus(clientId) {
+  const { data, error } = await supabase.rpc('client_ghl_login_status', { p_client_id: clientId })
+  if (error) throw error
+  return data || { saved: false }
+}
+
+export async function revealGhlLogin(clientId) {
+  const { data, error } = await supabase.rpc('reveal_client_ghl_login', { p_client_id: clientId })
+  if (error) throw error
+  return data || { email: '', password: '' }
+}
+
+export async function saveGhlLogin(clientId, { email, password }) {
+  const { error } = await supabase.rpc('save_client_ghl_login', { p_client_id: clientId, p_email: email.trim(), p_password: password })
+  if (error) throw error
+}

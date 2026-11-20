@@ -9,6 +9,7 @@ import StepEvidence from '../components/StepEvidence'
 import ClientLog from '../components/ClientLog'
 import ClientTickets from '../components/ClientTickets'
 import DossierSuggestions from '../components/DossierSuggestions'
+import GhlLoginVault from '../components/GhlLoginVault'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { buildDossierText, copyDossier, downloadDossierPdf } from '../lib/dossierExport'
@@ -529,6 +530,7 @@ export default function ClientDetailPage() {
     </div>
 
     <section className="content-card credential-vault client-tab-section tab-dossier"><div className="section-heading"><div><p className="eyebrow">Bóveda de credenciales</p><h3>Meta Access Token</h3><p className="muted">No se incluye en el dossier, PDF, Google Docs ni búsquedas.</p></div><span className="credential-state">Protegido</span></div>{!canViewSensitive ? <p className="credential-restricted">Acceso restringido. Un administrador puede habilitar el permiso individual desde Usuarios.</p> : <div className="credential-controls">{!secretVisible ? <button className="secondary-button" type="button" disabled={secretLoading} onClick={revealMetaToken}>{secretLoading ? 'Verificando permiso…' : 'Mostrar token'}</button> : <><div className="credential-value"><span>Access Token</span><code>{secretValue || 'No hay token configurado'}</code></div><div className="section-actions"><button className="secondary-button" type="button" onClick={copyMetaToken} disabled={!secretValue}>Copiar</button><button className="text-button" type="button" onClick={hideMetaToken}>Ocultar</button></div></>}{canManageSensitive && !secretEditing && <button className="text-button" type="button" onClick={() => { hideMetaToken(); setSecretEditing(true); setSecretDraft('') }}>Actualizar token</button>}{canManageSensitive && secretEditing && <form className="credential-editor" onSubmit={saveMetaToken}><label>Nuevo Access Token<textarea rows="4" value={secretDraft} autoComplete="off" spellCheck="false" onChange={(event) => setSecretDraft(event.target.value)} placeholder="Pega aquí el token nuevo" required /></label><div className="section-actions"><button className="text-button" type="button" onClick={() => { setSecretEditing(false); setSecretDraft('') }}>Cancelar</button><button className="primary-button compact-button" disabled={secretLoading}>{secretLoading ? 'Guardando…' : 'Guardar protegido'}</button></div></form>}</div>}</section>
+    <GhlLoginVault clientId={client.id} archived={client.archived} />
     {client.onboarding_form_notes && <details className="content-card dossier-source-notes client-tab-section tab-dossier">
       <summary className="section-heading dossier-section-heading"><span className="eyebrow">{t('Ver notas originales del formulario')}</span></summary>
       <p className="dossier-source-notes-content">{client.onboarding_form_notes}</p>
