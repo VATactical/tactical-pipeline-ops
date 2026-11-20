@@ -38,6 +38,7 @@ const TrainingPage = lazyWithRetry(() => import('./pages/TrainingPage'), 'traini
 const MyAccountPage = lazyWithRetry(() => import('./pages/MyAccountPage'), 'my-account')
 const TeamDirectoryPage = lazyWithRetry(() => import('./pages/TeamDirectoryPage'), 'team-directory')
 const CompanyPage = lazyWithRetry(() => import('./pages/CompanyPage'), 'company')
+const MediaBuyerPage = lazyWithRetry(() => import('./pages/MediaBuyerPage'), 'media-buyer')
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -75,6 +76,9 @@ export default function App() {
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                 <Route path="equipo" element={<TeamPage />} />
+              </Route>
+              <Route element={<ProtectedRoute allowedPermissions={['media_buyer_view']} />}>
+                <Route path="media-buyer" element={<MediaBuyerPage />} />
               </Route>
               <Route element={<ProtectedRoute allowedPermissions={['operations_admin']} />}>
                 <Route path="mi-empresa" element={<CompanyPage />} />

@@ -17,6 +17,7 @@ const permissionLabels = {
   clients_delete_archived: 'Eliminar clientes archivados',
   users_manage: 'Administrar usuarios',
   sensitive_credentials_view: 'Ver credenciales sensibles',
+  media_buyer_view: 'Ver la vista Media Buyer',
 }
 const initialForm = {
   email: '', password: '', fullName: '', timezone: 'America/Managua',

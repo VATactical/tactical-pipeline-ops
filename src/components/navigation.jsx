@@ -30,6 +30,7 @@ export const navGroups = [
     { to: '/clientes', label: 'Clientes', icon: 'clients' },
     { to: '/ciclo', label: 'Ciclo de vida', icon: 'board' },
     { to: '/tickets', label: 'Tickets', icon: 'tickets' },
+    { to: '/media-buyer', label: 'Media Buyer', icon: 'ads', show: (profile) => profile?.role === 'superadmin' || Boolean(profile?.permissions?.media_buyer_view) },
   ] },
   { label: 'Equipo', items: [
     { to: '/eod-reports', label: 'EOD Reports', icon: 'eod', badge: 'eod' },
