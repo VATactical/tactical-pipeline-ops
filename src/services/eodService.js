@@ -196,7 +196,7 @@ export async function loadEodComplianceSummary(profile) {
 
 export async function saveLateWorkStatus({ profileId, workDate, currentTask, expectedReportTime }) {
   const cleanTask = currentTask.trim()
-  const slackNotice = `Still working on ${cleanTask || '[Task]'}, EOD report coming at ${expectedReportTime || '[Time]'} Kevin time.`
+  const slackNotice = `Still working on ${cleanTask || '[Task]'}, EOD report coming at ${expectedReportTime || '[Time]'} EST.`
   const { data, error } = await supabase.from('eod_daily_status').upsert({
     user_id: profileId,
     work_date: workDate,
