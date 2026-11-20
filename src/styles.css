@@ -3535,3 +3535,19 @@ tr:hover .mb-edit, .mb-edit:focus-visible { visibility: visible; }
 .team-subnav a { padding: .5rem .9rem; border-bottom: 2px solid transparent; color: #4d6175; font-weight: 650; text-decoration: none; margin-bottom: -1px; }
 .team-subnav a:hover { color: #16324f; }
 .team-subnav a.active { color: #1e5ea8; border-bottom-color: #2a78d6; }
+.team-toolbar input { max-width: 360px; width: 100%; }
+.team-group { display: grid; gap: .6rem; }
+.team-group-title { display: flex; align-items: center; gap: .5rem; margin: .4rem 0 0; font-size: .95rem; color: #233547; }
+.team-group-title span { padding: .05rem .5rem; border-radius: 999px; background: #eef3f8; color: #55677a; font-size: .75rem; }
+.team-card.is-me { border-color: #9cc0e8; }
+.team-me { margin-left: .35rem; padding: .05rem .45rem; border-radius: 999px; background: #eaf2fc; color: #1e5ea8; font-size: .7rem; vertical-align: middle; }
+.team-job { margin: .1rem 0 0; color: #5b6b7c; font-size: .82rem; }
+.team-clock { padding: .45rem .6rem; border-radius: 8px; background: #f5f8fb; font-size: .84rem; color: #3c4f63; }
+.team-time small { color: #6a7c8e; }
+.team-contacts { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; font-size: .84rem; }
+.team-contacts li { display: grid; grid-template-columns: 5.5rem 1fr auto; align-items: center; gap: .4rem; }
+.team-contacts li > span { color: #6a7c8e; font-size: .78rem; }
+.team-contacts a { color: #0e81aa; overflow-wrap: anywhere; }
+.team-contacts em { color: #9aa8b6; font-style: normal; }
+.team-copy { border: 0; background: transparent; color: #6a7c8e; font-size: .74rem; cursor: pointer; padding: 0 .2rem; }
+.team-copy:hover { color: #1e5ea8; }
