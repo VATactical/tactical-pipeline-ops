@@ -326,7 +326,7 @@ textarea:focus { border-color: #38c8ff; box-shadow: 0 0 0 3px #38c8ff20; }
 .team-avatar-small { width: 36px; height: 36px; }
 .team-avatar-picker { width: 58px; height: 58px; }
 .compact-page { width: 100%; max-width: 780px; }
-.dashboard-date { margin: -.35rem 0 .35rem; color: #0e81aa; font-size: .85rem; font-weight: 750; text-transform: capitalize; }
+.dashboard-date { margin: -.35rem 0 .35rem; color: #0e81aa; font-size: .85rem; font-weight: 750; }
 .field-help { display: block; margin: -.3rem 0 .55rem; color: #7890a8; font-weight: 500; line-height: 1.45; }
 
 .profile-form { gap: .9rem; margin-top: 0; }
@@ -3610,3 +3610,22 @@ a.training-lesson-title:hover { color: #0e81aa; text-decoration: underline; }
 .mb-signal { display: block; font-size: .72rem; font-weight: 700; text-decoration: none; color: #55677a; }
 .mb-signal.bad { color: #a12d2d; } .mb-signal.good { color: #12734f; } .mb-signal.warn { color: #7a5500; }
 @media (max-width: 640px) { .status-signals li { grid-template-columns: 1.6rem 1fr; } .status-signal-actions { grid-column: 2; flex-direction: row; } }
+
+/* UI/UX pass 1 */
+.ticket-list-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem; }
+.ticket-list-tags > span { width: auto; }
+.ticket-client-progress li label { flex: 1; min-width: 0; }
+.ticket-client-progress li input[type=checkbox] { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; }
+.ticket-client-progress li label > a, .ticket-client-progress li label > span { min-width: 0; }
+.report-card .report-preview { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; color: #4d6175; }
+.report-card .report-source { justify-self: start; padding: .05rem .4rem; border-radius: 5px; background: #4a154b; color: #fff; font-size: .64rem; font-weight: 800; }
+.attention-chip { max-width: 100%; }
+/* Media Buyer: client column stays visible, long reasons clamp, edit pencil visible on touch screens */
+.mb-table th:first-child, .mb-table td:first-child { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 1px 0 0 #edf1f5; }
+.mb-table th:first-child { z-index: 2; background: #f5f8fb; }
+.mb-table tr:hover td:first-child { background: #fafcfe; }
+.mb-reason-cell { display: table-cell; }
+.mb-reason-cell > .mb-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (hover: none) { .mb-edit { visibility: visible; } }
+.team-directory-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.team-department { margin: 0 0 -.25rem; }
