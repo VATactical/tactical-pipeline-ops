@@ -28,3 +28,6 @@ verify_jwt = false
 
 [functions.slack-interactions]
 verify_jwt = false
+
+[functions.parse-onboarding-pdf]
+verify_jwt = false

@@ -3422,3 +3422,26 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .step-evidence-slot small { font-size: .66rem; font-weight: 700; }
 .step-evidence-edit-foot { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
 .step-evidence-pager { display: inline-flex; align-items: center; gap: .4rem; }
+
+/* Create client from the onboarding PDF */
+.pdf-intake { display: flex; align-items: center; gap: 1rem; border: 2px dashed var(--tp-border-strong); background: var(--tp-surface); transition: border-color .15s, background .15s; }
+.pdf-intake.dragging { border-color: var(--tp-accent); background: var(--tp-accent-soft); }
+.pdf-intake.loaded { border-style: solid; border-color: #9fd3b6; background: var(--tp-success-soft); }
+.pdf-intake-icon { font-size: 1.9rem; }
+.pdf-intake > div:nth-child(2) { flex: 1; }
+.pdf-intake strong { color: var(--tp-text); }
+.pdf-intake p { margin: .2rem 0 0; font-size: .84rem; }
+.pdf-intake-actions { display: flex; align-items: center; gap: .5rem; }
+.client-form textarea { width: 100%; margin: 0; resize: vertical; }
+.pdf-extra { padding: .7rem .9rem; border: 1px solid var(--tp-border); border-radius: 10px; background: var(--tp-surface-muted); }
+.pdf-extra summary { color: var(--tp-text); font-weight: 800; cursor: pointer; }
+.pdf-extra dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .5rem 1rem; margin: .7rem 0 .4rem; }
+.pdf-extra dt { color: var(--tp-text-muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.pdf-extra dd { margin: .1rem 0 0; color: var(--tp-text); font-size: .84rem; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .pdf-intake { flex-wrap: wrap; } }
+.dashboard-header-side { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; }
+.dual-clock { display: flex; gap: .5rem; }
+.dual-clock > span { display: grid; gap: .05rem; padding: .45rem .7rem; border: 1px solid var(--tp-border); border-radius: 10px; background: var(--tp-surface); box-shadow: var(--tp-shadow-sm); }
+.dual-clock small { color: var(--tp-text-muted); font-size: .66rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.dual-clock strong { color: var(--tp-text); font-size: 1.05rem; font-weight: 800; }
+@media (max-width: 800px) { .dashboard-header-side { align-items: flex-start; } }
