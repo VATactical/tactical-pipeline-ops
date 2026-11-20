@@ -22,6 +22,11 @@ export const SUGGESTION_FIELDS = {
   daily_budget: 'Presupuesto diario',
   targeting_radius_miles: 'Radio de segmentación (millas)',
   ads_targeting_address: 'Dirección de segmentación',
+  ad_account_name: 'Nombre de la cuenta publicitaria',
+  conversion_location: 'Ubicación de conversión',
+  instant_form_name: 'Nombre del Instant Form',
+  ad_creatives_link: 'Creativos de anuncios',
+  booking_calendar_link: 'Calendario de citas',
 }
 
 const isLink = (value) => /^https?:\/\//i.test(value || '')
