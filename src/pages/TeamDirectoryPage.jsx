@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import LoadingScreen from '../components/LoadingScreen'
 import TeamAvatar from '../components/TeamAvatar'
+import TeamSubnav from '../components/TeamSubnav'
 import { contactLink, loadTeamDirectory } from '../services/profileService'
 
 const roleLabels = { superadmin: 'Superadmin', user_admin: 'User Admin', onboarding_media: 'Onboarding & Media', automation_funnels: 'Automations & Funnels' }
@@ -19,6 +20,7 @@ export default function TeamDirectoryPage() {
     ['#eod-reports', 'Registros de cierre diario enviados antes de finalizar el turno.'],
   ]
   return <div className="page-stack">
+    <TeamSubnav />
     <header className="page-header"><div><p className="eyebrow">Directorio interno</p><h2>Mi equipo</h2><p className="muted">Contacta rápidamente a cada integrante por correo, Slack o WhatsApp.</p></div><span className="status-pill">{members.length} integrantes</span></header>
     {error && <p className="form-error">{error}</p>}
     <section className="content-card communication-guidelines"><div className="section-heading"><div><p className="eyebrow">Slack</p><h3>Canales y propósito</h3><p className="muted">Slack es para comunicarnos; TP OPS es la fuente principal para tareas, estados y KPI.</p></div></div><div className="channel-guideline-list">{channels.map(([channel, description]) => <article key={channel}><strong>{channel}</strong><span>{description}</span></article>)}</div></section>

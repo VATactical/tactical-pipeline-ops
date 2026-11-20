@@ -69,9 +69,10 @@ export default function App() {
               <Route path="ciclo" element={<LifecycleBoardPage />} />
               <Route path="tareas" element={<Navigate to="/tickets" replace />} />
               <Route path="tickets" element={<TicketsPage />} />
-              <Route path="training" element={<TrainingPage />} />
+              <Route path="training" element={<Navigate to="/mi-equipo/training" replace />} />
               <Route path="mi-cuenta" element={<MyAccountPage />} />
               <Route path="mi-equipo" element={<TeamDirectoryPage />} />
+              <Route path="mi-equipo/training" element={<TrainingPage />} />
               <Route path="eod-reports" element={<EodReportsPage />} />
               <Route path="sin-acceso" element={<AccessDeniedPage />} />
               <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
+import TeamSubnav from '../components/TeamSubnav'
+import { usePageTrail } from '../components/navigation'
 import { useLanguage } from '../i18n/LanguageContext'
 import {
   createTrainingItem, createTrainingModule, deleteTrainingItem, deleteTrainingModule,
@@ -17,6 +19,7 @@ const blankItem = { titleEs: '', titleEn: '', descriptionEs: '', descriptionEn: 
 const resourceTypes = ['Lección', 'Documento', 'Video', 'Carpeta']
 
 export default function TrainingPage() {
+  usePageTrail([{ label: 'Training' }])
   const { profile } = useAuth()
   const { language, t } = useLanguage()
   const isAdmin = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
@@ -100,6 +103,7 @@ export default function TrainingPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
+    <TeamSubnav />
     <header className="page-header">
       <div>
         <p className="eyebrow">Training Hub</p>
