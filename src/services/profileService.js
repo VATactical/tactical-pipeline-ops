@@ -37,6 +37,13 @@ export async function loadTeamDirectory() {
   return data || []
 }
 
+// Directory with each person's job title and department (Mi equipo).
+export async function loadTeamMembers() {
+  const { data, error } = await runWithSessionRetry(() => supabase.rpc('get_team_members'))
+  if (error) throw error
+  return data || []
+}
+
 export function contactLink(value, type) {
   const contact = String(value || '').trim()
   if (!contact) return ''
