@@ -660,3 +660,20 @@ export async function runOnboardingSetup(clientId, { steps, dossierText = '' } =
   }
   return data?.results || {}
 }
+
+// Status alerts read from the clients' Slack channels (launch, pause, payment, problem), pending review.
+export async function loadStatusSignals(clientId = null) {
+  let query = supabase.from('client_status_signals')
+    .select('id, client_id, signal, excerpt, slack_user_name, source_url, created_at, clients(code, business_name, status)')
+    .eq('status', 'pending').order('created_at', { ascending: false }).limit(50)
+  if (clientId) query = query.eq('client_id', clientId)
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+export async function resolveStatusSignal(signalId, apply) {
+  const { data, error } = await supabase.rpc('resolve_status_signal', { p_id: signalId, p_apply: Boolean(apply) })
+  if (error) throw error
+  return data
+}

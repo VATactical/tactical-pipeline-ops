@@ -3593,3 +3593,20 @@ a.training-lesson-title:hover { color: #0e81aa; text-decoration: underline; }
 .onboarding-result.created, .onboarding-result.linked { color: #12734f !important; }
 .onboarding-result.error, .onboarding-result.not_configured { color: #a12d2d !important; }
 .auto-setup-option { display: flex; align-items: flex-start; gap: .5rem; font-size: .88rem; color: #3c4f63; }
+
+/* Status alerts from Slack */
+.status-signals ul { list-style: none; margin: .6rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.status-signals li { display: grid; grid-template-columns: 2rem 1fr auto; gap: .6rem; align-items: start; padding: .6rem .75rem; border: 1px solid #e1e8ef; border-left: 4px solid #9aa8b6; border-radius: 10px; background: #fff; }
+.status-signals li.signal-good { border-left-color: #1baf7a; }
+.status-signals li.signal-warn { border-left-color: #e0a63a; }
+.status-signals li.signal-bad { border-left-color: #d64545; }
+.status-signal-icon { font-size: 1.3rem; line-height: 1.6rem; }
+.status-signal-main { display: grid; gap: .25rem; min-width: 0; }
+.status-signal-main a { color: #0e81aa; }
+.status-signal-main blockquote { margin: 0; padding: .3rem .6rem; border-left: 3px solid #d8e1ea; color: #3c4f63; font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.status-signal-main small { color: #6a7c8e; }
+.status-signal-actions { display: flex; flex-direction: column; gap: .35rem; }
+.status-signals-count { padding: .05rem .5rem; border-radius: 999px; background: #fdeceb; color: #a12d2d; font-size: .75rem; vertical-align: middle; }
+.mb-signal { display: block; font-size: .72rem; font-weight: 700; text-decoration: none; color: #55677a; }
+.mb-signal.bad { color: #a12d2d; } .mb-signal.good { color: #12734f; } .mb-signal.warn { color: #7a5500; }
+@media (max-width: 640px) { .status-signals li { grid-template-columns: 1.6rem 1fr; } .status-signal-actions { grid-column: 2; flex-direction: row; } }

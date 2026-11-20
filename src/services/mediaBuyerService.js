@@ -22,13 +22,15 @@ export function adStatusOf(client) {
 }
 
 export async function loadMediaBuyerData(profileId) {
-  const [clientsResult, commentsResult, tasksResult, suggestionsResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientsResult, commentsResult, tasksResult, suggestionsResult, signalsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select(CLIENT_FIELDS).eq('archived', false).order('code'),
     supabase.from('client_comments').select('id, client_id, body, kind, created_at').is('deleted_at', null)
       .order('created_at', { ascending: false }).limit(400),
     supabase.from('tasks').select('id, client_id, title, comments, priority, due_at, status, clients(code, business_name)')
       .eq('assigned_to', profileId).neq('status', 'Completada').order('due_at', { ascending: true, nullsFirst: false }),
     supabase.from('client_dossier_suggestions').select('id, client_id, field, suggested_value, excerpt, slack_user_name, source_url, created_at')
+      .eq('status', 'pending').order('created_at', { ascending: false }),
+    supabase.from('client_status_signals').select('id, client_id, signal, excerpt, slack_user_name, created_at')
       .eq('status', 'pending').order('created_at', { ascending: false }),
   ]))
   const error = clientsResult.error || commentsResult.error || tasksResult.error
@@ -43,6 +45,7 @@ export async function loadMediaBuyerData(profileId) {
   }
   const clients = (clientsResult.data || []).map((client) => ({
     ...client, adStatus: adStatusOf(client), lastComment: latestComment.get(client.id) || null,
+    signals: (signalsResult.data || []).filter((item) => item.client_id === client.id),
     suggestions: Object.fromEntries([...suggestions.values()].filter((item) => item.client_id === client.id).map((item) => [item.field, item])),
   }))
   return { clients, tasks: tasksResult.data || [] }

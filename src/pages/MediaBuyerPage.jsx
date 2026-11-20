@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import LoadingScreen from '../components/LoadingScreen'
 import { addClientComment, resolveDossierSuggestion, updateTaskStatus } from '../services/opsService'
+import { SIGNALS } from '../components/StatusSignals'
 import { AD_STATUSES, changeAdStatus, downloadPmsCsv, loadMediaBuyerData, updateBuyerField } from '../services/mediaBuyerService'
 
 const RESULTS = ['Bad', 'Good', 'Excellent']
@@ -97,6 +98,8 @@ function StatusCell({ client, canEdit, onChange }) {
       <button className="secondary-button compact-button" type="button" onClick={() => setNext('')}>{t('Cancelar')}</button>
     </form>}
     {error && <small className="danger-text">{error}</small>}
+    {(client.signals || []).slice(0, 2).map((item) => <Link key={item.id} className={`mb-signal ${SIGNALS[item.signal]?.tone || ''}`} to={`/clientes/${client.id}`} title={`${item.slack_user_name}: ${item.excerpt}`}>
+      {SIGNALS[item.signal]?.icon} {t('Slack')}: {t(SIGNALS[item.signal]?.label || item.signal)}</Link>)}
   </div>
 }
 

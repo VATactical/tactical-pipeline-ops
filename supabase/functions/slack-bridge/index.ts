@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 import { type DossierField, extractDossierValues, hasRealValue, ONLY_WHEN_EMPTY, sameValue } from "./extract.ts";
 import { eodPlainText, reportDay } from "./eod.ts";
+import { detectSignals } from "./signals.ts";
 
 // TOPS <-> Slack bridge.
 //
@@ -11,7 +12,8 @@ import { eodPlainText, reportDay } from "./eod.ts";
 // task "scan": reads new messages written by people in each client's Slack channel and saves dossier
 //   values it recognises (pixel, ad account, landing page, budget, radius, address, links...) as
 //   suggestions in public.client_dossier_suggestions. Nothing in the dossier changes until someone
-//   applies the suggestion in TOPS.
+//   applies the suggestion in TOPS. It also reads status signals (campaign launched / paused, payment
+//   problem / fixed, client problem) and saves them in public.client_status_signals for someone to confirm.
 // task "eod": imports the EODs people post in #eod-reports (last 48 h, so edits are picked up) as their
 //   EOD report in TP OPS, and reacts with ✅ (needs reactions:write; skipped without it).
 //
@@ -100,7 +102,7 @@ const FIELDS: DossierField[] = [
 
 async function scanChannels(admin: Admin, token: string) {
   const [{ data: clients, error: clientError }, { data: states, error: stateError }, { data: profiles }, { data: pending }] = await Promise.all([
-    admin.from("clients").select(["id", "code", "slack_channel_link", ...FIELDS].join(", ")).eq("archived", false),
+    admin.from("clients").select(["id", "code", "status", "ads_pause_reason", "slack_channel_link", ...FIELDS].join(", ")).eq("archived", false),
     admin.from("slack_channel_scan_state").select("channel_id, last_ts"),
     admin.from("profiles").select("full_name, slack_contact").eq("active", true),
     admin.from("client_dossier_suggestions").select("client_id, field, suggested_value"),
@@ -128,6 +130,7 @@ async function scanChannels(admin: Admin, token: string) {
   let channels = 0;
   let messagesRead = 0;
   let created = 0;
+  let signalsCreated = 0;
   const errors: string[] = [];
   for (const client of (clients || []) as Record<string, unknown>[]) {
     const channel = String(client.slack_channel_link || "").match(/C[A-Z0-9]{8,}/)?.[0];
@@ -163,9 +166,24 @@ async function scanChannels(admin: Admin, token: string) {
     messagesRead += messages.length;
 
     const rows: Record<string, unknown>[] = [];
+    const signalRows: Record<string, unknown>[] = [];
+    const live = client.status === "ADS LIVE" || client.status === "CRUISE CONTROL";
+    const pausedForPayment = client.status === "ADS PAUSED" && /payment|pago/i.test(String(client.ads_pause_reason || ""));
     for (const message of messages) {
       // People only: no bots (Viktor, LeadConnector, TOPS itself) and no join/leave notices.
       if (message.bot_id || !message.user || (message.subtype && !["thread_broadcast", "file_share"].includes(message.subtype))) continue;
+      for (const signal of detectSignals(message.text || "")) {
+        // Skip what TP OPS already shows: a launch for a live client, a payment problem already recorded.
+        if ((signal === "ads_live" || signal === "payment_fixed") && live) continue;
+        if (signal === "ads_paused" && client.status === "ADS PAUSED") continue;
+        if (signal === "payment_error" && pausedForPayment) continue;
+        signalRows.push({
+          client_id: client.id, signal, slack_user_id: message.user, slack_user_name: await nameOf(message), message_ts: message.ts,
+          excerpt: (message.text || "").replace(/<(https?:\/\/[^|>]+)\|[^>]*>/g, "$1").replace(/<(https?:\/\/[^>]+)>/g, "$1").slice(0, 600),
+          source_url: `${WORKSPACE_URL}/archives/${channel}/p${message.ts.replace(".", "")}`,
+          created_at: new Date(Number(message.ts) * 1000).toISOString(),
+        });
+      }
       const found = extractDossierValues(message.text || "");
       for (const item of found) {
         const current = client[item.field];
@@ -184,6 +202,11 @@ async function scanChannels(admin: Admin, token: string) {
         });
       }
     }
+    if (signalRows.length) {
+      const { error } = await admin.from("client_status_signals").upsert(signalRows, { onConflict: "client_id,signal,message_ts", ignoreDuplicates: true });
+      if (error) errors.push(`${client.code} signals: ${error.message}`);
+      else signalsCreated += signalRows.length;
+    }
     if (rows.length) {
       const { error } = await admin.from("client_dossier_suggestions").upsert(rows, { onConflict: "client_id,field,suggested_value", ignoreDuplicates: true });
       if (error) { errors.push(`${client.code}: ${error.message}`); continue; }
@@ -192,7 +215,7 @@ async function scanChannels(admin: Admin, token: string) {
     const newest = messages.length ? messages[messages.length - 1].ts : oldest;
     await admin.from("slack_channel_scan_state").upsert({ channel_id: channel, last_ts: newest, last_error: "", updated_at: new Date().toISOString() });
   }
-  return { channels, messagesRead, suggestions: created, errors };
+  return { channels, messagesRead, suggestions: created, signals: signalsCreated, errors };
 }
 
 const EOD_CHANNEL = Deno.env.get("SLACK_EOD_CHANNEL") || "C0C0ZK4HYFK";
