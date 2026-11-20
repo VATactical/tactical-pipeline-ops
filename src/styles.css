@@ -3451,3 +3451,14 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .ghl-login-value > div > span { min-width: 6.5rem; }
 .ghl-password-input { display: flex; align-items: center; gap: .5rem; }
 .ghl-password-input input { flex: 1; }
+
+/* Tickets with several clients: resolve client by client */
+.ticket-partial-badge { padding: .05rem .4rem; border-radius: 5px; background: var(--tp-warning-soft); color: var(--tp-warning); font-size: .66rem; font-weight: 800; white-space: nowrap; }
+.ticket-client-progress { margin: .3rem 0 .8rem; padding: .6rem .75rem; border: 1px solid var(--tp-border); border-radius: 10px; background: var(--tp-surface-muted); }
+.ticket-client-progress .eyebrow { margin: 0 0 .4rem; }
+.ticket-client-progress ul { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.ticket-client-progress li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .84rem; }
+.ticket-client-progress li label { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+.ticket-client-progress li.resolved a, .ticket-client-progress li.resolved span { color: var(--tp-text-muted); text-decoration: line-through; }
+.ticket-client-progress li small { color: var(--tp-success); font-weight: 800; text-decoration: none; }
+.client-ticket-partial { display: block; margin-top: .25rem; color: var(--tp-success); font-size: .74rem; font-weight: 700; }

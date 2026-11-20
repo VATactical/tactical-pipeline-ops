@@ -230,7 +230,7 @@ function SuperadminDashboard({ data, blockers, extras, profile, eodState }) {
   const openTicketList = data.tickets.filter(isOpenTicket)
   const clientSummaries = data.clients.map((client) => {
     const missingCount = dossierFields.filter((key) => isMissing(client[key])).length
-    const openTickets = openTicketList.filter((ticket) => ticket.clients?.some((link) => link.id === client.id)).length
+    const openTickets = openTicketList.filter((ticket) => ticket.clients?.some((link) => link.id === client.id && !link.resolvedAt)).length
     const clientBlockers = blockers.filter((blocker) => blocker.client_id === client.id).length
     const pendingSteps = data.workflowSteps.filter((step) => step.client_id === client.id && !step.completed)
     return {

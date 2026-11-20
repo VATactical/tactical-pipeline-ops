@@ -4,15 +4,16 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { loadGhlLoginStatus, revealGhlLogin, saveGhlLogin } from '../services/opsService'
 
 // Client's GHL / LeadConnector login (email + password) in the credential vault.
-// Everyone sees whether it is saved; only Superadmin or people with the "sensitive credentials"
-// permission can view or change it, and every view is logged. It never goes into the dossier,
+// Everyone sees whether it is saved; Superadmin, the onboarding role and people with the "sensitive
+// credentials" permission can view or change it, and every view is logged. It never goes into the dossier,
 // PDF, Google Docs, notes or search.
 const HIDE_AFTER_MS = 60000
 
 export default function GhlLoginVault({ clientId, archived }) {
   const { profile } = useAuth()
   const { t, locale } = useLanguage()
-  const canUse = profile?.role === 'superadmin' || Boolean(profile?.permissions?.sensitive_credentials_view)
+  // Onboarding uses the client's GHL login every day, so that role can view and change it too.
+  const canUse = ['superadmin', 'onboarding_media'].includes(profile?.role) || Boolean(profile?.permissions?.sensitive_credentials_view)
   const [status, setStatus] = useState(null)
   const [revealed, setRevealed] = useState(null)
   const [showPassword, setShowPassword] = useState(false)

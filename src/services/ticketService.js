@@ -8,7 +8,7 @@ function throwIfError(result) {
 export async function loadTicketWorkspace() {
   const [ticketsResult, linksResult, updatesResult, clientsResult, profilesResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('tickets').select('*').order('updated_at', { ascending: false }),
-    supabase.from('ticket_clients').select('ticket_id,client_id,client_code_snapshot,business_name_snapshot'),
+    supabase.from('ticket_clients').select('ticket_id,client_id,client_code_snapshot,business_name_snapshot,resolved_at,resolved_by'),
     supabase.from('ticket_updates').select('id,ticket_id,author_name,body,status_after,created_at').order('created_at', { ascending: false }).limit(500),
     supabase.from('clients').select('id,code,business_name,archived').order('code'),
     supabase.from('profiles').select('id,full_name,active').eq('active', true).order('full_name'),
@@ -31,6 +31,7 @@ export async function loadTicketWorkspace() {
       code: client?.code || link.client_code_snapshot,
       businessName: client?.business_name || link.business_name_snapshot,
       archived: client?.archived ?? false,
+      resolvedAt: link.resolved_at || null,
     }
     const existing = linksByTicket.get(link.ticket_id) || []
     existing.push(row)
@@ -98,6 +99,13 @@ export async function addTicketUpdate(ticket, body, profile) {
     })
     .select('*')
     .single())
+  if (error) throw error
+  return data
+}
+
+// Resolve (or reopen) one client of a ticket with several clients.
+export async function setTicketClientResolved(ticketId, clientCode, resolved) {
+  const { data, error } = await runWithSessionRetry(() => supabase.rpc('set_ticket_client_resolved', { p_ticket_id: ticketId, p_client_code: clientCode, p_resolved: Boolean(resolved) }))
   if (error) throw error
   return data
 }

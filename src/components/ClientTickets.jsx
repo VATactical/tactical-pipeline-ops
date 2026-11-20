@@ -24,6 +24,7 @@ function TicketItem({ ticket }) {
       {ticket.source === 'slack' && <span className="client-ticket-source">Slack</span>}
     </div>
     <LinkifiedText text={ticket.source === 'slack' && ticket.slack_summary ? ticket.slack_summary : ticket.title} />
+    {ticket.resolvedForClient && <small className="client-ticket-partial">✅ {t('Resuelto para este cliente; el ticket sigue abierto para otros clientes.')}</small>}
     {(ticket.slack_owner_name || ticket.source_url) && <div className="client-ticket-foot">
       {ticket.slack_owner_name && <span>👤 <span data-no-translate>{ticket.slack_owner_name}</span></span>}
       {ticket.source_url && <a href={ticket.source_url} target="_blank" rel="noreferrer">{t('Ver en Slack')} ↗</a>}
