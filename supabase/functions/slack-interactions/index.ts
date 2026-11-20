@@ -97,7 +97,8 @@ async function sendEodToTpOps(action: MessageAction) {
   const notes = eodPlainText(message.text || "", names);
   if (notes.length < 20) return reply(action.response_url, ":warning: Este mensaje es muy corto para ser un reporte EOD.");
   const postedAt = new Date(Number(message.ts) * 1000);
-  const { day, fromText } = reportDay(notes, postedAt, author.timezone || "America/Managua");
+  // EOD days follow US Eastern time (Kevin's time), like the EOD reports page.
+  const { day, fromText } = reportDay(notes, postedAt, "America/New_York");
   const permalink = await slack("chat.getPermalink", { channel: action.channel.id, message_ts: message.ts });
 
   const { data: result, error: importError } = await admin.rpc("import_slack_eod", {

@@ -8,6 +8,7 @@ import { ChartCard, ColumnChart, HBarChart, SERIES, StatRow } from '../component
 import { useLanguage } from '../i18n/LanguageContext'
 import { downloadCommunicationsPdf } from '../lib/reportExports'
 import { loadCompanySettings } from '../services/companyService'
+import { loadOwnEodState } from '../services/eodService'
 import { loadTicketWorkspace } from '../services/ticketService'
 import {
   createTeamNote,
@@ -175,15 +176,29 @@ function useDashboardCharts(data, extras, locale) {
   }, [data, extras, locale])
 }
 
-function EodReminder({ profile, extras }) {
+function EodReminder({ eodState }) {
   const { t } = useLanguage()
-  const filesEod = profile?.role !== 'superadmin' && Boolean(profile?.permissions?.eod_reports)
-  if (!filesEod || !extras.eodChecked || extras.myEodToday) return null
+  if (!eodState?.required || eodState.submitted) return null
   return <section className="eod-reminder" role="alert">
     <span aria-hidden="true">📝</span>
-    <div><strong>{t('Aún no has enviado tu EOD de hoy.')}</strong><p>{t('Escríbelo en TP OPS o, si ya lo publicaste en #eod-reports, usa “Send to TP OPS” en el mensaje.')}</p></div>
+    <div><strong>{t('Aún no has enviado tu EOD de hoy.')}</strong><p>{t('El día del EOD se cuenta en hora EST (Estados Unidos). Escríbelo en TP OPS o, si ya lo publicaste en #eod-reports, usa “Send to TP OPS” en el mensaje.')}</p></div>
     <Link className="primary-button compact-button" to="/eod-reports">{t('Enviar EOD')}</Link>
   </section>
+}
+
+// EST (the team's reference time for EODs) and the user's own time, updated every 30 seconds.
+function DualClock({ timeZone }) {
+  const { t, locale } = useLanguage()
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 30000); return () => window.clearInterval(timer) }, [])
+  const ownZone = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const format = (zone) => new Intl.DateTimeFormat(locale, { timeZone: zone, hour: 'numeric', minute: '2-digit', weekday: 'short' }).format(now)
+  const place = (zone) => zone.split('/').pop().replaceAll('_', ' ')
+  const sameTime = format('America/New_York') === format(ownZone)
+  return <div className="dual-clock" aria-label={t('Hora')}>
+    <span><small>{t('Hora EST (EOD)')}</small><strong>{format('America/New_York')}</strong></span>
+    {!sameTime && <span><small>{t('Tu hora')} · <span data-no-translate>{place(ownZone)}</span></small><strong>{format(ownZone)}</strong></span>}
+  </div>
 }
 
 function DashboardChartsGrid({ charts }) {
@@ -207,7 +222,7 @@ function DashboardChartsGrid({ charts }) {
   </>
 }
 
-function SuperadminDashboard({ data, blockers, extras, profile }) {
+function SuperadminDashboard({ data, blockers, extras, profile, eodState }) {
   const { locale, t } = useLanguage()
   const members = new Map((data.directory || []).map((member) => [member.id, member]))
   const charts = useDashboardCharts(data, extras, locale)
@@ -242,7 +257,7 @@ function SuperadminDashboard({ data, blockers, extras, profile }) {
   ]
 
   return <>
-    <EodReminder profile={profile} extras={extras} />
+    <EodReminder eodState={eodState} />
     <StatRow stats={stats} />
     <DashboardChartsGrid charts={charts} />
     <section className="dashboard-charts">
@@ -270,7 +285,7 @@ function SuperadminDashboard({ data, blockers, extras, profile }) {
   </>
 }
 
-function RoleDashboard({ data, blockers, profile, extras }) {
+function RoleDashboard({ data, blockers, profile, extras, eodState }) {
   const { t, locale } = useLanguage()
   const members = new Map((data.directory || []).map((member) => [member.id, member]))
   const charts = useDashboardCharts(data, extras, locale)
@@ -285,7 +300,7 @@ function RoleDashboard({ data, blockers, profile, extras }) {
     { key: 'steps', icon: '✅', value: myPending.length, label: 'Mis pasos del checklist', hint: 'Pendientes en mis clientes', to: '/ciclo', tone: 'info' },
     { key: 'leads', icon: '📈', value: charts.leads, label: 'Leads (30 días)', hint: `${charts.appointments} citas agendadas`, tone: 'info' },
   ]
-  return <><EodReminder profile={profile} extras={extras} />
+  return <><EodReminder eodState={eodState} />
     <FocusStrip tiles={tiles} />
     <section className="dashboard-grid">
       <TicketWatch tickets={data.tickets} members={members} onlyMine={profile?.id} title="Mis tickets" />
@@ -306,6 +321,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [eodState, setEodState] = useState(null)
   const [extras, setExtras] = useState({ comments: [], suggestions: [], metrics: new Map(), stages: [], myEodToday: true, eodChecked: false })
   const refresh = useCallback(async () => {
     try {
@@ -314,6 +330,7 @@ export default function DashboardPage() {
         loadTicketWorkspace(),
         loadDashboardExtras(profile).catch(() => null),
       ])
+      loadOwnEodState(profile).then(setEodState).catch(() => setEodState(null))
       setData({ ...operations, tickets: ticketWorkspace.tickets || [], profile, refresh })
       if (dashboardExtras) setExtras(dashboardExtras)
     } catch (loadError) { setError(loadError.message) }
@@ -328,8 +345,8 @@ export default function DashboardPage() {
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><span className="status-pill">Datos en vivo</span></header>
+    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><div className="dashboard-header-side"><DualClock timeZone={profile?.timezone} /><span className="status-pill">Datos en vivo</span></div></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
-    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} extras={extras} profile={profile} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} />}
+    {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} extras={extras} profile={profile} eodState={eodState} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} eodState={eodState} />}
   </div>
 }

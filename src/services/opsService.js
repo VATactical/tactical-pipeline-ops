@@ -615,3 +615,21 @@ export async function loadDashboardExtras(profile) {
     eodChecked: !eodResult.error,
   }
 }
+
+// Reads the GHL onboarding form PDF and returns the dossier fields to pre-fill (nothing is saved).
+export async function parseOnboardingPdf(base64) {
+  const { data, error } = await supabase.functions.invoke('parse-onboarding-pdf', { body: { file: base64 } })
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null)
+    throw new Error(detail?.error || 'No se pudo leer el PDF.')
+  }
+  return data
+}
+
+// Next free client code (C + highest number + 1), archived clients included.
+export async function suggestNextClientCode() {
+  const { data, error } = await supabase.from('clients').select('code')
+  if (error) throw error
+  const highest = Math.max(0, ...(data || []).map((row) => Number(String(row.code).match(/^C(\d+)$/i)?.[1] || 0)))
+  return `C${highest + 1}`
+}
