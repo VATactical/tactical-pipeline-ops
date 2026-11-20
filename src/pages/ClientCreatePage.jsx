@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import { createClient, parseOnboardingPdf, suggestNextClientCode } from '../services/opsService'
 
@@ -27,6 +28,8 @@ const readAsBase64 = (file) => new Promise((resolve, reject) => {
 
 export default function ClientCreatePage() {
   const { t } = useLanguage()
+  const { profile } = useAuth()
+  const canCreate = profile?.role === 'superadmin' || Boolean(profile?.permissions?.clients_create)
   const [form, setForm] = useState(initialForm)
   const [extra, setExtra] = useState({})
   const [pdf, setPdf] = useState(null) // { name, filled: [field...] }
@@ -74,9 +77,10 @@ export default function ClientCreatePage() {
   }
 
   const extraRows = Object.entries(extra).filter(([key]) => EXTRA_LABELS[key])
+  if (!canCreate) return <div className="page-stack"><p className="form-error">{t('No tienes permiso para crear clientes.')}</p><Link to="/clientes">← {t('Volver a clientes')}</Link></div>
   return (
     <div className="page-stack">
-      <header className="page-header"><div><p className="eyebrow">{t('Nuevo expediente')}</p><h2>{t('Crear cliente')}</h2><p className="muted">{t('Sube el PDF del formulario de onboarding para rellenar el dossier, o registra lo esencial a mano.')}</p></div></header>
+      <header className="page-header"><div><Link className="text-button" to="/clientes">← {t('Volver a clientes')}</Link><p className="eyebrow">{t('Nuevo expediente')}</p><h2>{t('Crear cliente')}</h2><p className="muted">{t('Sube el PDF del formulario de onboarding para rellenar el dossier, o registra lo esencial a mano.')}</p></div></header>
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <section

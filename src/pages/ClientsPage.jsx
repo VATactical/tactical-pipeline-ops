@@ -4,7 +4,6 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-import { createClient } from '../services/opsService'
 import { loadTicketWorkspace } from '../services/ticketService'
 import { usePageTrail } from '../components/navigation'
 
@@ -39,9 +38,6 @@ export default function ClientsPage() {
   const [openTicketCounts, setOpenTicketCounts] = useState(new Map())
   const [steps, setSteps] = useState([])
   const [filters, setFilters] = useState({ search: '', status: 'Todos', owner: 'Todos', service: '', blockers: 'Todos', sort: 'Código' })
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ code: '', business_name: '', legal_name: '', owner_name: '', assigned_role: 'onboarding_media', status: 'ONBOARDING' })
-  const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
@@ -78,41 +74,28 @@ export default function ClientsPage() {
     const term = filters.search.trim().toLowerCase()
     const matchesSearch = !term || `${client.code} ${client.business_name} ${client.owner_name} ${client.address}`.toLowerCase().includes(term)
     const matchesStatus = filters.status === 'Todos' || client.status === filters.status
-    const matchesOwner = filters.owner === 'Todos' || client.assigned_role === filters.owner
     const matchesService = !filters.service.trim() || client.services.toLowerCase().includes(filters.service.trim().toLowerCase())
     const blocked = blockedIds.has(client.id)
     const matchesBlocker = filters.blockers === 'Todos' || (filters.blockers === 'Con bloqueos' ? blocked : !blocked)
-    return matchesSearch && matchesStatus && matchesOwner && matchesService && matchesBlocker
+    return matchesSearch && matchesStatus && matchesService && matchesBlocker
   }).sort((a, b) => {
     if (filters.sort === 'Nombre') return a.business_name.localeCompare(b.business_name)
     if (filters.sort === 'Estado') return a.status.localeCompare(b.status) || naturalCode(a.code) - naturalCode(b.code)
     if (filters.sort === 'Actualización reciente') return new Date(b.updated_at) - new Date(a.updated_at)
     return naturalCode(a.code) - naturalCode(b.code)
   }), [visibleClients, blockedIds, filters, openTicketCounts])
-  const hasFilters = filters.search || filters.status !== 'Todos' || filters.owner !== 'Todos' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
+  const hasFilters = filters.search || filters.status !== 'Todos' || filters.blockers !== 'Todos' || filters.sort !== 'Código'
   const clearFilters = () => setFilters({ search: '', status: 'Todos', owner: 'Todos', service: '', blockers: 'Todos', sort: 'Código' })
   const toggleArchiveView = () => { clearFilters(); setSearchParams(showArchived ? {} : { vista: 'archivados' }) }
   const canCreate = Boolean(profile?.permissions?.clients_create)
-  const submitClient = async (event) => {
-    event.preventDefault(); setSaving(true); setError('')
-    try {
-      const created = await createClient(form)
-      setClients((current) => [...current, created]); setShowForm(false)
-      setForm({ code: '', business_name: '', legal_name: '', owner_name: '', assigned_role: 'onboarding_media', status: 'ONBOARDING' })
-    } catch (createError) { setError(createError.message) }
-    finally { setSaving(false) }
-  }
-
   if (loading) return <LoadingScreen />
   return <div className="page-stack clients-page">
-    <header className="page-header"><div><p className="eyebrow">{showArchived ? 'Historial de clientes' : 'Pipeline'}</p><h2>{showArchived ? 'Clientes archivados' : 'Clientes'}</h2><p className="muted">{showArchived ? 'Consulta expedientes retirados sin mezclarlos con la operación activa.' : 'Encuentra rápidamente el expediente que necesita atención.'}</p></div><div className="header-actions"><span className="status-pill">{activeClients.length} activos</span><button className="secondary-button compact-button archive-view-button" type="button" onClick={toggleArchiveView}>{showArchived ? '← Volver a activos' : `Archivados (${archivedClients.length})`}</button>{canCreate && !showArchived && <button className="primary-button compact-button" onClick={() => setShowForm((value) => !value)}>+ Registrar cliente</button>}</div></header>
+    <header className="page-header"><div><p className="eyebrow">{showArchived ? 'Historial de clientes' : 'Pipeline'}</p><h2>{showArchived ? 'Clientes archivados' : 'Clientes'}</h2><p className="muted">{showArchived ? 'Consulta expedientes retirados sin mezclarlos con la operación activa.' : 'Encuentra rápidamente el expediente que necesita atención.'}</p></div><div className="header-actions"><span className="status-pill">{activeClients.length} activos</span><button className="secondary-button compact-button archive-view-button" type="button" onClick={toggleArchiveView}>{showArchived ? '← Volver a activos' : `Archivados (${archivedClients.length})`}</button>{canCreate && !showArchived && <Link className="primary-button compact-button" to="/clientes/nuevo">+ Registrar cliente</Link>}</div></header>
     {error && <p className="form-error">{error}</p>}
-    {showForm && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Nuevo cliente</p><h3>Registrar y generar SOP automáticamente</h3></div><button className="secondary-button" onClick={() => setShowForm(false)}>Cerrar</button></div><form className="client-form" onSubmit={submitClient}><div><label>Código</label><input value={form.code} onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))} placeholder="C11" required /></div><div><label>Nombre comercial</label><input value={form.business_name} onChange={(event) => setForm((current) => ({ ...current, business_name: event.target.value }))} required /></div><div><label>Nombre legal del negocio</label><input value={form.legal_name} onChange={(event) => setForm((current) => ({ ...current, legal_name: event.target.value }))} /></div><div><label>Propietario</label><input value={form.owner_name} onChange={(event) => setForm((current) => ({ ...current, owner_name: event.target.value }))} /></div><div><label>Responsable interno</label><select value={form.assigned_role} onChange={(event) => setForm((current) => ({ ...current, assigned_role: event.target.value }))}><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option><option value="superadmin">Kevin</option></select></div><div><label>Estado</label><select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}><option>ONBOARDING</option><option>A2P SUBMITTED</option><option>ADS LIVE</option></select></div><div className="wide"><button className="primary-button" disabled={saving}>{saving ? 'Registrando…' : 'Registrar cliente'}</button></div></form></section>}
     <section className="client-filters content-card">
       <div className="status-tabs" role="group" aria-label="Filtrar por estado">{statuses.map((item) => <button className={filters.status === item ? 'active' : ''} onClick={() => setFilter('status', item)} key={item}>{item === 'Todos' ? 'Todos' : item}<span>{counts[item]}</span></button>)}</div>
       <div className="filter-controls">
         <label className="search-control">Buscar<input type="search" placeholder="Cliente, código, propietario o ciudad…" value={filters.search} onChange={(event) => setFilter('search', event.target.value)} /></label>
-        <label>Responsable<select value={filters.owner} onChange={(event) => setFilter('owner', event.target.value)}><option value="Todos">Todos</option><option value="onboarding_media">Diego</option><option value="automation_funnels">Daniel</option><option value="superadmin">Kevin</option></select></label>
         <label>Servicio<input value={filters.service} onChange={(event) => setFilter('service', event.target.value)} placeholder="Roofing, painting…" /></label>
         <label>Bloqueos<select value={filters.blockers} onChange={(event) => setFilter('blockers', event.target.value)}><option>Todos</option><option>Con bloqueos</option><option>Sin bloqueos</option></select></label>
         <label>Ordenar<select value={filters.sort} onChange={(event) => setFilter('sort', event.target.value)}><option>Código</option><option>Actualización reciente</option><option>Nombre</option><option>Estado</option></select></label>

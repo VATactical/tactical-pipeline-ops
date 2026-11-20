@@ -30,6 +30,7 @@ const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'), 'login')
 const TeamPage = lazyWithRetry(() => import('./pages/TeamPage'), 'team')
 const ClientsPage = lazyWithRetry(() => import('./pages/ClientsPage'), 'clients')
 const ClientDetailPage = lazyWithRetry(() => import('./pages/ClientDetailPage'), 'client-detail')
+const ClientCreatePage = lazyWithRetry(() => import('./pages/ClientCreatePage'), 'client-create')
 const LifecycleBoardPage = lazyWithRetry(() => import('./pages/LifecycleBoardPage'), 'lifecycle-board')
 const TicketsPage = lazyWithRetry(() => import('./pages/TicketsPage'), 'tickets')
 const EodReportsPage = lazyWithRetry(() => import('./pages/EodReportsPage'), 'eod-reports')
@@ -62,6 +63,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route index element={<DashboardPage />} />
               <Route path="clientes" element={<ClientsPage />} />
+              <Route path="clientes/nuevo" element={<ClientCreatePage />} />
               <Route path="clientes/:clientId" element={<ClientDetailPage />} />
               <Route path="ciclo" element={<LifecycleBoardPage />} />
               <Route path="tareas" element={<Navigate to="/tickets" replace />} />
