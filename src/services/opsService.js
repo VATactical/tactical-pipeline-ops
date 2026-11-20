@@ -1,7 +1,5 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 
-// Tasks assigned to a role (not to a person) show the role name; people's names come from the team directory.
-const ownerNames = { onboarding_media: 'Onboarding & Media', automation_funnels: 'Automations & Funnels', user_admin: 'User Admin', superadmin: 'Superadmin' }
 
 const priorityAliases = {
   Baja: 'Baja',
@@ -155,11 +153,6 @@ export async function updateTaskProgress(taskId, { status, statusNote, profileId
   return data
 }
 
-export async function updateTaskAssignment(taskId, ownerRole) {
-  const { error } = await supabase.from('tasks').update({ owner_role: ownerRole, owner_name: ownerNames[ownerRole] }).eq('id', taskId)
-  if (error) throw error
-}
-
 export async function updateTaskManagement(taskId, { assignedTo, assigneeName, assigneeRole, priority, dueAt }) {
   const changes = {
     assigned_to: assignedTo || null,
@@ -196,8 +189,10 @@ export async function updateTaskDetails(taskId, { clientId, title, details = '',
 }
 
 export async function createAssignedTask({ clientId, title, details = '', body = '', priority, assignedTo, assigneeName, assigneeRole, ownerRole, ownerName, dueAt, nextStep = '' }) {
+  // Tasks are always assigned to a person, never to a role.
+  if (!assignedTo) throw new Error('Asigna la tarea a una persona.')
   const resolvedRole = assigneeRole || ownerRole || null
-  const resolvedName = assigneeName || ownerName || (resolvedRole ? ownerNames[resolvedRole] : 'Todos')
+  const resolvedName = assigneeName || ownerName || 'Equipo'
   const payload = {
     id: crypto.randomUUID(),
     client_id: clientId || null,
@@ -464,7 +459,7 @@ export async function loadLifecycleBoard() {
       .eq('archived', false),
     supabase.from('client_workflow_steps').select('client_id, completed'),
     supabase.from('client_comments').select('client_id').is('deleted_at', null),
-    supabase.from('ticket_clients').select('client_id, tickets!inner(status)').not('tickets.status', 'in', '("Resolved","Closed")'),
+    supabase.from('ticket_clients').select('client_id, tickets!inner(status)').is('resolved_at', null).not('tickets.status', 'in', '("Resolved","Closed")'),
     supabase.from('client_dossier_suggestions').select('client_id').eq('status', 'pending'),
   ]))
   const error = stagesResult.error || clientsResult.error || stepsResult.error
@@ -560,10 +555,13 @@ export async function deleteClientComment(commentId) {
 const CLOSED_TICKET_STATUSES = ['Resolved', 'Closed']
 export async function loadClientTickets(clientId) {
   const { data, error } = await supabase.from('ticket_clients')
-    .select('ticket_id, tickets(id, ticket_number, title, status, priority, source, slack_summary, slack_owner_name, source_url, created_at, updated_at, assigned_to)')
+    .select('ticket_id, resolved_at, tickets(id, ticket_number, title, status, priority, source, slack_summary, slack_owner_name, source_url, created_at, updated_at, assigned_to)')
     .eq('client_id', clientId)
   if (error) throw error
-  return (data || []).map((row) => row.tickets).filter(Boolean)
+  // A ticket resolved for this client (other clients still open) counts as resolved here.
+  return (data || []).filter((row) => row.tickets).map((row) => (row.resolved_at && !CLOSED_TICKET_STATUSES.includes(row.tickets.status)
+    ? { ...row.tickets, status: 'Resolved', resolvedForClient: true }
+    : row.tickets))
     .sort((a, b) => Number(CLOSED_TICKET_STATUSES.includes(a.status)) - Number(CLOSED_TICKET_STATUSES.includes(b.status)) || a.ticket_number.localeCompare(b.ticket_number, undefined, { numeric: true }))
 }
 

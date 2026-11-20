@@ -8,32 +8,16 @@ import { useLanguage } from '../i18n/LanguageContext'
 const initialTask = { scope: 'general', clientId: '', clientSearch: '', title: '', body: '', nextStep: '', assignedTo: '', priority: 'Media', dueAt: '' }
 const priorities = ['Baja', 'Media', 'Alta', 'Urgente']
 const statuses = ['Pendiente', 'En progreso', 'Bloqueada', 'Completada']
-const roleOptions = [
-  ['onboarding_media', 'Rol · Onboarding & Media'],
-  ['automation_funnels', 'Rol · Automations & Funnels'],
-  ['user_admin', 'Rol · User Admin'],
-  ['superadmin', 'Rol · Superadmin'],
-]
-
+// Tasks are always assigned to a person (no role or shared assignments).
 function assigneeData(members, assignedTo) {
-  if (assignedTo?.startsWith('role:')) {
-    const role = assignedTo.slice(5)
-    const roleLabel = roleOptions.find(([value]) => value === role)?.[1].replace('Rol · ', '') || role
-    return { assignedTo: null, assigneeName: roleLabel, assigneeRole: role }
-  }
   const member = members.find((item) => item.id === assignedTo)
-  return member ? { assignedTo: member.id, assigneeName: member.full_name, assigneeRole: member.role } : { assignedTo: null, assigneeName: 'Todos', assigneeRole: null }
+  return member ? { assignedTo: member.id, assigneeName: member.full_name, assigneeRole: member.role } : { assignedTo: null, assigneeName: '', assigneeRole: null }
 }
 
 function AssigneeSelect({ members, value, onChange, disabled = false, t }) {
   return <select value={value || ''} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
-    {!disabled && <option value="">{t('Todos / tarea compartida')}</option>}
-    <optgroup label={t('Usuarios')}>
-      {members.map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}
-    </optgroup>
-    <optgroup label={t('Roles')}>
-      {roleOptions.map(([role, label]) => <option value={`role:${role}`} key={role}>{t(label)}</option>)}
-    </optgroup>
+    {!disabled && <option value="" disabled>{t('Selecciona una persona')}</option>}
+    {members.map((member) => <option value={member.id} key={member.id}>{member.full_name}</option>)}
   </select>
 }
 

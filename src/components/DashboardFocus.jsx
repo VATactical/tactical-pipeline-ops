@@ -53,7 +53,7 @@ export function TicketWatch({ tickets, members, limit = 6, title = 'Tickets que 
         <span className="ticket-watch-number">{ticket.ticket_number}{ticket.source === 'slack' && <em className="ticket-source-badge">Slack</em>}</span>
         <span className="ticket-watch-main">
           <strong data-no-translate>{ticket.source === 'slack' && ticket.slack_summary ? ticket.slack_summary : ticket.title}</strong>
-          <small><span data-no-translate>{ticket.clients?.map((client) => client.code).join(', ') || t('Agencia')}</span> · <span data-no-translate>{nameOf(ticket)}</span></small>
+          <small><span data-no-translate>{ticket.clients?.filter((client) => !client.resolvedAt).map((client) => client.code).join(', ') || ticket.clients?.map((client) => client.code).join(', ') || t('Agencia')}</span> · <span data-no-translate>{nameOf(ticket)}</span></small>
         </span>
         <span className={`ticket-watch-age ${age > 7 ? 'old' : age > 2 ? 'aging' : ''}`}>{age}d</span>
       </Link>

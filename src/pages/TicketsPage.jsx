@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-import { addTicketUpdate, createTicket, loadTicketWorkspace, updateTicket } from '../services/ticketService'
+import { addTicketUpdate, createTicket, loadTicketWorkspace, setTicketClientResolved, updateTicket } from '../services/ticketService'
 import { syncSlackTickets } from '../services/opsService'
 import LinkifiedText from '../components/LinkifiedText'
 
@@ -203,6 +203,22 @@ export default function TicketsPage() {
     }
   }
 
+  // Tickets with several clients can be resolved client by client.
+  const [resolvingClient, setResolvingClient] = useState('')
+  const partialLabel = (ticket) => {
+    const done = ticket.clients.filter((client) => client.resolvedAt).length
+    return ticket.clients.length > 1 && done > 0 && done < ticket.clients.length && !terminalStatuses.has(ticket.status) ? `${t('Parcial')} ${done}/${ticket.clients.length}` : ''
+  }
+  const toggleClientResolved = async (client) => {
+    setResolvingClient(client.code); setError(''); setNotice('')
+    try {
+      const result = await setTicketClientResolved(selectedTicket.id, client.code, !client.resolvedAt)
+      await refresh(true)
+      setNotice(result?.status === 'Resolved' ? t('Todos los clientes resueltos: ticket resuelto.') : client.resolvedAt ? t('Cliente reabierto en el ticket.') : t('Resuelto parcialmente: cliente marcado como resuelto.'))
+    } catch (resolveError) { setError(t(resolveError.message)) }
+    finally { setResolvingClient('') }
+  }
+
   const handleAddUpdate = async (event) => {
     event.preventDefault()
     if (!selectedTicket || !updateBody.trim()) return
@@ -289,14 +305,24 @@ export default function TicketsPage() {
               <span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[ticket.status])}</span>
               {ticket.needs_confirmation && <span className="ticket-verify-badge">{t('Por confirmar')}</span>}
               {ticket.source === 'slack' && <span className="ticket-source-badge">Slack</span>}
+              {partialLabel(ticket) && <span className="ticket-partial-badge">{partialLabel(ticket)}</span>}
             </button>)}
           </div>
 
           {selectedTicket && draft && <aside className="ticket-detail-panel">
             <div className="ticket-detail-heading"><div><p className="eyebrow">{selectedTicket.ticket_number}</p><h3>{selectedTicket.title}</h3></div><span className={'ticket-status-badge status-' + selectedTicket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[selectedTicket.status])}</span></div>
-            <div className="ticket-client-links">{selectedTicket.clients.map((client) => client.id
-              ? <Link key={client.id} to={'/clientes/' + client.id}>{client.code} · {client.businessName}</Link>
-              : <span key={client.code}>{client.code} · {client.businessName}</span>)}</div>
+            {selectedTicket.clients.length > 1
+              ? <div className="ticket-client-progress">
+                <p className="eyebrow">{t('Clientes')} · {selectedTicket.clients.filter((client) => client.resolvedAt).length}/{selectedTicket.clients.length} {t('resueltos')}</p>
+                <ul>{selectedTicket.clients.map((client) => <li key={client.code} className={client.resolvedAt ? 'resolved' : ''}>
+                  <label><input type="checkbox" checked={Boolean(client.resolvedAt)} disabled={!canEditTicket || resolvingClient === client.code} onChange={() => toggleClientResolved(client)} />
+                    <span>{client.id ? <Link to={'/clientes/' + client.id} data-no-translate>{client.code} · {client.businessName}</Link> : <span data-no-translate>{client.code} · {client.businessName}</span>}</span></label>
+                  {client.resolvedAt && <small>✅ {t('Resuelto')}</small>}
+                </li>)}</ul>
+              </div>
+              : <div className="ticket-client-links">{selectedTicket.clients.map((client) => client.id
+                ? <Link key={client.id} to={'/clientes/' + client.id}>{client.code} · {client.businessName}</Link>
+                : <span key={client.code}>{client.code} · {client.businessName}</span>)}</div>}
 
             {selectedTicket.source === 'slack' && <div className="ticket-slack-panel">
               <p className="eyebrow">{t('Último estado en Slack (Viktor)')}</p>
