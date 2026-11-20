@@ -3445,3 +3445,9 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .dual-clock small { color: var(--tp-text-muted); font-size: .66rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .dual-clock strong { color: var(--tp-text); font-size: 1.05rem; font-weight: 800; }
 @media (max-width: 800px) { .dashboard-header-side { align-items: flex-start; } }
+.credential-state.empty { border-color: var(--tp-border-strong); background: var(--tp-surface-muted); color: var(--tp-text-muted); }
+.credential-meta { margin: -.3rem 0 .6rem; font-size: .78rem; }
+.ghl-login-value > div { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .7rem; }
+.ghl-login-value > div > span { min-width: 6.5rem; }
+.ghl-password-input { display: flex; align-items: center; gap: .5rem; }
+.ghl-password-input input { flex: 1; }
