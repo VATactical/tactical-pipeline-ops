@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
-import { createClient, parseOnboardingPdf, suggestNextClientCode } from '../services/opsService'
+import { buildDossierText } from '../lib/dossierExport'
+import { createClient, parseOnboardingPdf, runOnboardingSetup, suggestNextClientCode } from '../services/opsService'
 
 const initialForm = {
   code: '', business_name: '', legal_name: '', owner_name: '', email: '', phone: '', status: 'ONBOARDING',
@@ -37,6 +38,8 @@ export default function ClientCreatePage() {
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [autoSetup, setAutoSetup] = useState(true)
+  const [savingStep, setSavingStep] = useState('')
   const inputRef = useRef(null)
   const navigate = useNavigate()
 
@@ -70,10 +73,16 @@ export default function ClientCreatePage() {
   const submit = async (event) => {
     event.preventDefault(); setSaving(true); setError('')
     try {
+      setSavingStep('Guardando…')
       const client = await createClient({ ...extra, ...form })
+      if (autoSetup) {
+        // Slack channel, Drive folder and dossier Doc. A step that fails can be retried from the client page.
+        setSavingStep('Creando canal de Slack y carpeta de Drive…')
+        await runOnboardingSetup(client.id, { dossierText: buildDossierText(client, profile?.full_name || 'TP OPS') }).catch(() => {})
+      }
       navigate(`/clientes/${client.id}`)
     } catch (saveError) { setError(t(saveError.message)) }
-    finally { setSaving(false) }
+    finally { setSaving(false); setSavingStep('') }
   }
 
   const extraRows = Object.entries(extra).filter(([key]) => EXTRA_LABELS[key])
@@ -121,7 +130,8 @@ export default function ClientCreatePage() {
           <dl>{extraRows.map(([key, value]) => <div key={key}><dt>{t(EXTRA_LABELS[key])}</dt><dd data-no-translate>{String(value)}</dd></div>)}</dl>
           <p className="muted">{t('Las respuestas completas del formulario quedan en "Notas originales del formulario".')}</p>
         </details>}
-        <button className="primary-button wide" disabled={saving || reading}>{saving ? t('Guardando…') : t('Crear cliente')}</button>
+        <label className="auto-setup-option"><input type="checkbox" checked={autoSetup} onChange={(event) => setAutoSetup(event.target.checked)} /> <span>{t('Crear también el canal de Slack, la carpeta de Drive y el dossier en Google Docs')}</span></label>
+        <button className="primary-button wide" disabled={saving || reading}>{saving ? t(savingStep || 'Guardando…') : t('Crear cliente')}</button>
       </form>
     </div>
   )
