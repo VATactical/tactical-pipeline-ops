@@ -1,5 +1,6 @@
 import LinkifiedText from '../components/LinkifiedText'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import StatusSignals from '../components/StatusSignals'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import LoadingScreen from '../components/LoadingScreen'
@@ -267,6 +268,7 @@ function SuperadminDashboard({ data, blockers, extras, profile, eodState }) {
 
   return <>
     <EodReminder eodState={eodState} />
+    <StatusSignals title="Alertas de clientes desde Slack" limit={8} />
     <StatRow stats={stats} />
     <DashboardChartsGrid charts={charts} />
     <section className="dashboard-charts">
