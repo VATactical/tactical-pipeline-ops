@@ -78,15 +78,14 @@ export default function TeamDirectoryPage() {
     {error && <p className="form-error">{error}</p>}
     <div className="team-toolbar"><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Buscar por nombre, puesto o correo')} /></div>
 
-    {groups.map((group) => <section className="team-group" key={group.name}>
-      <h3 className="team-group-title">{group.name} <span>{group.members.length}</span></h3>
-      <div className="directory-grid">{group.members.map((member) => {
+    <div className="directory-grid team-directory-grid">{groups.flatMap((group) => group.members.map((member) => ({ member, department: group.name }))).map(({ member, department }) => {
         const name = cleanName(member.full_name) || t('Usuario')
         const isMe = member.id === profile?.id
         const slack = contactLink(member.slack_contact, 'slack')
         const whatsapp = contactLink(member.whatsapp_contact, 'whatsapp')
         const title = (language === 'en' ? member.job_title_en : member.job_title_es) || t('Sin puesto asignado')
         return <article className={`content-card directory-card team-card ${isMe ? 'is-me' : ''}`} key={member.id}>
+          <p className="eyebrow team-department">{department}</p>
           <div className="profile-identity">
             <TeamAvatar avatarId={member.avatar_url} label={name} />
             <div><h3 data-no-translate>{name} {isMe && <span className="team-me">{t('Tú')}</span>}</h3><span>{title}</span></div>
@@ -106,7 +105,6 @@ export default function TeamDirectoryPage() {
           </div>
         </article>
       })}</div>
-    </section>)}
     {!groups.length && <p className="muted">{t('Nadie coincide con la búsqueda.')}</p>}
 
     <section className="content-card communication-guidelines"><div className="section-heading"><div><p className="eyebrow">Slack</p><h3>{t('Canales y propósito')}</h3><p className="muted">{t('Slack es para comunicarnos; TP OPS es la fuente principal para tareas, estados y KPI.')}</p></div></div>

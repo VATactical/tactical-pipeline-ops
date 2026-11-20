@@ -143,7 +143,7 @@ function getSemiMonthlyRange(month, period) {
 
 export default function EodReportsPage() {
   const { profile } = useAuth()
-  const { locale, t } = useLanguage()
+  const { language, locale, t } = useLanguage()
   const timeZone = 'America/New_York'
   const isSuperadmin = profile?.role === 'superadmin'
   const canReviewAll = isSuperadmin || Boolean(profile?.permissions?.operations_admin)
@@ -600,7 +600,7 @@ export default function EodReportsPage() {
     {canReviewAll && <section className="content-card eod-compliance-center">
       <div className="section-heading"><div><p className="eyebrow">Revisión diaria</p><h3>Cumplimiento EOD</h3><p className="muted">Los reportes deben enviarse dentro de TP OPS al finalizar cada turno. Se revisan cada mañana de 9:00 a 10:00 a. m. (EST).</p></div><label className="eod-compliance-date">Día<input type="date" value={complianceDate} onChange={(event) => setComplianceDate(event.target.value)} /></label></div>
       <div className="eod-compliance-counts" aria-label="Resumen diario"><span className="submitted">{complianceCounts.submitted} enviados</span><span className="pending">{complianceCounts.pending} pendientes</span></div>
-      <div className="eod-compliance-list">{complianceRows.length === 0 && <p className="muted">No hay usuarios activos para este día.</p>}{complianceRows.map(({ member, state }) => <article className="eod-compliance-row" key={member.id}><div><strong data-no-translate>{member.full_name}</strong><small>{member.role}</small></div><span className={`eod-compliance-status ${state}`}>{state === 'submitted' ? 'Enviado' : 'Pendiente'}</span></article>)}</div>
+      <div className="eod-compliance-list">{complianceRows.length === 0 && <p className="muted">No hay usuarios activos para este día.</p>}{complianceRows.map(({ member, state }) => <article className="eod-compliance-row" key={member.id}><div><strong data-no-translate>{member.full_name}</strong><small>{(language === 'en' ? member.job_title_en : member.job_title_es) || member.job_title_es || t('Sin puesto asignado')}</small></div><span className={`eod-compliance-status ${state}`}>{state === 'submitted' ? 'Enviado' : 'Pendiente'}</span></article>)}</div>
     </section>}
 
     {canReviewAll && <section className="metric-grid eod-review-metrics" aria-label="Estado de reportes EOD"><article className="metric-card blue"><span>Nuevos</span><strong>{reportCounts.new}</strong><small>sin revisar por ti</small></article><article className="metric-card green"><span>Revisados</span><strong>{reportCounts.reviewed}</strong><small>confirmados por ti</small></article><article className="metric-card amber"><span>Seguimiento</span><strong>{reportCounts.followUp}</strong><small>requieren atención</small></article></section>}

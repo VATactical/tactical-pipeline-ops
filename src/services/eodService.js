@@ -50,7 +50,7 @@ export async function loadEodData(profile, { windowStart, windowEnd }) {
           .order('completed_at', { ascending: false }),
     reviewer ? supabase.from('eod_report_reviews').select('*') : Promise.resolve({ data: [], error: null }),
     supabase.from('eod_report_comments').select('*').order('created_at'),
-    supabase.rpc('get_team_directory'),
+    supabase.rpc('get_team_members'),
     supabase.from('eod_daily_status').select('*').order('work_date', { ascending: false }).limit(500),
     supabase.from('time_entries').select('*').gte('work_date', historyStart.toISOString().slice(0, 10)).order('work_date', { ascending: false }),
   ]))
@@ -114,7 +114,7 @@ export async function loadEodPayrollReports(profile, startDate, endDate) {
     loadAllRows(() => supabase.from('time_entries').select('*')
       .gte('work_date', startDate).lte('work_date', endDate)
       .order('work_date', { ascending: true }).order('user_id', { ascending: true })),
-    runWithSessionRetry(() => supabase.rpc('get_team_directory')),
+    runWithSessionRetry(() => supabase.rpc('get_team_members')),
   ])
   if (directoryResult.error) throw directoryResult.error
   const members = new Map((directoryResult.data || []).map((member) => [member.id, member]))
@@ -146,7 +146,7 @@ export async function loadOwnEodTimeEntries(profile, startDate, endDate) {
 
 export async function loadOwnEodState(profile) {
   if (profile?.role === 'superadmin' || !profile?.permissions?.eod_reports) return { required: false }
-  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
+  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_members'))
   if (directoryError) throw directoryError
   const kevinTimeZone = resolveKevinTimeZone(directory || [])
   const workDate = getDateInTimeZone(new Date(), kevinTimeZone)
@@ -175,7 +175,7 @@ export async function loadOwnEodState(profile) {
 
 export async function loadEodComplianceSummary(profile) {
   if (!canReviewAll(profile)) return null
-  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_directory'))
+  const { data: directory, error: directoryError } = await runWithSessionRetry(() => supabase.rpc('get_team_members'))
   if (directoryError) throw directoryError
   const members = (directory || []).filter((member) => member.role !== 'superadmin')
   const kevinTimeZone = resolveKevinTimeZone(directory || [])

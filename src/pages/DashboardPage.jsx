@@ -116,14 +116,13 @@ function GeneralNotes({ notes, members, profile, onUpdated }) {
 
 function attentionReasons({ client, missingCount, clientBlockers, openTickets, blockedComments, suggestions }) {
   const reasons = []
-  if (client.status === 'ADS PAUSED') reasons.push(['danger', client.ads_pause_reason ? `⏸ ADS pausados: ${client.ads_pause_reason}` : '⏸ ADS pausados'])
+  if (client.status === 'ADS PAUSED') reasons.push(['danger', /payment|pago|tarjeta|card/i.test(client.ads_pause_reason || '') ? '⏸ ADS pausados · pago' : '⏸ ADS pausados', client.ads_pause_reason || ''])
   if (blockedComments) reasons.push(['danger', `⛔ ${blockedComments} bloqueo(s) en bitácora`])
   if (clientBlockers) reasons.push(['danger', `${clientBlockers} bloqueo(s) abiertos`])
   if (launchOverdue(client)) reasons.push(['warning', '⏰ Deadline ADS vencido'])
   if (openTickets) reasons.push(['info', `🎫 ${openTickets} ticket(s)`])
   if (suggestions) reasons.push(['slack', `📥 ${suggestions} dato(s) de Slack`])
-  if (!client.intake_form_completed) reasons.push(['muted', 'Formulario pendiente'])
-  else if (missingCount > 0) reasons.push(['muted', `${missingCount} campos del dossier`])
+  if (missingCount > 0 && client.status === 'ONBOARDING') reasons.push(['muted', `${missingCount} campos del dossier`])
   return reasons
 }
 
@@ -249,16 +248,16 @@ function SuperadminDashboard({ data, blockers, extras, profile, eodState }) {
       suggestions: extras.suggestions.filter((item) => item.client_id === client.id).length,
     }
   })
-  const incomplete = clientSummaries.filter((item) => item.missingCount > 0).length
   const urgent = openTicketList.filter((ticket) => ticket.priority === 'Urgent').length
   const live = data.clients.filter((client) => client.status === 'ADS LIVE').length
   const paused = data.clients.filter((client) => client.status === 'ADS PAUSED').length
   const onboarding = data.clients.filter((client) => !LIVE_STATUSES.has(client.status)).length
   const score = (item) => (item.blockedComments || item.clientBlockers ? 40 : 0) + (item.client.status === 'ADS PAUSED' ? 30 : 0) + (launchOverdue(item.client) ? 20 : 0)
-    + item.openTickets * 3 + item.suggestions * 2 + (item.client.intake_form_completed ? 0 : 1)
-  const attentionQueue = clientSummaries.filter((item) => score(item) > 0 || item.missingCount > 0)
+    + item.openTickets * 3 + item.suggestions * 2
+  const attentionQueue = clientSummaries.filter((item) => score(item) > 0)
     .sort((a, b) => score(b) - score(a) || b.missingCount - a.missingCount)
     .slice(0, 7)
+  const activityItems = (data.activity || []).filter((item) => item.entity_type !== 'tasks' && item.entity_type !== 'calendar_events').slice(0, 8)
   const stats = [
     { label: 'Clientes activos', value: data.clients.length, hint: `${live} ADS LIVE · ${paused} pausados · ${onboarding} en onboarding` },
     { label: 'Leads (30 días)', value: charts.leads, hint: `${charts.appointments} citas agendadas` },
@@ -275,15 +274,14 @@ function SuperadminDashboard({ data, blockers, extras, profile, eodState }) {
       <ChartCard eyebrow="Checklist" title="Avance de clientes en onboarding" subtitle="Porcentaje del checklist completado">
         <HBarChart rows={charts.progressRows} series={[{ name: 'Avance', color: SERIES.aqua }]} suffix="%" max={100} empty="No hay clientes en onboarding." />
       </ChartCard>
-      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Prioridad ejecutiva')}</p><h3>{t('Clientes que requieren atención')}</h3></div><Link to="/ciclo">{t('Ciclo de vida')}</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">{t('No hay alertas críticas.')}</p>}{attentionQueue.map((item) => <Link to={`/clientes/${item.client.id}`} className="attention-row" key={item.client.id}><div><strong data-no-translate>{item.client.code} · {item.client.business_name}</strong><span className="attention-reasons">{attentionReasons(item).slice(0, 4).map(([tone, text]) => <em key={text} className={`attention-chip ${tone}`}>{t(text)}</em>)}</span></div><span>→</span></Link>)}</div></div>
+      <div className="content-card"><div className="section-heading"><div><p className="eyebrow">{t('Prioridad ejecutiva')}</p><h3>{t('Clientes que requieren atención')}</h3></div><Link to="/ciclo">{t('Ciclo de vida')}</Link></div><div className="attention-list">{attentionQueue.length === 0 && <p className="complete-note">{t('No hay alertas críticas.')}</p>}{attentionQueue.map((item) => <Link to={`/clientes/${item.client.id}`} className="attention-row" key={item.client.id}><div><strong data-no-translate>{item.client.code} · {item.client.business_name}</strong><span className="attention-reasons">{attentionReasons(item).slice(0, 4).map(([tone, text, detail]) => <em key={text} className={`attention-chip ${tone}`} title={detail || undefined}>{t(text)}</em>)}</span></div><span>→</span></Link>)}</div></div>
     </section>
     <section className="dashboard-grid">
       <ClientLogFeed comments={extras.comments} clients={data.clients} members={members} />
       <TicketWatch tickets={data.tickets} members={members} />
     </section>
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0)} actividades reportadas</p></article>)}</div></section>
-    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{data.activity.filter((item) => item.entity_type !== 'tasks' && item.entity_type !== 'calendar_events').slice(0, 8).map((item) => <article className="activity-row" key={item.id}><div><strong data-no-translate>{item.actor_name}</strong><p>{t(item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó')} {t(item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : 'un registro operativo')}</p></div><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>
-    <section className="content-card"><div className="dossier-meta"><span>{data.clients.length} {t('clientes totales')}</span><span>{incomplete} {t('dossiers incompletos')}</span><span className={blockers.length ? 'danger-text' : ''}>{new Set(blockers.map((item) => item.client_id)).size} {t('clientes bloqueados')}</span></div></section>
+    <section className="content-card"><div className="section-heading"><div><p className="eyebrow">EOD del equipo</p><h3>Últimos informes</h3></div><Link to="/eod-reports">Abrir historial</Link></div><div className="report-list">{data.eodReports.length === 0 && <p className="muted">Aún no hay informes.</p>}{data.eodReports.slice(0, 4).map((report) => <article className="report-card" key={report.id}><div><strong>{report.profiles?.full_name || 'Usuario'}</strong><small>{report.report_date}</small></div><p>{(() => { const count = (report.completed_tasks?.length || 0) + (report.manual_tasks?.length || 0); const firstLine = String(report.notes || '').split('\n').map((line) => line.trim()).find((line) => line && !/^\*?eod\b/i.test(line)) || ''; return count ? `${count} ${t('actividades reportadas')}` : firstLine ? <span className="report-preview" data-no-translate>{firstLine}</span> : t('Sin detalle') })()}</p>{report.source === 'slack' && <span className="report-source">{t('Desde Slack')}</span>}</article>)}</div></section>
+    {activityItems.length > 0 && <section className="content-card"><div className="section-heading"><div><p className="eyebrow">Actividad del equipo</p><h3>Actualizaciones operativas</h3></div></div><div className="activity-list">{activityItems.map((item) => <article className="activity-row" key={item.id}><div><strong data-no-translate>{item.actor_name}</strong><p>{t(item.action === 'insert' ? 'creó' : item.action === 'update' ? 'actualizó' : 'eliminó')} {t(item.entity_type === 'clients' ? 'un cliente' : item.entity_type === 'notes' ? 'una nota' : 'un registro operativo')}</p></div><small>{new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>)}</div></section>}
     <details className="client-grid-toggle">
       <summary className="section-heading"><div><p className="eyebrow">{t('Control por cliente')}</p><h3>{t('Seguimiento por cliente')} <small>({data.clients.length})</small></h3></div><span className="text-button">{t('Mostrar / ocultar')}</span></summary>
       <div className="dossier-grid">{clientSummaries.map(({ client, openTickets, clientBlockers, pendingSteps }) => <Link className={`dossier-card ${clientBlockers || client.status === 'ADS PAUSED' ? 'has-alert' : ''}`} to={`/clientes/${client.id}`} key={client.id}>
@@ -327,7 +325,7 @@ function RoleDashboard({ data, blockers, profile, extras, eodState }) {
 
 export default function DashboardPage() {
   const { profile } = useAuth()
-  const { locale } = useLanguage()
+  const { locale, t } = useLanguage()
   const [data, setData] = useState({ clients: [], tickets: [], blockers: [], workflowSteps: [], notes: [], activity: [], eodReports: [], directory: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -350,13 +348,14 @@ export default function DashboardPage() {
   useEffect(() => { refresh().finally(() => setLoading(false)); return subscribeToOperations(refresh) }, [refresh])
   const activeBlockers = data.blockers.filter((blocker) => !blocker.resolved)
   const isAdmin = profile?.role === 'superadmin' || Boolean(profile?.permissions?.operations_admin)
-  const todayLabel = new Intl.DateTimeFormat(locale, { timeZone: profile?.timezone || 'America/Managua', dateStyle: 'full' }).format(new Date())
+  const fullDate = new Intl.DateTimeFormat(locale, { timeZone: profile?.timezone || 'America/Managua', dateStyle: 'full' }).format(new Date())
+  const todayLabel = fullDate.charAt(0).toUpperCase() + fullDate.slice(1)
 
   const handleCreated = async (text) => { setMessage(text); await refresh() }
 
   if (loading) return <LoadingScreen />
   return <div className="page-stack">
-    <header className="page-header"><div><p className="eyebrow">{isAdmin ? 'Superadmin · Control de dossiers' : 'Centro operativo'}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><div className="dashboard-header-side"><DualClock timeZone={profile?.timezone} /><span className="status-pill">Datos en vivo</span></div></header>
+    <header className="page-header"><div><p className="eyebrow">{t('Centro operativo')}</p><h2>Hola, {profile?.full_name || 'equipo'}</h2><p className="dashboard-date">{todayLabel}</p><p className="muted">{isAdmin ? 'Revisa los clientes y da seguimiento a sus tickets.' : 'Tus clientes y seguimientos de tickets asignados.'}</p></div><div className="dashboard-header-side"><DualClock timeZone={profile?.timezone} /><span className="status-pill">Datos en vivo</span></div></header>
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success">{message}</p>}
     {isAdmin ? <SuperadminDashboard data={data} blockers={activeBlockers} extras={extras} profile={profile} eodState={eodState} /> : <RoleDashboard data={data} blockers={activeBlockers} profile={profile} extras={extras} eodState={eodState} />}
   </div>

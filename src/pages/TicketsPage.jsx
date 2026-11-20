@@ -302,15 +302,17 @@ export default function TicketsPage() {
           <div className="ticket-list" role="list" aria-label={t('Lista de tickets')}>
             {filtered.map((ticket) => <button type="button" role="listitem" className={'ticket-list-row' + (ticket.id === selectedId ? ' active' : '')} key={ticket.id} onClick={() => { setSelectedId(ticket.id); setError(''); setNotice('') }}>
               <span className="ticket-list-main"><b>{ticket.ticket_number}</b><strong>{ticket.title}</strong><small>{ticket.clients.map((client) => client.code).join(', ') || t('Sin cliente vinculado')}</small></span>
-              <span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[ticket.status])}</span>
-              {ticket.needs_confirmation && <span className="ticket-verify-badge">{t('Por confirmar')}</span>}
-              {ticket.source === 'slack' && <span className="ticket-source-badge">Slack</span>}
-              {partialLabel(ticket) && <span className="ticket-partial-badge">{partialLabel(ticket)}</span>}
+              <span className={'ticket-status-badge status-' + ticket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[ticket.status] || ticket.status)}</span>
+              {(ticket.needs_confirmation || ticket.source === 'slack' || partialLabel(ticket)) && <span className="ticket-list-tags">
+                {ticket.needs_confirmation && <span className="ticket-verify-badge">{t('Por confirmar')}</span>}
+                {ticket.source === 'slack' && <span className="ticket-source-badge">Slack</span>}
+                {partialLabel(ticket) && <span className="ticket-partial-badge">{partialLabel(ticket)}</span>}
+              </span>}
             </button>)}
           </div>
 
           {selectedTicket && draft && <aside className="ticket-detail-panel">
-            <div className="ticket-detail-heading"><div><p className="eyebrow">{selectedTicket.ticket_number}</p><h3>{selectedTicket.title}</h3></div><span className={'ticket-status-badge status-' + selectedTicket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[selectedTicket.status])}</span></div>
+            <div className="ticket-detail-heading"><div><p className="eyebrow">{selectedTicket.ticket_number}</p><h3>{selectedTicket.title}</h3></div><span className={'ticket-status-badge status-' + selectedTicket.status.toLowerCase().replaceAll(' ', '-')}>{t(statusLabels[selectedTicket.status] || selectedTicket.status)}</span></div>
             {selectedTicket.clients.length > 1
               ? <div className="ticket-client-progress">
                 <p className="eyebrow">{t('Clientes')} · {selectedTicket.clients.filter((client) => client.resolvedAt).length}/{selectedTicket.clients.length} {t('resueltos')}</p>
