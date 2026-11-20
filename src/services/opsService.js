@@ -650,3 +650,13 @@ export async function saveGhlLogin(clientId, { email, password }) {
   const { error } = await supabase.rpc('save_client_ghl_login', { p_client_id: clientId, p_email: email.trim(), p_password: password })
   if (error) throw error
 }
+
+// One-click onboarding: Slack channel, Drive folder and dossier Google Doc for a client.
+export async function runOnboardingSetup(clientId, { steps, dossierText = '' } = {}) {
+  const { data, error } = await supabase.functions.invoke('client-onboarding-setup', { body: { clientId, steps, dossierText } })
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null)
+    throw new Error(detail?.error || 'No se pudo completar el onboarding automático.')
+  }
+  return data?.results || {}
+}

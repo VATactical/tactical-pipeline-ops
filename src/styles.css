@@ -3579,3 +3579,17 @@ a.training-lesson-title:hover { color: #0e81aa; text-decoration: underline; }
 .training-from-module { font-style: italic; }
 .training-empty { padding: 1rem 1.4rem; color: #6a7c8e; margin: 0; }
 @media (max-width: 640px) { .training-lesson { grid-template-columns: auto 1fr; } .training-type { display: none; } .training-open { grid-column: 2; justify-self: start; } .training-module-side .secondary-button { display: none; } }
+
+/* One-click onboarding */
+.onboarding-setup .section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.onboarding-steps { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.onboarding-steps li { display: grid; grid-template-columns: 1.8rem 1fr auto; align-items: center; gap: .6rem; padding: .55rem .7rem; border: 1px solid #e1e8ef; border-radius: 10px; background: #fff; }
+.onboarding-steps li > div { display: grid; gap: .1rem; }
+.onboarding-steps small { color: #6a7c8e; }
+.onboarding-steps small a { color: #0e81aa; font-weight: 700; }
+.onboarding-step-icon { width: 1.6rem; height: 1.6rem; display: grid; place-items: center; border-radius: 50%; background: #f1f4f7; color: #8a9bab; font-weight: 800; }
+.onboarding-steps li.done .onboarding-step-icon { background: #e6f6ef; color: #12734f; }
+.onboarding-steps li.problem .onboarding-step-icon { background: #fdeceb; color: #a12d2d; }
+.onboarding-result.created, .onboarding-result.linked { color: #12734f !important; }
+.onboarding-result.error, .onboarding-result.not_configured { color: #a12d2d !important; }
+.auto-setup-option { display: flex; align-items: flex-start; gap: .5rem; font-size: .88rem; color: #3c4f63; }
