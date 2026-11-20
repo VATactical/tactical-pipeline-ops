@@ -35,7 +35,6 @@ export const navGroups = [
   { label: 'Equipo', items: [
     { to: '/eod-reports', label: 'EOD Reports', icon: 'eod', badge: 'eod' },
     { to: '/mi-equipo', label: 'Mi equipo', icon: 'team' },
-    { to: '/training', label: 'Training', icon: 'training' },
   ] },
   { label: 'Administración', items: [
     { to: '/equipo', label: 'Usuarios', icon: 'users', show: (profile) => profile?.role === 'superadmin' },

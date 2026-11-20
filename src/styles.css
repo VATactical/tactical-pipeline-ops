@@ -3529,3 +3529,9 @@ tr:hover .mb-edit, .mb-edit:focus-visible { visibility: visible; }
 .mb-suggestion-actions .text-button { font-size: .76rem; padding: 0; }
 .mb-fallback { display: block; max-width: 240px; color: #55677a; font-size: .8rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .dossier-hint { margin: .5rem 0 0; font-size: .84rem; color: #55677a; }
+
+/* Mi equipo sub-pages */
+.team-subnav { display: flex; gap: .35rem; border-bottom: 1px solid #d8e1ea; }
+.team-subnav a { padding: .5rem .9rem; border-bottom: 2px solid transparent; color: #4d6175; font-weight: 650; text-decoration: none; margin-bottom: -1px; }
+.team-subnav a:hover { color: #16324f; }
+.team-subnav a.active { color: #1e5ea8; border-bottom-color: #2a78d6; }
