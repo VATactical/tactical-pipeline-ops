@@ -3528,3 +3528,4 @@ tr:hover .mb-edit, .mb-edit:focus-visible { visibility: visible; }
 .mb-suggestion-actions { display: flex; gap: .6rem; }
 .mb-suggestion-actions .text-button { font-size: .76rem; padding: 0; }
 .mb-fallback { display: block; max-width: 240px; color: #55677a; font-size: .8rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dossier-hint { margin: .5rem 0 0; font-size: .84rem; color: #55677a; }
