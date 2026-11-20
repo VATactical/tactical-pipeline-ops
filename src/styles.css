@@ -3477,3 +3477,48 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .eod-hours-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .eod-hours-actions > span { margin-left: auto; font-size: .88rem; }
 @media (max-width: 640px) { .eod-hours-row { grid-template-columns: 1fr 1fr; } .eod-hours-row .eod-hours-memo { grid-column: 1 / -1; } }
+
+/* Media Buyer view */
+.media-buyer-page { display: grid; gap: 1rem; }
+.mb-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; }
+.mb-counter { display: flex; justify-content: space-between; align-items: baseline; padding: .65rem .85rem; border: 1px solid #d8e1ea; border-left-width: 4px; border-radius: var(--tp-radius); background: #fff; cursor: pointer; font: inherit; color: #233547; }
+.mb-counter strong { font-size: 1.3rem; }
+.mb-counter.selected { background: #f0f6fd; border-color: #2a78d6; }
+.mb-counter.active { border-left-color: #1baf7a; } .mb-counter.paused { border-left-color: #e0a63a; } .mb-counter.payment { border-left-color: #d64545; } .mb-counter.draft { border-left-color: #9aa8b6; }
+.mb-filters { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.mb-filters input[type=search] { min-width: 200px; }
+.mb-missing-count { margin-left: auto; color: #866313; font-size: .85rem; }
+.mb-table-wrap { overflow-x: auto; border: 1px solid #d8e1ea; border-radius: var(--tp-radius); background: #fff; }
+.mb-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.mb-table th { position: sticky; top: 0; background: #f5f8fb; text-align: left; font-weight: 700; color: #4d6175; padding: .55rem .6rem; border-bottom: 1px solid #d8e1ea; white-space: nowrap; }
+.mb-table td { padding: .45rem .6rem; border-bottom: 1px solid #edf1f5; vertical-align: top; min-width: 110px; }
+.mb-table tr:hover td { background: #fafcfe; }
+.mb-client { min-width: 190px !important; } .mb-client a { color: #16324f; text-decoration: none; } .mb-client a:hover { text-decoration: underline; }
+.mb-sub { display: block; color: #6a7c8e; font-size: .74rem; margin-top: .15rem; }
+a.mb-sub { color: #0e81aa; }
+.mb-cell { display: flex; align-items: flex-start; gap: .3rem; }
+.mb-cell > span { flex: 1; overflow-wrap: anywhere; }
+.mb-cell a { color: #0e81aa; }
+.mb-cell.saving { opacity: .6; }
+.mb-edit { border: 0; background: transparent; color: #8a9bab; cursor: pointer; padding: 0 .15rem; font-size: .85rem; visibility: hidden; }
+tr:hover .mb-edit, .mb-edit:focus-visible { visibility: visible; }
+.mb-input { width: 100%; min-width: 140px; padding: .25rem .4rem; font-size: .84rem; }
+.mb-select { font-size: .8rem; padding: .2rem .35rem; border-radius: 6px; }
+.mb-select.is-missing { color: #866313; border-style: dashed; }
+.mb-missing { display: inline-block; padding: .05rem .4rem; border: 1px dashed #d7c28c; border-radius: 6px; color: #866313; font-size: .74rem; }
+.mb-muted { color: #9aa8b6; }
+.mb-pill { display: inline-block; padding: .12rem .5rem; border-radius: 999px; border: 1px solid transparent; font-size: .75rem; font-weight: 700; }
+.mb-pill.active, .mb-pill.excellent { background: #e6f6ef; color: #12734f; border-color: #b6e4cf; }
+.mb-pill.good { background: #eaf2fc; color: #1e5ea8; border-color: #c3d8f2; }
+.mb-pill.paused { background: #fff6e3; color: #7a5500; border-color: #ecd49a; }
+.mb-pill.payment, .mb-pill.bad { background: #fdeceb; color: #a12d2d; border-color: #f1c0bd; }
+.mb-pill.draft { background: #f1f4f7; color: #55677a; border-color: #d8e1ea; }
+.mb-status { display: grid; gap: .3rem; min-width: 130px; }
+.mb-reason { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .2rem; }
+.mb-reason input { flex: 1 1 160px; font-size: .8rem; padding: .25rem .4rem; }
+.mb-reason-cell { max-width: 220px; white-space: normal; color: #5b4a1c; }
+.mb-note { display: flex; gap: .3rem; align-items: flex-start; flex-wrap: wrap; min-width: 200px; max-width: 280px; }
+.mb-note-text { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mb-empty { text-align: center; color: #6a7c8e; padding: 1.5rem !important; }
+.mb-tasks .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .6rem; }
+.mb-task-table tr.overdue td { background: #fff8f7; }
