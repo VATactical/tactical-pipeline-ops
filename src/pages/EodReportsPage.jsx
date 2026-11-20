@@ -18,6 +18,8 @@ import { getCalendarDayWindow } from '../utils/timeZone'
 import { loadCompanySettings } from '../services/companyService'
 import { formatHoursAndMinutes, normalizeHoursAndMinutes } from '../utils/timeDuration'
 import LinkifiedText from '../components/LinkifiedText'
+import EodHoursEditor from '../components/EodHoursEditor'
+import { useSearchParams } from 'react-router-dom'
 
 function formatMoment(value, timeZone, locale) {
   if (!value) return ''
@@ -177,6 +179,20 @@ export default function EodReportsPage() {
   const [reportGroupMode, setReportGroupMode] = useState('member')
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReport, setExpandedReport] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const linkedReportId = searchParams.get('report')
+  useEffect(() => {
+    if (!linkedReportId || !reports.length) return
+    const linked = reports.find((item) => String(item.id) === linkedReportId)
+    if (linked) setExpandedReport(linked)
+    setSearchParams((current) => { const next = new URLSearchParams(current); next.delete('report'); return next }, { replace: true })
+  }, [linkedReportId, reports, setSearchParams])
+  const applySavedHours = useCallback((report, entries) => {
+    const merge = (item) => item.id === report.id ? { ...item, time_entries: entries } : item
+    setReports((current) => current.map(merge))
+    setExpandedReport((current) => current && current.id === report.id ? { ...current, time_entries: entries } : current)
+    setTimeEntries((current) => [...current.filter((entry) => !(entry.user_id === report.user_id && entry.work_date === report.report_date)), ...entries])
+  }, [])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actionKey, setActionKey] = useState('')
@@ -711,6 +727,7 @@ export default function EodReportsPage() {
                   <span><strong>{totalActivities}</strong> {t('Actividades')}</span>
                   {(report.comments || []).length > 0 && <span><strong>{report.comments.length}</strong> {t('Seguimientos')}</span>}
                   {report.late_reason && <span className="eod-late-badge">{t('Envío atrasado')}</span>}
+                  {report.source === 'slack' && totalHours === 0 && <span className="eod-late-badge eod-hours-missing">{t('Faltan horas')}</span>}
                 </div>
                 <button className="secondary-button report-open-button" type="button" onClick={() => setExpandedReport(report)}>{t('Abrir reporte completo')}</button>
               </article>
@@ -745,7 +762,8 @@ export default function EodReportsPage() {
             })}
           </div>}
           {!isStructuredEodReport(expandedReport.notes) && <p className="eod-hours-total">{t('Total de horas')}: <strong>{formatHoursAndMinutes((expandedReport.time_entries || []).reduce((sum, entry) => sum + Number(entry.hours || 0), 0))}</strong></p>}
-          {expandedReport.source === 'slack' && <p className="eod-slack-source"><span className="ticket-source-badge">Slack</span> {t('Enviado desde Slack con “Send to TP OPS”.')} {expandedReport.slack_permalink && <a href={expandedReport.slack_permalink} target="_blank" rel="noreferrer">{t('Ver en Slack')}</a>}</p>}
+          {expandedReport.source === 'slack' && <p className="eod-slack-source"><span className="ticket-source-badge">Slack</span> {t('Guardado desde Slack (#eod-reports).')} {expandedReport.slack_permalink && <a href={expandedReport.slack_permalink} target="_blank" rel="noreferrer">{t('Ver en Slack')}</a>}</p>}
+          {expandedReport.user_id === profile.id && expandedReport.source === 'slack' && <EodHoursEditor key={expandedReport.id} report={expandedReport} onSaved={(entries) => applySavedHours(expandedReport, entries)} />}
           {expandedReport.notes && <div className="eod-notes-block"><strong>{t(expandedReport.source === 'slack' ? 'Reporte EOD de Slack' : isStructuredEodReport(expandedReport.notes) ? 'Reporte EOD para Slack' : 'Resumen general del día')}:</strong><LinkifiedText text={expandedReport.notes} className="formatted-text" /></div>}
           {canReviewAll && <section className="eod-modal-review">
             <h3>{t('Revisión del reporte')}</h3>

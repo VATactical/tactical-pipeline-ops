@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 import { type DossierField, extractDossierValues, hasRealValue, ONLY_WHEN_EMPTY, sameValue } from "./extract.ts";
+import { eodPlainText, reportDay } from "./eod.ts";
 
 // TOPS <-> Slack bridge.
 //
@@ -11,6 +12,8 @@ import { type DossierField, extractDossierValues, hasRealValue, ONLY_WHEN_EMPTY,
 //   values it recognises (pixel, ad account, landing page, budget, radius, address, links...) as
 //   suggestions in public.client_dossier_suggestions. Nothing in the dossier changes until someone
 //   applies the suggestion in TOPS.
+// task "eod": imports the EODs people post in #eod-reports (last 48 h, so edits are picked up) as their
+//   EOD report in TP OPS, and reacts with ✅ (needs reactions:write; skipped without it).
 //
 // Callers: the scheduler and the outbox trigger (header x-tp-ops-key, integration 'slack_ticket_sync').
 // Needs the SLACK_BOT_TOKEN secret.
@@ -87,7 +90,7 @@ async function flushOutbox(admin: Admin, token: string) {
   return { claimed: rows.length, sent, waiting, failed };
 }
 
-type SlackMessage = { ts: string; user?: string; bot_id?: string; subtype?: string; text?: string; user_profile?: { real_name?: string; display_name?: string } };
+type SlackMessage = { ts: string; thread_ts?: string; user?: string; bot_id?: string; subtype?: string; text?: string; user_profile?: { real_name?: string; display_name?: string } };
 
 const FIELDS: DossierField[] = [
   "meta_pixel_id", "meta_ad_account_id", "meta_business_portfolio_id", "landing_page_url", "website_url", "facebook_page_url",
@@ -192,6 +195,82 @@ async function scanChannels(admin: Admin, token: string) {
   return { channels, messagesRead, suggestions: created, errors };
 }
 
+const EOD_CHANNEL = Deno.env.get("SLACK_EOD_CHANNEL") || "C0C0ZK4HYFK";
+const EOD_LOOKBACK_HOURS = 48;
+
+// A top-level message by a person that reads like an EOD report ("EOD Report – …" near the top).
+const looksLikeEod = (text: string) => text.length >= 150 && /\bEOD\b/i.test(text.slice(0, 200));
+
+async function importEods(admin: Admin, token: string) {
+  const { data: profileRows, error } = await admin.from("profiles")
+    .select("id, full_name, role, slack_contact, permissions").eq("active", true).is("deleted_at", null);
+  if (error) throw error;
+  const names = new Map<string, string>();
+  const authors = new Map<string, { id: string; name: string }>();
+  for (const profile of profileRows || []) {
+    const id = String(profile.slack_contact || "").match(/[UW][A-Z0-9]{8,}/)?.[0];
+    if (!id) continue;
+    const name = String(profile.full_name || "").replace(/\s+/g, " ").trim();
+    names.set(id, name);
+    const permissions = (profile.permissions || {}) as Record<string, boolean>;
+    if (profile.role !== "superadmin" && permissions.eod_reports) authors.set(id, { id: profile.id as string, name });
+  }
+
+  const oldest = String(Math.floor(Date.now() / 1000) - EOD_LOOKBACK_HOURS * 3600);
+  const messages: SlackMessage[] = [];
+  let cursor = "";
+  let joined = false;
+  for (let page = 0; page < 5; page += 1) {
+    const params: Record<string, string> = { channel: EOD_CHANNEL, oldest, limit: "200" };
+    if (cursor) params.cursor = cursor;
+    const body = await slack(token, "conversations.history", params);
+    if (!body.ok && body.error === "not_in_channel" && !joined) {
+      joined = true;
+      const join = await slack(token, "conversations.join", { channel: EOD_CHANNEL });
+      if (!join.ok) return { error: `join: ${join.error}` };
+      page -= 1;
+      continue;
+    }
+    if (!body.ok) return { error: String(body.error) };
+    messages.push(...((body.messages as SlackMessage[]) || []));
+    cursor = String((body.response_metadata as { next_cursor?: string } | undefined)?.next_cursor || "");
+    if (!body.has_more || !cursor) break;
+  }
+
+  // Newest EOD per person and day.
+  const latest = new Map<string, { message: SlackMessage; author: { id: string; name: string }; day: string; notes: string }>();
+  for (const message of messages) {
+    if (message.bot_id || !message.user || (message.subtype && message.subtype !== "thread_broadcast")) continue;
+    if (message.thread_ts && message.thread_ts !== message.ts && message.subtype !== "thread_broadcast") continue;
+    const author = authors.get(message.user);
+    if (!author) continue;
+    const notes = eodPlainText(message.text || "", names);
+    if (!looksLikeEod(notes)) continue;
+    const { day } = reportDay(notes, new Date(Number(message.ts) * 1000), "America/New_York");
+    const key = `${author.id}|${day}`;
+    const current = latest.get(key);
+    if (!current || Number(current.message.ts) < Number(message.ts)) latest.set(key, { message, author, day, notes });
+  }
+
+  const results: Record<string, number> = {};
+  const errors: string[] = [];
+  for (const { message, author, day, notes } of latest.values()) {
+    const { data: result, error: importError } = await admin.rpc("import_slack_eod", {
+      p_user_id: author.id, p_report_date: day, p_notes: notes.length > 5000 ? `${notes.slice(0, 4990)}…` : notes,
+      p_slack_channel_id: EOD_CHANNEL, p_slack_ts: message.ts,
+      p_slack_permalink: `${WORKSPACE_URL}/archives/${EOD_CHANNEL}/p${message.ts.replace(".", "")}`,
+      p_submitted_at: new Date(Number(message.ts) * 1000).toISOString(),
+    });
+    if (importError) { errors.push(`${author.name} ${day}: ${importError.message}`); continue; }
+    const outcome = String(result);
+    results[outcome] = (results[outcome] || 0) + 1;
+    if (outcome === "created" || outcome === "updated") {
+      await slack(token, "reactions.add", { channel: EOD_CHANNEL, timestamp: message.ts, name: "white_check_mark" });
+    }
+  }
+  return { read: messages.length, eods: latest.size, results, errors };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -209,6 +288,7 @@ Deno.serve(async (request: Request) => {
     const body = await request.json().catch(() => ({})) as { task?: string };
     if (body.task === "outbox") return json(await flushOutbox(admin, token));
     if (body.task === "scan") return json(await scanChannels(admin, token));
+    if (body.task === "eod") return json(await importEods(admin, token));
     return json({ error: "Unknown task" }, 400);
   } catch (error) {
     console.error("Slack bridge failed", error);

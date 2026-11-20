@@ -151,16 +151,21 @@ export async function loadOwnEodState(profile) {
   const kevinTimeZone = resolveKevinTimeZone(directory || [])
   const workDate = getDateInTimeZone(new Date(), kevinTimeZone)
   const workDay = getCalendarDayWindow(new Date(), kevinTimeZone)
-  const [reportResult, statusResult] = await runWithSessionRetry(() => Promise.all([
+  const [reportResult, statusResult, missingResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('eod_reports').select('id').eq('user_id', profile.id)
       .gte('submitted_at', workDay.start.toISOString()).lte('submitted_at', workDay.end.toISOString()).limit(1).maybeSingle(),
     supabase.from('eod_daily_status').select('*').eq('user_id', profile.id).eq('work_date', workDate).maybeSingle(),
+    // EODs saved from Slack in the last week that still have no hours.
+    supabase.from('eod_reports').select('id, report_date, time_entries(id)').eq('user_id', profile.id).eq('source', 'slack')
+      .gte('report_date', getDateInTimeZone(new Date(Date.now() - 7 * 86400000), kevinTimeZone)).order('report_date', { ascending: false }),
   ]))
   const error = reportResult.error || statusResult.error
   if (error) throw error
+  const missingHours = (missingResult.data || []).filter((report) => !(report.time_entries || []).length)
   return {
     required: true,
     submitted: Boolean(reportResult.data),
+    missingHours: missingHours.map((report) => ({ id: report.id, reportDate: report.report_date })),
     status: statusResult.data || null,
     workDate,
     kevinTimeZone,
@@ -276,6 +281,22 @@ export async function saveEodReport({ profileId, reportDate, complianceDate = re
   }, { onConflict: 'user_id,work_date' })
   if (statusError) throw statusError
   return data
+}
+
+// Hours for an EOD that was saved from Slack (or any own EOD): replaces that day's time entries.
+export async function saveEodHours({ reportId, workDate, entries }) {
+  const clean = entries
+    .map((entry) => ({ hours: Math.round(((Number(entry.hours) || 0) + (Number(entry.minutes) || 0) / 60) * 100) / 100, memo: String(entry.memo || '').trim() }))
+    .filter((entry) => entry.hours > 0 || entry.memo)
+  if (!clean.length) throw new Error('Agrega al menos un registro de horas.')
+  if (clean.some((entry) => !(entry.hours > 0) || !entry.memo)) throw new Error('Cada registro de tiempo necesita horas y memo.')
+  if (clean.some((entry) => entry.memo.length > 500)) throw new Error('El memo no puede superar 500 caracteres.')
+  if (clean.reduce((sum, entry) => sum + entry.hours, 0) > 24) throw new Error('Las horas del día no pueden superar 24.')
+  const { error } = await supabase.rpc('replace_eod_time_entries', { p_report_id: reportId, p_work_date: workDate, p_entries: clean })
+  if (error) throw error
+  const { data, error: loadError } = await supabase.from('time_entries').select('*').eq('eod_report_id', reportId).order('created_at')
+  if (loadError) throw loadError
+  return data || []
 }
 
 export async function saveEodReview({ reportId, reviewerId, status }) {

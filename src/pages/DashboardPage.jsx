@@ -178,7 +178,16 @@ function useDashboardCharts(data, extras, locale) {
 
 function EodReminder({ eodState }) {
   const { t } = useLanguage()
-  if (!eodState?.required || eodState.submitted) return null
+  if (!eodState?.required) return null
+  const missing = eodState.missingHours || []
+  if (eodState.submitted && missing.length) {
+    return <section className="eod-reminder eod-reminder-hours" role="status">
+      <span aria-hidden="true">⏱️</span>
+      <div><strong>{missing.length === 1 ? t('Tu EOD del {date} se guardó desde Slack, pero faltan las horas.').replace('{date}', missing[0].reportDate) : t('Tienes {n} EOD guardados desde Slack sin horas.').replace('{n}', missing.length)}</strong><p>{t('Agrega el tiempo de cada actividad en TP OPS.')}</p></div>
+      <Link className="primary-button compact-button" to={`/eod-reports?report=${missing[0].id}`}>{t('Agregar horas')}</Link>
+    </section>
+  }
+  if (eodState.submitted) return null
   return <section className="eod-reminder" role="alert">
     <span aria-hidden="true">📝</span>
     <div><strong>{t('Aún no has enviado tu EOD de hoy.')}</strong><p>{t('El día del EOD se cuenta en hora EST (Estados Unidos). Escríbelo en TP OPS o, si ya lo publicaste en #eod-reports, usa “Send to TP OPS” en el mensaje.')}</p></div>
