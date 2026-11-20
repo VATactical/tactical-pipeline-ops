@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import LinkifiedText, { linkLabel } from '../components/LinkifiedText'
 import LoadingScreen from '../components/LoadingScreen'
 import TeamSubnav from '../components/TeamSubnav'
 import { usePageTrail } from '../components/navigation'
@@ -17,6 +18,7 @@ const roleLabels = {
 const blankModule = { titleEs: '', titleEn: '', descriptionEs: '', descriptionEn: '', driveUrl: '', audienceRole: '', sortOrder: 1 }
 const blankItem = { titleEs: '', titleEn: '', descriptionEs: '', descriptionEn: '', driveUrl: '', resourceType: 'Lección' }
 const resourceTypes = ['Lección', 'Documento', 'Video', 'Carpeta']
+const TYPE_ICONS = { Lección: '📘', Documento: '📄', Video: '🎥', Carpeta: '📁' }
 
 export default function TrainingPage() {
   usePageTrail([{ label: 'Training' }])
@@ -24,7 +26,10 @@ export default function TrainingPage() {
   const { language, t } = useLanguage()
   const isAdmin = profile.role === 'superadmin' || Boolean(profile.permissions?.operations_admin)
   const [data, setData] = useState({ modules: [], items: [], progress: [] })
-  const [open, setOpen] = useState(null)
+  const [openModules, setOpenModules] = useState(() => new Set())
+  const [editMode, setEditMode] = useState(false)
+  const [search, setSearch] = useState('')
+  const [show, setShow] = useState('all')
   const [newModule, setNewModule] = useState(blankModule)
   const [newItems, setNewItems] = useState({})
   const [loading, setLoading] = useState(true)
@@ -52,10 +57,16 @@ export default function TrainingPage() {
   }, [refresh, t])
 
   const completed = useMemo(() => new Set(data.progress.map((item) => item.item_id)), [data.progress])
+  const toggleModule = (id) => setOpenModules((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
   const visibleModules = data.modules.filter((module) => !module.audience_role || module.audience_role === profile.role || isAdmin)
   const visibleItems = data.items.filter((item) => visibleModules.some((module) => module.id === item.module_id))
   const completedCount = visibleItems.filter((item) => completed.has(item.id)).length
   const completion = visibleItems.length ? Math.round((completedCount / visibleItems.length) * 100) : 0
+  // Open the first module that still has pending lessons.
+  const firstPending = visibleModules.find((module) => data.items.some((item) => item.module_id === module.id && !completed.has(item.id)))?.id
+  useEffect(() => {
+    if (!loading && firstPending) setOpenModules((current) => current.size ? current : new Set([firstPending]))
+  }, [loading, firstPending])
   const updateLocal = (type, id, key, value) => setData((current) => ({
     ...current,
     [type]: current[type].map((item) => item.id === id ? { ...item, [key]: value } : item),
@@ -102,26 +113,45 @@ export default function TrainingPage() {
   }
 
   if (loading) return <LoadingScreen />
+  const term = search.trim().toLowerCase()
+  const matches = (item) => (show === 'all' || (show === 'pending' ? !completed.has(item.id) : completed.has(item.id)))
+    && (!term || `${localize(item, 'title')} ${localize(item, 'description')}`.toLowerCase().includes(term))
+  const editing = isAdmin && editMode
+  const shownModules = visibleModules.filter((module) => editing || !term && show === 'all'
+    || data.items.some((item) => item.module_id === module.id && matches(item))
+    || (term && localize(module, 'title').toLowerCase().includes(term)))
+  const allOpen = shownModules.length > 0 && shownModules.every((module) => openModules.has(module.id))
+  const filtering = Boolean(term) || show !== 'all'
+
   return <div className="page-stack">
     <TeamSubnav />
     <header className="page-header">
       <div>
         <p className="eyebrow">Training Hub</p>
         <h2>{t('Formación del equipo')}</h2>
-        <p className="muted">{t(isAdmin ? 'Administra los módulos, listas y enlaces del equipo.' : 'Revisa el hub semanalmente y marca cada lección cuando esté comprendida.')}</p>
+        <p className="muted">{t('Abre cada lección, revísala y márcala cuando la tengas clara.')}</p>
       </div>
-      <span className="status-pill">{isAdmin ? `${visibleModules.length} ${t('módulos')}` : `${completion}% ${t('completado')}`}</span>
+      <span className="status-pill">{completion}% {t('completado')}</span>
     </header>
 
     {error && <p className="form-error">{error}</p>}
     {message && <p className="form-success">{message}</p>}
 
-    {!isAdmin && <section className="content-card training-summary">
+    <section className="content-card training-summary">
       <div><span>{t('Tu progreso')}</span><strong>{completedCount} {t('de')} {visibleItems.length} {t('lecciones')}</strong></div>
       <div className="progress-track"><span style={{ width: `${completion}%` }} /></div>
-    </section>}
+    </section>
 
-    {isAdmin && <form className="content-card training-create-form" onSubmit={addModule}>
+    <div className="training-toolbar">
+      <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Buscar lección')} />
+      <select value={show} onChange={(event) => setShow(event.target.value)}>
+        <option value="all">{t('Todas las lecciones')}</option><option value="pending">{t('Pendientes')}</option><option value="done">{t('Completadas')}</option>
+      </select>
+      <button className="secondary-button compact-button" type="button" onClick={() => setOpenModules(allOpen ? new Set() : new Set(shownModules.map((module) => module.id)))}>{allOpen ? t('Contraer todo') : t('Expandir todo')}</button>
+      {isAdmin && <button className={`${editMode ? 'primary-button' : 'secondary-button'} compact-button training-edit-toggle`} type="button" onClick={() => setEditMode((value) => !value)}>{editMode ? t('Terminar edición') : t('Editar contenido')}</button>}
+    </div>
+
+    {editing && <form className="content-card training-create-form" onSubmit={addModule}>
       <div className="section-heading"><div><p className="eyebrow">{t('Administración')}</p><h3>{t('Crear módulo')}</h3></div></div>
       <div className="admin-training-grid">
         <label>{t('Título (ES)')}<input value={newModule.titleEs} onChange={(e) => setNewModule((current) => ({ ...current, titleEs: e.target.value }))} required /></label>
@@ -135,23 +165,32 @@ export default function TrainingPage() {
       <button className="primary-button compact-button" disabled={saving === 'new-module'}>{t('Crear módulo')}</button>
     </form>}
 
-    <section className="training-modules">{visibleModules.map((module) => {
+    <section className="training-modules">{shownModules.map((module, position) => {
       const items = data.items.filter((item) => item.module_id === module.id)
+      const listed = editing ? items : items.filter(matches)
       const done = items.filter((item) => completed.has(item.id)).length
-      const expanded = open === module.id
+      const percent = items.length ? Math.round((done / items.length) * 100) : 0
+      const expanded = openModules.has(module.id) || (filtering && !editing)
       const itemDraft = newItems[module.id] || blankItem
-      return <article className="content-card training-module" key={module.id}>
-        <button className="training-module-header" type="button" onClick={() => setOpen(expanded ? null : module.id)}>
-          <div>
+      const moduleUrl = module.drive_url || ''
+      return <article className={`content-card training-module ${percent === 100 && items.length ? 'module-done' : ''}`} key={module.id}>
+        <div className="training-module-header" role="button" tabIndex={0} aria-expanded={expanded}
+          onClick={() => toggleModule(module.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleModule(module.id) } }}>
+          <span className="training-module-number">{percent === 100 && items.length ? '✓' : position + 1}</span>
+          <div className="training-module-text">
             <p className="eyebrow">{module.audience_role ? roleLabel(module.audience_role) : t('Todos los usuarios')}</p>
             <h3 data-no-translate>{localize(module, 'title')}</h3>
-            <p className="muted" data-no-translate>{localize(module, 'description')}</p>
+            {localize(module, 'description') && <LinkifiedText className="muted" text={localize(module, 'description')} />}
+            <div className="training-module-progress"><div className="progress-track"><span style={{ width: `${percent}%` }} /></div><small>{done}/{items.length}</small></div>
           </div>
-          <span>{done}/{items.length} {expanded ? '▴' : '▾'}</span>
-        </button>
+          <div className="training-module-side">
+            {moduleUrl && <a className="secondary-button compact-button" href={moduleUrl} target="_blank" rel="noreferrer" title={moduleUrl} onClick={(event) => event.stopPropagation()}>{t(linkLabel(moduleUrl))} ↗</a>}
+            <span className="training-chevron" aria-hidden="true">{expanded ? '▴' : '▾'}</span>
+          </div>
+        </div>
 
         {expanded && <div className="training-expanded">
-          {isAdmin && <div className="training-admin-box">
+          {editing && <div className="training-admin-box">
             <div className="admin-training-grid">
               <label>{t('Título (ES)')}<input value={module.title_es ?? module.title ?? ''} onChange={(e) => updateLocal('modules', module.id, 'title_es', e.target.value)} /></label>
               <label>{t('Title (EN)')}<input value={module.title_en ?? module.title ?? ''} onChange={(e) => updateLocal('modules', module.id, 'title_en', e.target.value)} /></label>
@@ -167,8 +206,12 @@ export default function TrainingPage() {
             </div>
           </div>}
 
-          <div className="training-lessons">{items.map((item) => <div className={`training-lesson ${completed.has(item.id) ? 'completed' : ''} ${isAdmin ? 'editable' : ''}`} key={item.id}>
-            {isAdmin ? <div className="lesson-editor">
+          <div className="training-lessons">{listed.map((item) => {
+            const done = completed.has(item.id)
+            const ownUrl = item.drive_url || ''
+            const url = ownUrl || moduleUrl
+            const title = localize(item, 'title')
+            if (editing) return <div className="training-lesson editable" key={item.id}><div className="lesson-editor">
               <input value={item.title_es ?? item.title ?? ''} onChange={(e) => updateLocal('items', item.id, 'title_es', e.target.value)} placeholder={t('Título (ES)')} />
               <input value={item.title_en ?? item.title ?? ''} onChange={(e) => updateLocal('items', item.id, 'title_en', e.target.value)} placeholder={t('Title (EN)')} />
               <input value={item.drive_url || ''} onChange={(e) => updateLocal('items', item.id, 'drive_url', e.target.value)} placeholder={t('Enlace de Drive')} />
@@ -180,13 +223,21 @@ export default function TrainingPage() {
                 <button className="text-button danger-text" type="button" onClick={() => window.confirm(t('¿Eliminar esta lección?')) && runAction(`delete-item-${item.id}`, () => deleteTrainingItem(item.id), 'Lección eliminada.')}>{t('Eliminar')}</button>
                 <button className="secondary-button" type="button" onClick={() => runAction(`item-${item.id}`, () => updateTrainingItem(item), 'Lección actualizada.')}>{t('Guardar')}</button>
               </div>
-            </div> : <>
-              <label><input type="checkbox" checked={completed.has(item.id)} disabled={saving === item.id} onChange={() => toggleItem(item)} /><span><strong data-no-translate>{localize(item, 'title')}</strong>{localize(item, 'description') && <small data-no-translate>{localize(item, 'description')}</small>}</span></label>
-              {item.drive_url ? <a className="secondary-button" href={item.drive_url} target="_blank" rel="noreferrer">{t('Abrir en Drive ↗')}</a> : <span className="resource-pending">{t('Enlace pendiente')}</span>}
-            </>}
-          </div>)}</div>
+            </div></div>
+            return <div className={`training-lesson ${done ? 'completed' : ''}`} key={item.id}>
+              <input type="checkbox" checked={done} disabled={saving === item.id} onChange={() => toggleItem(item)} aria-label={t(done ? 'Marcar como pendiente' : 'Marcar como completada')} />
+              <span className="training-type" title={t(item.resource_type || 'Lección')} aria-hidden="true">{TYPE_ICONS[item.resource_type] || '📘'}</span>
+              <div className="training-lesson-text">
+                {url ? <a className="training-lesson-title" href={url} target="_blank" rel="noreferrer" title={url} data-no-translate>{title}</a> : <strong className="training-lesson-title" data-no-translate>{title}</strong>}
+                {localize(item, 'description') && <LinkifiedText as="small" text={localize(item, 'description')} />}
+                {!ownUrl && moduleUrl && <small className="training-from-module">{t('En el material del módulo')}</small>}
+              </div>
+              {url ? <a className="secondary-button compact-button training-open" href={url} target="_blank" rel="noreferrer" title={url}>{t('Abrir')} ↗</a> : <span className="resource-pending">{t('Enlace pendiente')}</span>}
+            </div>
+          })}
+          {!listed.length && <p className="training-empty">{t('No hay lecciones con estos filtros.')}</p>}</div>
 
-          {isAdmin && <div className="training-admin-box add-lesson">
+          {editing && <div className="training-admin-box add-lesson">
             <p className="eyebrow">{t('Nueva lección')}</p>
             <div className="admin-training-grid">
               <label>{t('Título (ES)')}<input value={itemDraft.titleEs} onChange={(e) => setNewItems((current) => ({ ...current, [module.id]: { ...itemDraft, titleEs: e.target.value } }))} /></label>
@@ -198,10 +249,9 @@ export default function TrainingPage() {
             </div>
             <button className="secondary-button" type="button" disabled={!itemDraft.titleEs.trim() || !itemDraft.titleEn.trim()} onClick={() => addItem(module)}>{t('Agregar lección')}</button>
           </div>}
-
-          {!isAdmin && module.drive_url && <a className="module-drive-link" href={module.drive_url} target="_blank" rel="noreferrer">{t('Abrir recursos del módulo en Drive ↗')}</a>}
         </div>}
       </article>
-    })}</section>
+    })}
+    {!shownModules.length && <p className="muted">{t('No hay lecciones con estos filtros.')}</p>}</section>
   </div>
 }

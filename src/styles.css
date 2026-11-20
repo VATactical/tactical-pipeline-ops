@@ -3551,3 +3551,31 @@ tr:hover .mb-edit, .mb-edit:focus-visible { visibility: visible; }
 .team-contacts em { color: #9aa8b6; font-style: normal; }
 .team-copy { border: 0; background: transparent; color: #6a7c8e; font-size: .74rem; cursor: pointer; padding: 0 .2rem; }
 .team-copy:hover { color: #1e5ea8; }
+
+/* Training hub v2 */
+.training-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.training-toolbar input[type=search] { flex: 1 1 220px; max-width: 340px; }
+.training-edit-toggle { margin-left: auto; }
+.training-module-header { align-items: flex-start !important; }
+.training-module-header:focus-visible { outline: 2px solid #2a78d6; outline-offset: -2px; }
+.training-module-number { flex: 0 0 2.1rem; height: 2.1rem; display: grid; place-items: center; border-radius: 50%; background: #eaf2fc; color: #1e5ea8; font-weight: 800; }
+.module-done .training-module-number { background: #e6f6ef; color: #12734f; }
+.training-module-text { flex: 1; min-width: 0; }
+.training-module-text .muted { margin: 0 0 .5rem; }
+.training-module-progress { display: flex; align-items: center; gap: .6rem; max-width: 360px; }
+.training-module-progress .progress-track { flex: 1; height: 6px; }
+.training-module-progress small { color: #55677a; font-weight: 700; }
+.training-module-side { display: flex; align-items: center; gap: .6rem; }
+.training-chevron { color: #0e81aa; font-weight: 800; }
+.training-lesson { display: grid !important; grid-template-columns: auto auto 1fr auto; align-items: center; gap: .75rem; }
+.training-lesson.editable { display: block !important; }
+.training-lesson > input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: #1baf7a; }
+.training-type { font-size: 1.1rem; }
+.training-lesson-text { display: grid; gap: .2rem; min-width: 0; }
+a.training-lesson-title { color: #16324f; font-weight: 700; text-decoration: none; }
+a.training-lesson-title:hover { color: #0e81aa; text-decoration: underline; }
+.training-lesson.completed .training-lesson-title { color: #158445; }
+.training-lesson-text small { color: #6a7c8e; }
+.training-from-module { font-style: italic; }
+.training-empty { padding: 1rem 1.4rem; color: #6a7c8e; margin: 0; }
+@media (max-width: 640px) { .training-lesson { grid-template-columns: auto 1fr; } .training-type { display: none; } .training-open { grid-column: 2; justify-self: start; } .training-module-side .secondary-button { display: none; } }
