@@ -15,7 +15,7 @@ export default function TeamDirectoryPage() {
     ['#announcements', 'Actualizaciones para toda la agencia, políticas, logros y directrices de dirección. Solo lectura.'],
     ['#daily-comms-hub', 'Colaboración en tiempo real, consultas rápidas y actualizaciones activas durante la jornada.'],
     ['#active-projects', 'Campañas en curso, optimización de anuncios, iteraciones creativas y estados de A2P.'],
-    ['#client-ops', 'Escalado de cuentas, atención personalizada y cambios de estado gestionados por Alejandra.'],
+    ['#client-ops', 'Escalado de cuentas, atención personalizada y cambios de estado de clientes.'],
     ['#eod-reports', 'Registros de cierre diario enviados antes de finalizar el turno.'],
   ]
   return <div className="page-stack">

@@ -1,6 +1,7 @@
 import { runWithSessionRetry, supabase } from '../lib/supabase'
 
-const ownerNames = { onboarding_media: 'Diego', automation_funnels: 'Daniel', user_admin: 'User Admin', superadmin: 'Kevin' }
+// Tasks assigned to a role (not to a person) show the role name; people's names come from the team directory.
+const ownerNames = { onboarding_media: 'Onboarding & Media', automation_funnels: 'Automations & Funnels', user_admin: 'User Admin', superadmin: 'Superadmin' }
 
 const priorityAliases = {
   Baja: 'Baja',
