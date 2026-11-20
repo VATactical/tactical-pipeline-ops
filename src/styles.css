@@ -3462,3 +3462,18 @@ html[data-theme='light'] .client-sticky-shell { gap: .75rem; }
 .ticket-client-progress li.resolved a, .ticket-client-progress li.resolved span { color: var(--tp-text-muted); text-decoration: line-through; }
 .ticket-client-progress li small { color: var(--tp-success); font-weight: 800; text-decoration: none; }
 .client-ticket-partial { display: block; margin-top: .25rem; color: var(--tp-success); font-size: .74rem; font-weight: 700; }
+
+/* EOD from Slack: hours added in TP OPS */
+.eod-reminder-hours { border-color: #b9d3f0; border-left-color: #2a78d6; background: #f3f8fe; }
+.eod-hours-missing { border-color: #e4cc87; }
+.eod-hours-editor { display: grid; gap: .6rem; margin: 0 0 .9rem; padding: .8rem .9rem; border: 1px solid #cfdbe7; border-radius: var(--tp-radius); background: #f7fafd; }
+.eod-hours-editor.collapsed { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .88rem; }
+.eod-hours-editor-head { display: grid; gap: .15rem; }
+.eod-hours-editor-head small { color: #5b6b7c; }
+.eod-hours-row { display: grid; grid-template-columns: 4.5rem 4.5rem 1fr auto; gap: .5rem; align-items: end; }
+.eod-hours-row label { display: grid; gap: .2rem; font-size: .75rem; color: #4d6175; }
+.eod-hours-row input { width: 100%; }
+.eod-hours-row .icon-button { height: 2.2rem; }
+.eod-hours-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.eod-hours-actions > span { margin-left: auto; font-size: .88rem; }
+@media (max-width: 640px) { .eod-hours-row { grid-template-columns: 1fr 1fr; } .eod-hours-row .eod-hours-memo { grid-column: 1 / -1; } }
