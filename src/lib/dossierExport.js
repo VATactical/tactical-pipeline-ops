@@ -52,12 +52,15 @@ TACTICAL PIPELINE — ACTIVE CLIENT DOSSIER
 • Services: ${pending(client.services)}
 • Offers / Discounts: ${pending(client.offer)}
 • Price Range / Minimum Project: ${money(client.minimum_project)}
-• Ads Targeting Address: ${pending(client.ads_targeting_address)}
+• Ideal Customer Profile: ${pending(client.ideal_customer_profile)}
+
+[AD TARGETING]
+
+• Targeting Center Address: ${pending(client.ads_targeting_address)}
 • Targeting Radius: ${radius(client.targeting_radius_miles)}
 • Cities / Service Areas: ${pending(client.markets)}
 • Target ZIP Codes: ${pending(client.target_zip_codes)}
 • Excluded Areas: ${pending(client.exclusions)}
-• Ideal Customer Profile: ${pending(client.ideal_customer_profile)}
 
 [STRATEGY & LAUNCH]
 
