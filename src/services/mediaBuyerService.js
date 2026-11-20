@@ -6,7 +6,7 @@ import { runWithSessionRetry, supabase } from '../lib/supabase'
 const CLIENT_FIELDS = [
   'id', 'code', 'business_name', 'status', 'ads_pause_reason', 'ads_paused_at', 'meta_ad_account_id', 'ad_account_name',
   'conversion_location', 'instant_form_name', 'landing_page_url', 'facebook_page_url', 'daily_budget', 'ads_targeting_address',
-  'targeting_radius_miles', 'markets', 'ad_creatives_link', 'booking_calendar_link', 'ad_result_status', 'google_docs_url',
+  'targeting_radius_miles', 'markets', 'target_zip_codes', 'address', 'ad_creatives_link', 'booking_calendar_link', 'ad_result_status', 'google_docs_url',
   'drive_folder_link', 'updated_at',
 ].join(', ')
 
@@ -22,18 +22,29 @@ export function adStatusOf(client) {
 }
 
 export async function loadMediaBuyerData(profileId) {
-  const [clientsResult, commentsResult, tasksResult] = await runWithSessionRetry(() => Promise.all([
+  const [clientsResult, commentsResult, tasksResult, suggestionsResult] = await runWithSessionRetry(() => Promise.all([
     supabase.from('clients').select(CLIENT_FIELDS).eq('archived', false).order('code'),
     supabase.from('client_comments').select('id, client_id, body, kind, created_at').is('deleted_at', null)
       .order('created_at', { ascending: false }).limit(400),
     supabase.from('tasks').select('id, client_id, title, comments, priority, due_at, status, clients(code, business_name)')
       .eq('assigned_to', profileId).neq('status', 'Completada').order('due_at', { ascending: true, nullsFirst: false }),
+    supabase.from('client_dossier_suggestions').select('id, client_id, field, suggested_value, excerpt, slack_user_name, source_url, created_at')
+      .eq('status', 'pending').order('created_at', { ascending: false }),
   ]))
   const error = clientsResult.error || commentsResult.error || tasksResult.error
   if (error) throw error
   const latestComment = new Map()
   for (const comment of commentsResult.data || []) if (!latestComment.has(comment.client_id)) latestComment.set(comment.client_id, comment)
-  const clients = (clientsResult.data || []).map((client) => ({ ...client, adStatus: adStatusOf(client), lastComment: latestComment.get(client.id) || null }))
+  // Newest pending Slack suggestion per client and field.
+  const suggestions = new Map()
+  for (const item of suggestionsResult.data || []) {
+    const key = `${item.client_id}|${item.field}`
+    if (!suggestions.has(key)) suggestions.set(key, item)
+  }
+  const clients = (clientsResult.data || []).map((client) => ({
+    ...client, adStatus: adStatusOf(client), lastComment: latestComment.get(client.id) || null,
+    suggestions: Object.fromEntries([...suggestions.values()].filter((item) => item.client_id === client.id).map((item) => [item.field, item])),
+  }))
   return { clients, tasks: tasksResult.data || [] }
 }
 
@@ -75,7 +86,7 @@ export function downloadPmsCsv(clients) {
     client.ad_result_status, client.conversion_location,
     client.conversion_location === 'Instant Form' ? client.instant_form_name : client.landing_page_url,
     client.facebook_page_url, client.daily_budget ? `$${client.daily_budget}` : '',
-    [client.targeting_radius_miles ? `${client.targeting_radius_miles} mi` : '', client.ads_targeting_address, client.markets].filter(Boolean).join(' · '),
+    [client.targeting_radius_miles ? `${client.targeting_radius_miles} mi` : '', client.ads_targeting_address || client.markets || client.target_zip_codes].filter(Boolean).join(' · '),
     client.ad_creatives_link, client.booking_calendar_link, client.lastComment?.body || '',
   ])
   const csv = `﻿${[header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')}`

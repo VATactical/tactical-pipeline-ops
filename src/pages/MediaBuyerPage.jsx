@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
 import LoadingScreen from '../components/LoadingScreen'
-import { addClientComment, updateTaskStatus } from '../services/opsService'
+import { addClientComment, resolveDossierSuggestion, updateTaskStatus } from '../services/opsService'
 import { AD_STATUSES, changeAdStatus, downloadPmsCsv, loadMediaBuyerData, updateBuyerField } from '../services/mediaBuyerService'
 
 const RESULTS = ['Bad', 'Good', 'Excellent']
@@ -17,7 +17,7 @@ const shortUrl = (url) => {
 }
 
 // One editable cell. Saves on blur / Enter (text, url, number) or on change (select).
-function Cell({ value, type = 'text', options, canEdit, onSave, display, placeholder }) {
+function Cell({ value, type = 'text', options, canEdit, onSave, display, placeholder, suggestion, onSuggestion, fallback }) {
   const { t } = useLanguage()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
@@ -33,6 +33,7 @@ function Cell({ value, type = 'text', options, canEdit, onSave, display, placeho
     try { await onSave(clean) } catch { setDraft(value ?? '') } finally { setSaving(false) }
   }
 
+  if (type === 'select' && empty && suggestion) return <Cell value="" suggestion={suggestion} onSuggestion={onSuggestion} canEdit={canEdit} onSave={onSave} />
   if (type === 'select') {
     if (!canEdit) return empty ? <span className="mb-missing">{t('Falta')}</span> : display || value
     return <select className={`mb-select ${empty ? 'is-missing' : ''}`} value={value || ''} disabled={saving} onChange={(event) => commit(event.target.value)}>
@@ -45,7 +46,18 @@ function Cell({ value, type = 'text', options, canEdit, onSave, display, placeho
       value={draft} placeholder={placeholder} onChange={(event) => setDraft(event.target.value)}
       onBlur={() => commit()} onKeyDown={(event) => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') { setDraft(value ?? ''); setEditing(false) } }} />
   }
-  const shown = empty ? <span className="mb-missing">{t('Falta')}</span>
+  if (empty && suggestion) {
+    const label = /^https?:\/\//i.test(suggestion.suggested_value) ? shortUrl(suggestion.suggested_value) : suggestion.suggested_value
+    return <div className="mb-suggestion" title={`${suggestion.slack_user_name ? `${suggestion.slack_user_name}: ` : ''}${suggestion.excerpt}`}>
+      <span className="mb-suggestion-label">{t('Sugerido desde Slack')}</span>
+      <span className="mb-suggestion-value" data-no-translate>{label}</span>
+      {canEdit && <span className="mb-suggestion-actions">
+        <button type="button" className="text-button" disabled={saving} onClick={async () => { setSaving(true); try { await onSuggestion(suggestion, true) } catch { /* shown above */ } finally { setSaving(false) } }}>{t('Aplicar')}</button>
+        <button type="button" className="text-button muted" disabled={saving} onClick={async () => { setSaving(true); try { await onSuggestion(suggestion, false) } catch { /* shown above */ } finally { setSaving(false) } }}>{t('Descartar')}</button>
+      </span>}
+    </div>
+  }
+  const shown = empty ? (fallback ? <span className="mb-fallback" title={t('Del dossier (áreas de servicio). Agrega la dirección exacta para segmentar.')}>{fallback}</span> : <span className="mb-missing">{t('Falta')}</span>)
     : display || (type === 'url' && /^https?:\/\//i.test(value) ? <a href={value} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{shortUrl(value)} ↗</a>
       : type === 'number' ? `$${value}` : value)
   return <div className={`mb-cell ${canEdit ? 'editable' : ''} ${saving ? 'saving' : ''}`}>
@@ -138,6 +150,11 @@ export default function MediaBuyerPage() {
     replaceClient(updated)
     setNotice(t('Estado de anuncios actualizado. Se avisa en el canal del cliente.'))
   }
+  const decideSuggestion = (client, suggestion, apply) => run(async () => {
+    await resolveDossierSuggestion(suggestion.id, apply)
+    const fresh = await loadMediaBuyerData(profile.id)
+    setData(fresh)
+  }, apply ? 'Sugerencia aplicada al dossier.' : 'Sugerencia descartada.')
   const addNote = (client, body) => run(async () => {
     await addClientComment({ clientId: client.id, profileId: profile.id, kind: 'update', body })
     replaceClient({ id: client.id, lastComment: { body: body.trim(), created_at: new Date().toISOString() } })
@@ -203,22 +220,22 @@ export default function MediaBuyerPage() {
           {visible.map((client) => <tr key={client.id}>
             <td className="mb-client"><Link to={`/clientes/${client.id}`} data-no-translate><strong>{client.code}</strong> {client.business_name}</Link>
               {client.google_docs_url && <a className="mb-sub" href={client.google_docs_url} target="_blank" rel="noreferrer">{t('Onboarding')} ↗</a>}</td>
-            <td><Cell value={client.ad_account_name} canEdit={canEdit} placeholder={client.meta_ad_account_id || ''} onSave={(value) => saveField(client, { ad_account_name: value })} />
+            <td><Cell value={client.ad_account_name} canEdit={canEdit} placeholder={client.meta_ad_account_id || ''} suggestion={client.suggestions?.ad_account_name} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { ad_account_name: value })} />
               {client.meta_ad_account_id && <small className="mb-sub" data-no-translate>ID {client.meta_ad_account_id}</small>}</td>
             <td><StatusCell client={client} canEdit={canEdit} onChange={saveStatus} /></td>
             <td className="mb-reason-cell" data-no-translate>{client.adStatus === 'Paused' || client.adStatus === 'Payment Error' ? client.ads_pause_reason : <span className="mb-muted">—</span>}</td>
-            <td><Cell type="select" options={RESULTS} value={client.ad_result_status} canEdit={canEdit} display={<span className={`mb-pill ${RESULT_CLASS[client.ad_result_status] || ''}`}>{client.ad_result_status}</span>} onSave={(value) => saveField(client, { ad_result_status: value })} /></td>
-            <td><Cell type="select" options={CONVERSIONS} value={client.conversion_location} canEdit={canEdit} onSave={(value) => saveField(client, { conversion_location: value })} /></td>
+            <td><Cell type="select" options={RESULTS} value={client.ad_result_status} canEdit={canEdit} display={<span className={`mb-pill ${RESULT_CLASS[client.ad_result_status] || ''}`}>{client.ad_result_status}</span>} suggestion={client.suggestions?.ad_result_status} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { ad_result_status: value })} /></td>
+            <td><Cell type="select" options={CONVERSIONS} value={client.conversion_location} canEdit={canEdit} suggestion={client.suggestions?.conversion_location} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { conversion_location: value })} /></td>
             <td>{client.conversion_location === 'Instant Form'
-              ? <Cell value={client.instant_form_name} canEdit={canEdit} placeholder={t('Nombre del Instant Form')} onSave={(value) => saveField(client, { instant_form_name: value })} />
-              : <Cell type="url" value={client.landing_page_url} canEdit={canEdit} placeholder="https://" onSave={(value) => saveField(client, { landing_page_url: value })} />}</td>
-            <td><Cell type="url" value={client.facebook_page_url} canEdit={canEdit} placeholder="https://facebook.com/…" onSave={(value) => saveField(client, { facebook_page_url: value })} /></td>
-            <td><Cell type="number" value={client.daily_budget} canEdit={canEdit} onSave={(value) => saveField(client, { daily_budget: value })} /></td>
-            <td><Cell value={client.ads_targeting_address} canEdit={canEdit} placeholder={client.markets || ''} display={client.ads_targeting_address} onSave={(value) => saveField(client, { ads_targeting_address: value })} /></td>
-            <td><Cell type="text" value={client.targeting_radius_miles ?? ''} canEdit={canEdit} display={client.targeting_radius_miles ? `${client.targeting_radius_miles} mi` : ''}
+              ? <Cell value={client.instant_form_name} canEdit={canEdit} placeholder={t('Nombre del Instant Form')} suggestion={client.suggestions?.instant_form_name} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { instant_form_name: value })} />
+              : <Cell type="url" value={client.landing_page_url} canEdit={canEdit} placeholder="https://" suggestion={client.suggestions?.landing_page_url} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { landing_page_url: value })} />}</td>
+            <td><Cell type="url" value={client.facebook_page_url} canEdit={canEdit} placeholder="https://facebook.com/…" suggestion={client.suggestions?.facebook_page_url} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { facebook_page_url: value })} /></td>
+            <td><Cell type="number" value={client.daily_budget} canEdit={canEdit} suggestion={client.suggestions?.daily_budget} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { daily_budget: value })} /></td>
+            <td><Cell value={client.ads_targeting_address} canEdit={canEdit} placeholder={client.markets || ''} display={client.ads_targeting_address} fallback={client.markets || client.target_zip_codes || ''} suggestion={client.suggestions?.ads_targeting_address} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { ads_targeting_address: value })} /></td>
+            <td><Cell type="text" value={client.targeting_radius_miles ?? ''} canEdit={canEdit} display={client.targeting_radius_miles ? `${client.targeting_radius_miles} mi` : ''} suggestion={client.suggestions?.targeting_radius_miles} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)}
               onSave={(value) => { const miles = Number(value); if (value !== '' && !(miles >= 1 && miles <= 500)) { setError(t('El radio debe estar entre 1 y 500 millas.')); return Promise.resolve() } return saveField(client, { targeting_radius_miles: value === '' ? null : Math.round(miles) }) }} /></td>
-            <td><Cell type="url" value={client.ad_creatives_link} canEdit={canEdit} placeholder="https://drive.google.com/…" onSave={(value) => saveField(client, { ad_creatives_link: value })} /></td>
-            <td><Cell type="url" value={client.booking_calendar_link} canEdit={canEdit} placeholder="https://" onSave={(value) => saveField(client, { booking_calendar_link: value })} /></td>
+            <td><Cell type="url" value={client.ad_creatives_link} canEdit={canEdit} placeholder="https://drive.google.com/…" suggestion={client.suggestions?.ad_creatives_link} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { ad_creatives_link: value })} /></td>
+            <td><Cell type="url" value={client.booking_calendar_link} canEdit={canEdit} placeholder="https://" suggestion={client.suggestions?.booking_calendar_link} onSuggestion={(item, apply) => decideSuggestion(client, item, apply)} onSave={(value) => saveField(client, { booking_calendar_link: value })} /></td>
             <td><NoteCell client={client} canEdit={canEdit} onAdd={addNote} /></td>
           </tr>)}
           {!visible.length && <tr><td colSpan="14" className="mb-empty">{t('No hay clientes con esos filtros.')}</td></tr>}
