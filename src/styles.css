@@ -3624,3 +3624,45 @@ a.training-lesson-title:hover { color: #0e81aa; text-decoration: underline; }
 @media (hover: none) { .mb-edit { visibility: visible; } }
 .team-directory-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .team-department { margin: 0 0 -.25rem; }
+
+/* Mi empresa → Checklist template editor */
+.checklist-template-page .team-subnav { margin-top: -.5rem; }
+.checklist-template-apply { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; padding: .9rem 1.1rem; border: 1px solid #9fc8e6; border-radius: 12px; background: #eaf5fd; color: #12324f; }
+.checklist-template-apply > div:first-child { display: grid; gap: .2rem; }
+.checklist-template-apply span { font-size: .88rem; color: #33536f; }
+.checklist-template-apply-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.checklist-template-phase { display: grid; gap: .6rem; }
+.checklist-template-phase > header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.checklist-template-phase > header h3 { margin: 0; font-size: 1rem; }
+.checklist-template-list { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.checklist-template-list > li { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .65rem .75rem; border: 1px solid #e1e8ef; border-radius: 10px; background: #fbfcfd; }
+.checklist-template-list > li.editing { display: block; border-color: #9fc8e6; background: #f4f9fd; }
+.checklist-template-number { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%; background: #e8eff5; color: #3b5670; font-size: .75rem; font-weight: 800; }
+.checklist-template-text { display: grid; gap: .15rem; min-width: 0; }
+.checklist-template-text strong { font-size: .9rem; font-weight: 650; color: #17293b; }
+.checklist-template-text small { color: #7a8ea2; font-size: .78rem; }
+.checklist-template-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .2rem; }
+.checklist-template-tags span { padding: .15rem .45rem; border-radius: 6px; background: #eef2f6; color: #4a6075; font-size: .7rem; font-weight: 700; }
+.checklist-template-tags .evidence-required { background: #fdf0e3; color: #8a4d0f; }
+.checklist-template-tags .evidence-optional { background: #e9f4fb; color: #1d5f86; }
+.checklist-template-actions { display: flex; align-items: center; gap: .3rem; white-space: nowrap; }
+.checklist-template-actions.confirm span { font-size: .82rem; font-weight: 650; color: #861326; margin-right: .3rem; }
+.checklist-template-actions .icon-button { width: 2rem; height: 2rem; border: 1px solid #d8e1ea; border-radius: 8px; background: #fff; color: #3b5670; font-weight: 800; cursor: pointer; }
+.checklist-template-actions .icon-button:disabled { opacity: .35; cursor: default; }
+.checklist-template-add { justify-self: start; }
+.checklist-template-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
+.checklist-template-form label { display: grid; gap: .3rem; font-size: .78rem; font-weight: 700; color: #4a6075; }
+.checklist-template-form label.wide { grid-column: span 3; }
+.checklist-template-form-actions { grid-column: span 3; display: flex; gap: .5rem; }
+@media (max-width: 800px) {
+  .checklist-template-list > li { grid-template-columns: 2rem minmax(0, 1fr); }
+  .checklist-template-actions { grid-column: span 2; justify-content: flex-end; }
+  .checklist-template-form { grid-template-columns: minmax(0, 1fr); }
+  .checklist-template-form label.wide, .checklist-template-form-actions { grid-column: auto; }
+}
+html[data-theme='dark'] .checklist-template-list > li { background: #f7f9fa; }
+.checklist-template-actions .danger-text { color: #b4233b; }
+.checklist-template-actions .text-button.danger-text { color: #b4233b; }
+.checklist-template-form input,
+.checklist-template-form select { width: 100%; min-height: 2.4rem; padding: .45rem .65rem; border: 1px solid #cfdbe6; border-radius: 9px; background: #fff; color: #17293b; font: inherit; font-weight: 500; }
+.checklist-template-form { margin: 0; }

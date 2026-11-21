@@ -38,6 +38,7 @@ const TrainingPage = lazyWithRetry(() => import('./pages/TrainingPage'), 'traini
 const MyAccountPage = lazyWithRetry(() => import('./pages/MyAccountPage'), 'my-account')
 const TeamDirectoryPage = lazyWithRetry(() => import('./pages/TeamDirectoryPage'), 'team-directory')
 const CompanyPage = lazyWithRetry(() => import('./pages/CompanyPage'), 'company')
+const ChecklistTemplatePage = lazyWithRetry(() => import('./pages/ChecklistTemplatePage'), 'checklist-template')
 const MediaBuyerPage = lazyWithRetry(() => import('./pages/MediaBuyerPage'), 'media-buyer')
 
 class AppErrorBoundary extends React.Component {
@@ -83,6 +84,7 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute allowedPermissions={['operations_admin']} />}>
                 <Route path="mi-empresa" element={<CompanyPage />} />
+                <Route path="mi-empresa/checklist" element={<ChecklistTemplatePage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
