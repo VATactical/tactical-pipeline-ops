@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 // and stores one row per notice in client_lead_notices. Those rows feed the no-leads alert and the
 // weekly report drafts (SQL: private.check_no_lead_clients / private.draft_weekly_client_reports).
 // Callers: the scheduler (x-tp-ops-key, integration 'slack_ticket_sync'). Body { task: "scan" }.
-// Needs SLACK_BOT_TOKEN (channels:history, channels:join).
+// Needs SLACK_BOT_TOKEN (channels:history, channels:join). Body { task: "meta" } also needs META_ACCESS_TOKEN.
 
 const SLACK_API = "https://slack.com/api";
 const FIRST_SCAN_DAYS = 35;
@@ -93,6 +93,82 @@ async function scan(admin: ReturnType<typeof adminClient>, token: string) {
   return { channels, stored, errors };
 }
 
+// --- Meta: what is really running ---------------------------------------------------------------
+// For every client with a Meta ad account ID: account status, ads by effective status, and daily
+// spend + Meta-reported leads for the last 8 days. Uses the portfolio META_ACCESS_TOKEN (system
+// user with ads_read). Stored in client_meta_status / client_meta_daily; compared with TOPS by
+// private.check_meta_mismatches.
+const META_GRAPH = "https://graph.facebook.com/v23.0";
+const ACCOUNT_STATUS: Record<number, string> = {
+  1: "active", 2: "disabled", 3: "unsettled (payment due)", 7: "pending risk review", 8: "pending settlement",
+  9: "in grace period", 100: "pending closure", 101: "closed", 201: "active", 202: "closed",
+};
+const LEAD_ACTIONS = new Set(["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead", "onsite_web_lead"]);
+
+async function meta(token: string, path: string, params: Record<string, string> = {}) {
+  const response = await fetch(`${META_GRAPH}/${path}?${new URLSearchParams(params)}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const body = await response.json().catch(() => ({})) as Row & { error?: { message?: string } };
+  if (!response.ok || body.error) throw new Error(`Meta ${response.status}: ${body.error?.message || response.statusText}`);
+  return body;
+}
+
+async function metaCheck(admin: ReturnType<typeof adminClient>) {
+  const token = Deno.env.get("META_ACCESS_TOKEN") || "";
+  if (!token) return { error: "META_ACCESS_TOKEN is not configured" };
+  const { data: clients, error } = await admin.from("clients").select("id, code, meta_ad_account_id").eq("archived", false);
+  if (error) throw error;
+  const today = new Date();
+  const since = new Date(today.getTime() - 8 * 86400000).toISOString().slice(0, 10);
+  const until = today.toISOString().slice(0, 10);
+  let checked = 0;
+  const errors: string[] = [];
+  for (const client of clients || []) {
+    const digits = String(client.meta_ad_account_id || "").replace(/\D/g, "");
+    if (!digits) continue;
+    checked += 1;
+    const now = new Date().toISOString();
+    try {
+      const account = await meta(token, `act_${digits}`, { fields: "name,account_status,disable_reason,currency,timezone_name" });
+      const ads = await meta(token, `act_${digits}/ads`, {
+        fields: "effective_status", limit: "500",
+        effective_status: JSON.stringify(["ACTIVE", "DISAPPROVED", "WITH_ISSUES", "PENDING_REVIEW", "ADSET_PAUSED", "CAMPAIGN_PAUSED", "PAUSED"]),
+      });
+      const counts: Record<string, number> = {};
+      for (const ad of (ads.data as Row[]) || []) counts[String(ad.effective_status)] = (counts[String(ad.effective_status)] || 0) + 1;
+      const insights = await meta(token, `act_${digits}/insights`, {
+        fields: "spend,actions", level: "account", time_increment: "1",
+        time_range: JSON.stringify({ since, until }), limit: "31",
+      });
+      const days = ((insights.data as Row[]) || []).map((row) => ({
+        client_id: client.id, day: String(row.date_start), spend: Number(row.spend) || 0,
+        meta_leads: ((row.actions as Row[]) || []).filter((action) => LEAD_ACTIONS.has(String(action.action_type)))
+          .reduce((max, action) => Math.max(max, Number(action.value) || 0), 0),
+        synced_at: now,
+      }));
+      if (days.length) {
+        const { error: dayError } = await admin.from("client_meta_daily").upsert(days, { onConflict: "client_id,day" });
+        if (dayError) throw dayError;
+      }
+      const status = Number(account.account_status);
+      const { error: statusError } = await admin.from("client_meta_status").upsert({
+        client_id: client.id, ad_account_id: digits, account_name: String(account.name || ""),
+        account_status: status, account_status_label: ACCOUNT_STATUS[status] || `status ${status}`,
+        disable_reason: Number(account.disable_reason) || 0, currency: String(account.currency || ""),
+        active_ads: counts.ACTIVE || 0, disapproved_ads: counts.DISAPPROVED || 0, issue_ads: counts.WITH_ISSUES || 0,
+        pending_review_ads: counts.PENDING_REVIEW || 0, error: "", checked_at: now,
+      });
+      if (statusError) throw statusError;
+    } catch (failure) {
+      const message = String((failure as Error).message || failure).slice(0, 300);
+      errors.push(`${client.code}: ${message}`);
+      await admin.from("client_meta_status").upsert({ client_id: client.id, ad_account_id: digits, error: message, checked_at: now });
+    }
+  }
+  return { checked, errors };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
@@ -105,6 +181,7 @@ Deno.serve(async (request: Request) => {
     if (!token) return json({ error: "SLACK_BOT_TOKEN is not configured" }, 400);
     const body = await request.json().catch(() => ({})) as { task?: string };
     if (body.task === "scan") return json(await scan(admin, token));
+    if (body.task === "meta") return json(await metaCheck(admin));
     return json({ error: "Unknown task" }, 400);
   } catch (error) {
     console.error("Client pulse failed", error);
