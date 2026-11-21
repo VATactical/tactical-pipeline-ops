@@ -2181,27 +2181,22 @@ html[data-theme='light'] .client-name-pin-code { background: #e9f4fb; color: #08
 .client-dossier-page[data-client-tab="dossier"] .dossier-section {
   margin-block: .15rem;
 }
-html[data-theme='light'] .client-name-pin {
-  border-color: #42b6dc;
-  background: #ccefff;
-  color: #123b55;
-}
-html[data-theme='light'] .client-name-pin > strong { color: #123b55; }
-html[data-theme='light'] .client-name-pin-phase { color: #245b73; }
-html[data-theme='light'] .client-name-pin-code {
-  background: #a9e5f8;
-  color: #075678;
-}
+/* Pinned client bar: dark navy with white text in both themes. */
+html[data-theme='light'] .client-name-pin,
 html[data-theme='dark'] .client-name-pin {
-  border-color: #20b8e4;
-  background: #f7f9fa;
-  color: #1b2d32;
+  border-color: #0b2340;
+  background: #0f2d4f;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(9, 25, 45, .22);
 }
-html[data-theme='dark'] .client-name-pin > strong { color: #1b2d32; }
-html[data-theme='dark'] .client-name-pin-phase { color: #446e7e; }
+html[data-theme='light'] .client-name-pin > strong,
+html[data-theme='dark'] .client-name-pin > strong { color: #fff; }
+html[data-theme='light'] .client-name-pin-phase,
+html[data-theme='dark'] .client-name-pin-phase { color: #c9d8e8; }
+html[data-theme='light'] .client-name-pin-code,
 html[data-theme='dark'] .client-name-pin-code {
-  background: #f7f9fa;
-  color: #1b2d32;
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
 }
 @media (max-width: 800px) {
   .client-dossier-page[data-client-tab="dossier"] .print-dossier {
