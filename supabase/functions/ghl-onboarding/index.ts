@@ -210,6 +210,45 @@ async function notifyOperations(supabase: ReturnType<typeof adminClient>, client
   if (notificationError) throw notificationError;
 }
 
+// #onboarding in Slack. The insert fires the slack-bridge outbox right away; dedupe_key keeps
+// a retried GHL delivery from posting twice. A Slack failure never fails the import.
+const ONBOARDING_CHANNEL = Deno.env.get("SLACK_ONBOARDING_CHANNEL") || "C0C3LEA2CK0";
+const APP_URL = Deno.env.get("TP_OPS_APP_URL") || "https://app.tacticalpipeline.com";
+const slackText = (input: unknown, max = 160) => text(input, max).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const MISSING_CHECKS: [string, string][] = [
+  ["meta_ad_account_id", "Meta ad account"], ["meta_business_portfolio_id", "Business portfolio"], ["daily_budget", "Daily budget"],
+  ["services", "Services"], ["markets", "Service area"], ["ads_targeting_address", "Targeting address"],
+  ["facebook_page_url", "Facebook page"], ["website_url", "Website"], ["gbp_link", "Google Business Profile"],
+];
+async function announceInSlack(supabase: ReturnType<typeof adminClient>, client: Record<string, unknown>, action: string, importId: string) {
+  const name = slackText(client.business_name || client.legal_name);
+  const header = action === "created"
+    ? `:tada: *New onboarding* · *${slackText(client.code, 20)} ${name}* just submitted the Client Onboarding Form in GHL.`
+    : `:memo: *Onboarding form updated* · *${slackText(client.code, 20)} ${name}* submitted the Client Onboarding Form again (only empty fields were filled).`;
+  const line = (label: string, input: unknown, max = 160) => fieldText(input) ? `• ${label}: ${slackText(input, max)}` : "";
+  const budget = Number(client.daily_budget);
+  const radius = Number(client.targeting_radius_miles);
+  const missing = MISSING_CHECKS.filter(([key]) => !fieldText(client[key])).map(([, label]) => label);
+  const body = [
+    header,
+    line("Owner", client.owner_name),
+    line("Contact", [client.phone, client.contact_email || client.email].filter((part) => fieldText(part)).join(" · ")),
+    line("Services", client.services, 200),
+    line("Service area", client.markets, 200),
+    Number.isFinite(budget) && budget > 0 ? `• Daily budget: $${budget}` : "",
+    Number.isFinite(radius) && radius > 0 ? `• Radius: ${radius} mi` : "",
+    line("Onboarding call language", client.onboarding_call_language, 60),
+    line("Availability", client.appointment_availability, 200),
+    missing.length ? `:warning: Still missing: ${missing.join(", ")}` : ":white_check_mark: Dossier has the key fields.",
+    `<${APP_URL}/clientes/${client.id}|Open in TOPS>`,
+  ].filter(Boolean).join("\n");
+  const { error } = await supabase.from("slack_outbox").insert({
+    kind: "onboarding_new", client_id: String(client.id), channel_id: ONBOARDING_CHANNEL, body,
+    dedupe_key: `ghl_onboarding:${importId}`,
+  });
+  if (error && error.code !== "23505") console.error("Could not queue onboarding Slack notice", error.message);
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return response({ error: "Method not allowed" }, 405);
   const supabase = adminClient();
@@ -288,6 +327,8 @@ Deno.serve(async (request: Request) => {
     if (auditError) throw auditError;
     await updateImport(supabase, receipt.id, { sync_stage: "audit_saved" });
     await notifyOperations(supabase, client, action);
+    try { await announceInSlack(supabase, client, action, String(receipt.id)); }
+    catch (slackError) { console.error("Onboarding Slack notice failed", slackError); }
     await updateImport(supabase, receipt.id, {
       client_id: client.id, status: "processed", sync_stage: "processed", action,
       processed_at: new Date().toISOString(), last_attempt_at: new Date().toISOString(),
