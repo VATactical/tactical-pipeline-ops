@@ -5,7 +5,9 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 // Auth: header x-tp-ops-key, same key as the onboarding form (integration 'ghl_onboarding').
 // Accepts GHL's standard Webhook payload (contact fields + `calendar` object + `customData`).
 // Matches the TOPS client, saves the call (client_onboarding_calls + clients.onboarding_call_at)
-// and posts the time in EST with the client's info; a reschedule posts again.
+// and posts the time in EST with the client's info to #onboarding, mentioning everyone in the
+// Onboarding department; a reschedule posts again. The client is told by GHL's own workflow (SMS),
+// so nothing is posted in the client channel.
 
 type Payload = Record<string, unknown>;
 const ONBOARDING_CHANNEL = Deno.env.get("SLACK_ONBOARDING_CHANNEL") || "C0C3LEA2CK0";
@@ -137,14 +139,13 @@ Deno.serve(async (request: Request) => {
     if (link) lines.push(`• Meeting: ${slackText(link, 200)}`);
     lines.push(":grey_question: Not in TOPS yet: the onboarding form has not arrived for this contact.");
   }
+  const { data: mentions } = await admin.rpc("onboarding_team_slack_mentions");
+  if (filled(mentions)) lines.push(`cc ${mentions}`);
   const body = lines.join("\n");
-  const stamp = startsAt.toISOString();
-  const rows = [{ kind: "onboarding_call", client_id: client?.id ?? null, channel_id: ONBOARDING_CHANNEL, body, dedupe_key: `onb_call:${appointmentId}:${stamp}` }];
-  const clientChannel = String(client?.slack_channel_link || "").match(/C[A-Z0-9]{8,}/)?.[0];
-  if (clientChannel) rows.push({ kind: "onboarding_call", client_id: client!.id as string, channel_id: clientChannel, body, dedupe_key: `onb_call_client:${appointmentId}:${stamp}` });
-  for (const row of rows) {
-    const { error } = await admin.from("slack_outbox").insert(row);
-    if (error && error.code !== "23505") console.error("Could not queue onboarding call notice", error.message);
-  }
+  const { error } = await admin.from("slack_outbox").insert({
+    kind: "onboarding_call", client_id: client?.id ?? null, channel_id: ONBOARDING_CHANNEL, body,
+    dedupe_key: `onb_call:${appointmentId}:${startsAt.toISOString()}`,
+  });
+  if (error && error.code !== "23505") console.error("Could not queue onboarding call notice", error.message);
   return json({ ok: true, client_code: client?.code ?? null, starts_at_est: when, rescheduled });
 });
