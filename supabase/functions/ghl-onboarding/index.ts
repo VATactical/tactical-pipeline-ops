@@ -257,6 +257,16 @@ Deno.serve(async (request: Request) => {
   if (rawBody.length > 100_000) return response({ error: "Payload too large" }, 413);
   let payload: Payload;
   try { payload = JSON.parse(rawBody); } catch { return response({ error: "Invalid JSON" }, 400); }
+  // GHL's standard "Webhook" workflow action nests the mapped keys under customData and the
+  // sub-account under location.id; lift them to the top level so both action types work.
+  if (payload && typeof payload === "object") {
+    const custom = payload.customData;
+    if (custom && typeof custom === "object" && !Array.isArray(custom)) {
+      for (const [key, item] of Object.entries(custom as Payload)) if (fieldText(item)) payload[key] = item;
+    }
+    const location = payload.location as Payload | undefined;
+    if (!fieldText(payload.location_id) && location && typeof location === "object") payload.location_id = location.id;
+  }
 
   const locationId = value(payload, "location_id", "locationId");
   const contactId = value(payload, "contact_id", "contactId");
