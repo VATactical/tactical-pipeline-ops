@@ -49,19 +49,27 @@ export function channelName(code: string, business: string) {
   return slug.slice(0, 80).replace(/-+$/, "");
 }
 
-async function findChannel(name: string) {
+// Finds an open public channel by exact name or, when given, by the client code prefix ("c29-…"),
+// so a channel someone already created by hand is reused instead of duplicated.
+async function findChannel(name: string, codePrefix = "") {
   let cursor = "";
+  let byCode: { id: string; name: string } | null = null;
   for (let page = 0; page < 10; page += 1) {
     const params: Record<string, string> = { types: "public_channel", exclude_archived: "true", limit: "1000" };
     if (cursor) params.cursor = cursor;
     const body = await slack("conversations.list", params);
-    if (!body.ok) return null;
-    const found = ((body.channels as { id: string; name: string }[]) || []).find((channel) => channel.name === name);
-    if (found) return found;
+    if (!body.ok) return byCode;
+    const channels = (body.channels as { id: string; name: string; created?: number }[]) || [];
+    const exact = channels.find((channel) => channel.name === name);
+    if (exact) return exact;
+    if (codePrefix && !byCode) {
+      byCode = channels.filter((channel) => channel.name === codePrefix.slice(0, -1) || channel.name.startsWith(codePrefix))
+        .sort((a, b) => (a.created || 0) - (b.created || 0))[0] || null;
+    }
     cursor = String((body.response_metadata as { next_cursor?: string } | undefined)?.next_cursor || "");
-    if (!cursor) return null;
+    if (!cursor) return byCode;
   }
-  return null;
+  return byCode;
 }
 
 async function setupSlack(admin: ReturnType<typeof adminClient>, client: Client, actorName: string): Promise<Step> {
@@ -72,8 +80,14 @@ async function setupSlack(admin: ReturnType<typeof adminClient>, client: Client,
   const name = channelName(client.code, client.business_name);
   let channelId = "";
   let status: Step["status"] = "created";
-  const created = await slack("conversations.create", { name, is_private: "false" });
-  if (created.ok) {
+  const codePrefix = `${channelName(client.code, "")}-`;
+  const already = await findChannel(name, codePrefix);
+  const created = already ? { ok: false, error: "name_taken" } : await slack("conversations.create", { name, is_private: "false" });
+  if (already) {
+    channelId = already.id;
+    status = "linked";
+    await slack("conversations.join", { channel: channelId });
+  } else if (created.ok) {
     channelId = String((created.channel as { id: string }).id);
   } else if (created.error === "name_taken") {
     const found = await findChannel(name);
@@ -96,12 +110,12 @@ async function setupSlack(admin: ReturnType<typeof adminClient>, client: Client,
   await slack("conversations.setTopic", { channel: channelId, topic: `${client.code} · ${client.business_name} — TP OPS: ${clientUrl}`.slice(0, 250) });
   await slack("chat.postMessage", {
     channel: channelId, unfurl_links: "false",
-    text: `:wave: Canal de *${client.code} · ${client.business_name}* creado desde TP OPS por ${actorName}.\nDossier, checklist y tickets: <${clientUrl}|Abrir en TP OPS>`,
+    text: `:wave: Canal de *${client.code} · ${client.business_name}* ${status === "linked" ? "vinculado a" : "creado desde"} TP OPS por ${actorName}.\nDossier, checklist y tickets: <${clientUrl}|Abrir en TP OPS>`,
   });
 
   const url = `${WORKSPACE_URL}/archives/${channelId}`;
   await admin.from("clients").update({ slack_channel_link: url, updated_at: new Date().toISOString() }).eq("id", client.id);
-  return { status, url, message: `#${name}` };
+  return { status, url, message: `#${already?.name || name}` };
 }
 
 // ---------- Google Drive ----------
