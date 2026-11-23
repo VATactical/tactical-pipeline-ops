@@ -179,9 +179,21 @@ Deno.serve(async (request: Request) => {
     if (valid !== true) return json({ error: "Invalid key" }, 401);
     const token = Deno.env.get("SLACK_BOT_TOKEN") || "";
     if (!token) return json({ error: "SLACK_BOT_TOKEN is not configured" }, 400);
-    const body = await request.json().catch(() => ({})) as { task?: string };
+    const body = await request.json().catch(() => ({})) as { task?: string; channel?: string };
     if (body.task === "scan") return json(await scan(admin, token));
     if (body.task === "meta") return json(await metaCheck(admin));
+    if (body.task === "archive_channel") {
+      // Archives a duplicate channel, only if the TP OPS bot created it and no client links to it.
+      const channel = String((body as { channel?: string }).channel || "");
+      if (!/^C[A-Z0-9]{8,}$/.test(channel)) return json({ error: "channel required" }, 400);
+      const [me, info] = await Promise.all([slack(token, "auth.test", {}), slack(token, "conversations.info", { channel })]);
+      const creator = String((info.channel as Row | undefined)?.creator || "");
+      if (!info.ok || !me.ok || creator !== String(me.user_id)) return json({ error: "Only channels created by TP OPS can be archived here." }, 403);
+      const { count } = await admin.from("clients").select("id", { count: "exact", head: true }).like("slack_channel_link", `%${channel}%`);
+      if (count) return json({ error: "A client still links to this channel." }, 409);
+      const done = await slack(token, "conversations.archive", { channel });
+      return json({ ok: done.ok === true, error: done.ok ? undefined : done.error });
+    }
     return json({ error: "Unknown task" }, 400);
   } catch (error) {
     console.error("Client pulse failed", error);
