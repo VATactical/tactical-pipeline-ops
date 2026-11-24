@@ -12,6 +12,11 @@ const LIVE = [
   new RegExp(String.raw`\b${ADS}\b[^.\n]{0,40}\b(launched|re-?launched|(?:is|are|went|now) live|live now|published|turned (?:back )?on|activated|running now|back (?:on|live|running)|lanzad[ao]s?|relanzad[ao]s?|activad[ao]s?|activ[ao]s|encendid[ao]s?|publicad[ao]s?|en vivo|corriendo|ya corr(?:e|en))\b`, "i"),
   new RegExp(String.raw`\b(launched|re-?launched|published|turned (?:back )?on|lanc[eé]|relanc[eé]|activ[eé]|encend[ií]|publiqu[eé])\b[^.\n]{0,30}\b${ADS}\b`, "i"),
 ];
+// Short forms: "ads live", "C8 ads are live", "campaña activa", "campaign active". Not about an account, a pixel or a card,
+// and not negated ("ads are not active").
+const LIVE_SHORT = new RegExp(String.raw`\b${ADS}\b[^.\n]{0,25}\b(live|active|activ[ao]s?|en vivo)\b`, "i");
+const LIVE_SHORT_NOT = /\b(not|no|nunca|account|cuenta|pixel|card|tarjeta|payment|pago|page|p[aá]gina|form|formulario|manager)\b/i;
+
 const PAUSED = [
   new RegExp(String.raw`\b${ADS}\b[^.\n]{0,30}\b(paused|turned off|stopped|are off|is off|pausad[ao]s?|apagad[ao]s?|detenid[ao]s?)\b`, "i"),
   new RegExp(String.raw`\b(paused|turned off|stopped|paus[eé]|apagu[eé]|detuve)\b[^.\n]{0,25}\b${ADS}\b`, "i"),
@@ -42,7 +47,7 @@ export function detectSignals(raw: string): Signal[] {
     const fact = !NOT_A_FACT.test(sentence);
     if (PAYMENT_FIXED.test(sentence) && fact) found.add("payment_fixed");
     else if (PAYMENT_ERROR.test(sentence) && !/\b(fixed|resolved|resuelto|solved)\b/i.test(sentence)) found.add("payment_error");
-    if (fact && LIVE.some((pattern) => pattern.test(sentence))) found.add("ads_live");
+    if (fact && (LIVE.some((pattern) => pattern.test(sentence)) || (LIVE_SHORT.test(sentence) && !LIVE_SHORT_NOT.test(sentence)))) found.add("ads_live");
     if (fact && PAUSED.some((pattern) => pattern.test(sentence)) && !/\b(un-?paused|unpause|despausad)/i.test(sentence)) found.add("ads_paused");
     if (fact && !notYet && (CHURNED.test(sentence) || CHURN_ALONE.test(sentence)) && !CHURN_RISK.test(sentence)) found.add("churned");
     if (PROBLEM.test(sentence) && !/\b(fixed|resolved|resuelto|solved|no longer)\b/i.test(sentence)) found.add("problem");
