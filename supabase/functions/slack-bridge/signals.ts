@@ -1,7 +1,7 @@
 // Status signals in a message written by the team or the client in a client channel.
 // Only clear phrases count; every result is an alert that a person applies or dismisses in TP OPS.
 
-export type Signal = "ads_live" | "ads_paused" | "payment_error" | "payment_fixed" | "problem";
+export type Signal = "ads_live" | "ads_paused" | "payment_error" | "payment_fixed" | "problem" | "churned";
 
 const ADS = String.raw`(?:campaigns?|ads?|ad ?sets?|campa[nñ]as?|anuncios?)`;
 
@@ -21,6 +21,14 @@ const PAYMENT_ERROR = /\b(payment (?:error|failed|failure|issue|problem|declined
 const PAYMENT_FIXED = /\b(payment (?:method )?(?:is )?(?:fixed|resolved|updated|added|went through|approved)|added (?:a |the |new )*(?:payment method|card)|(?:card|billing) (?:fixed|updated|resolved)|paid the balance|pago (?:resuelto|aprobado|realizado)|agreg[oó] (?:el|un|la) (?:m[eé]todo de pago|tarjeta)|actualiz[oó] (?:el m[eé]todo de pago|la tarjeta))\b/i;
 const PROBLEM = /\b(not working|isn'?t working|doesn'?t work|stopped working|broken|no funciona|dej[oó] de funcionar|wants? to cancel|cancel(?:ling)? (?:the |his |her |their )?(?:service|contract|account)|refund|reembolso|cancelar el servicio|upset|angry|furious|complain(?:ed|ing|t)?|queja|molest[oa]|(?:no|zero|0) leads|sin leads|ads? (?:rejected|disapproved)|(?:rejected|disapproved) ads?|anuncios? rechazados?|blocked by|bloquead[oa])\b/i;
 
+// The client left: "Client churned", "C16 CHURNED", "client is inactive", "cliente inactivo". Archived in TP OPS.
+// The subject must be the client (or the message is just "churned"), so "they churned" about someone else does not count.
+const CHURNED = /\b((?:the )?(?:client|customer|cliente|c\d{1,3}) (?:is |has |was |now |has been |is now |just |est[aá] |qued[oó] |pas[oó] a )*(?:inactive|churned|inactiv[oa]|cancel(?:l)?ed|cancelad[oa])|client churn|(?:inactive|churned) (?:client|customer)|(?:moved|marked) (?:it |them |this client |the client )?(?:to|as) (?:churned?|inactive)|cliente (?:inactivo|se fue|se dio de baja))\b/i;
+const CHURN_ALONE = /^\W*(churned|client churned|inactive|inactivo|client inactive)\W*$/i;
+const CHURN_RISK = /\b(risk|riesgo|might|may|maybe|almost|about to|close to|avoid|prevent|evitar|if|si)\b/i;
+// Anywhere in the message: still trying to save the client ("call again, otherwise we'll move to churn").
+const CHURN_NOT_YET = /\b(otherwise|or else|attempt|try(?:ing)? (?:to|again)|call (?:again|back)|follow(?:ing)? up|reach out|move (?:it |them )?to churn|will churn|si no|de lo contrario|intent(?:ar|a|emos)|llamar de nuevo)\b/i;
+
 const clean = (text: string) => text
   .replace(/<(https?:\/\/[^|>]+)\|[^>]*>/g, " ").replace(/<(https?:\/\/[^>]+)>/g, " ").replace(/<[@#!][^>]*>/g, " ")
   .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
@@ -28,6 +36,7 @@ const clean = (text: string) => text
 // Signals per sentence, so "C10 launched; C12 pending launch tomorrow" only counts the fact.
 export function detectSignals(raw: string): Signal[] {
   const found = new Set<Signal>();
+  const notYet = CHURN_NOT_YET.test(clean(raw));
   const sentences = clean(raw).split(/(?<=[.!?\n])\s+|\n+/).map((part) => part.trim()).filter(Boolean);
   for (const sentence of sentences) {
     const fact = !NOT_A_FACT.test(sentence);
@@ -35,10 +44,13 @@ export function detectSignals(raw: string): Signal[] {
     else if (PAYMENT_ERROR.test(sentence) && !/\b(fixed|resolved|resuelto|solved)\b/i.test(sentence)) found.add("payment_error");
     if (fact && LIVE.some((pattern) => pattern.test(sentence))) found.add("ads_live");
     if (fact && PAUSED.some((pattern) => pattern.test(sentence)) && !/\b(un-?paused|unpause|despausad)/i.test(sentence)) found.add("ads_paused");
+    if (fact && !notYet && (CHURNED.test(sentence) || CHURN_ALONE.test(sentence)) && !CHURN_RISK.test(sentence)) found.add("churned");
     if (PROBLEM.test(sentence) && !/\b(fixed|resolved|resuelto|solved|no longer)\b/i.test(sentence)) found.add("problem");
   }
   // A payment problem already explains the pause; a launch/fix wins over a generic pause mention.
   if (found.has("payment_error")) found.delete("ads_paused");
   if (found.has("payment_fixed")) found.delete("payment_error");
+  // A churned client is archived; the other alerts no longer matter.
+  if (found.has("churned")) return ["churned"];
   return [...found];
 }

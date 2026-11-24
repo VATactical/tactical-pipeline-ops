@@ -5,12 +5,13 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { loadStatusSignals, resolveStatusSignal } from '../services/opsService'
 
 // What the team or the client said in the client's Slack channel that changes its status:
-// campaign launched / paused, payment problem / fixed, or a problem. Nothing changes until someone applies it.
+// campaign launched / paused, payment problem / fixed, a problem, or the client churned (archives it). Nothing changes until someone applies it.
 export const SIGNALS = {
   ads_live: { icon: '🚀', label: 'Campaña encendida', action: 'Marcar ADS LIVE', tone: 'good' },
   payment_fixed: { icon: '💳', label: 'Pago resuelto', action: 'Reactivar ADS', tone: 'good' },
   ads_paused: { icon: '⏸', label: 'Campaña pausada', action: 'Pausar ADS', tone: 'warn' },
   payment_error: { icon: '⚠️', label: 'Problema de pago', action: 'Marcar Payment Error', tone: 'bad' },
+  churned: { icon: '📦', label: 'Cliente churned / inactivo', action: 'Archivar cliente', tone: 'bad' },
   problem: { icon: '🚩', label: 'Problema reportado', action: 'Registrar bloqueo', tone: 'bad' },
 }
 const OUTCOME = {
