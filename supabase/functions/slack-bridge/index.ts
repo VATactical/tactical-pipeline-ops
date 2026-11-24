@@ -14,7 +14,8 @@ import { detectSignals } from "./signals.ts";
 //   suggestions in public.client_dossier_suggestions. Nothing in the dossier changes until someone
 //   applies the suggestion in TOPS. It also reads status signals (campaign launched / paused, payment
 //   problem / fixed, client problem, client churned) and saves them in public.client_status_signals for someone
-//   to confirm. A "churned" written by someone who may archive clients archives the client right away (DB trigger).
+//   to confirm. A "churned" written by someone who may archive clients archives the client right away, and an
+//   "ads live" written by a team member sets ADS LIVE and replies in the thread (DB triggers).
 // task "eod": imports the EODs people post in #eod-reports (last 48 h, so edits are picked up) as their
 //   EOD report in TP OPS, and reacts with ✅ (needs reactions:write; skipped without it).
 //
