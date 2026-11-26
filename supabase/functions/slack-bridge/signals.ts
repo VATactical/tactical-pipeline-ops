@@ -23,7 +23,7 @@ const PAUSED = [
   /\bads (?:are )?off\b/i,
 ];
 const PAYMENT_ERROR = /\b(payment (?:error|failed|failure|issue|problem|declined|rejected)|(?:card|tarjeta) (?:was |is |got |fue |est[aá] )?(?:declined|rejected|failed|rechazada|declinada)|failed (?:payment|transaction|charge)|billing (?:issue|error|problem)|(?:ad )?account (?:is |was |got )?(?:disabled|restricted|suspended)|spending limit|could not pay|couldn'?t pay|error de pago|problema (?:de|con el) pago|pago (?:rechazado|fallido)|m[eé]todo de pago (?:rechazado|con error|fall[oó]))\b/i;
-const PAYMENT_FIXED = /\b(payment (?:method )?(?:is )?(?:fixed|resolved|updated|added|went through|approved)|added (?:a |the |new )*(?:payment method|card)|(?:card|billing) (?:fixed|updated|resolved)|paid the balance|pago (?:resuelto|aprobado|realizado)|agreg[oó] (?:el|un|la) (?:m[eé]todo de pago|tarjeta)|actualiz[oó] (?:el m[eé]todo de pago|la tarjeta))\b/i;
+const PAYMENT_FIXED = /\b((?:cleared|fixed|resolved|solved|paid off|took care of) (?:the |his |her |their )?(?:payment|billing)(?: method)? ?(?:issue|error|problem|balance)?|(?:payment|billing) (?:issue|error|problem) (?:is |was |has been |got )?(?:cleared|fixed|resolved|solved)|payment (?:method )?(?:is )?(?:fixed|resolved|updated|added|went through|approved)|added (?:a |the |new )*(?:payment method|card)|(?:card|billing) (?:fixed|updated|resolved)|paid the balance|pago (?:resuelto|aprobado|realizado)|agreg[oó] (?:el|un|la) (?:m[eé]todo de pago|tarjeta)|actualiz[oó] (?:el m[eé]todo de pago|la tarjeta))\b/i;
 const PROBLEM = /\b(not working|isn'?t working|doesn'?t work|stopped working|broken|no funciona|dej[oó] de funcionar|wants? to cancel|cancel(?:ling)? (?:the |his |her |their )?(?:service|contract|account)|refund|reembolso|cancelar el servicio|upset|angry|furious|complain(?:ed|ing|t)?|queja|molest[oa]|(?:no|zero|0) leads|sin leads|ads? (?:rejected|disapproved)|(?:rejected|disapproved) ads?|anuncios? rechazados?|blocked by|bloquead[oa])\b/i;
 
 // The client left: "Client churned", "C16 CHURNED", "client is inactive", "cliente inactivo". Archived in TP OPS.
@@ -46,7 +46,7 @@ export function detectSignals(raw: string): Signal[] {
   for (const sentence of sentences) {
     const fact = !NOT_A_FACT.test(sentence);
     if (PAYMENT_FIXED.test(sentence) && fact) found.add("payment_fixed");
-    else if (PAYMENT_ERROR.test(sentence) && !/\b(fixed|resolved|resuelto|solved)\b/i.test(sentence)) found.add("payment_error");
+    else if (PAYMENT_ERROR.test(sentence) && !/\b(fixed|resolved|resuelto|solved|cleared|back on)\b/i.test(sentence)) found.add("payment_error");
     if (fact && (LIVE.some((pattern) => pattern.test(sentence)) || (LIVE_SHORT.test(sentence) && !LIVE_SHORT_NOT.test(sentence)))) found.add("ads_live");
     if (fact && PAUSED.some((pattern) => pattern.test(sentence)) && !/\b(un-?paused|unpause|despausad)/i.test(sentence)) found.add("ads_paused");
     if (fact && !notYet && (CHURNED.test(sentence) || CHURN_ALONE.test(sentence)) && !CHURN_RISK.test(sentence)) found.add("churned");
