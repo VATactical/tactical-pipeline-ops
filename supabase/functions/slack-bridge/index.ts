@@ -170,6 +170,7 @@ async function scanChannels(admin: Admin, token: string) {
     const rows: Record<string, unknown>[] = [];
     const signalRows: Record<string, unknown>[] = [];
     const live = client.status === "ADS LIVE" || client.status === "CRUISE CONTROL";
+    const launched = live || client.status === "ADS PAUSED";
     const pausedForPayment = client.status === "ADS PAUSED" && /payment|pago/i.test(String(client.ads_pause_reason || ""));
     for (const message of messages) {
       // People only: no bots (Viktor, LeadConnector, TOPS itself) and no join/leave notices.
@@ -179,6 +180,8 @@ async function scanChannels(admin: Admin, token: string) {
         if ((signal === "ads_live" || signal === "payment_fixed") && live) continue;
         if (signal === "ads_paused" && client.status === "ADS PAUSED") continue;
         if (signal === "payment_error" && pausedForPayment) continue;
+        // A client without launched ads cannot be paused: a payment note there is not a status change.
+        if ((signal === "payment_error" || signal === "ads_paused") && !launched) continue;
         signalRows.push({
           client_id: client.id, signal, slack_user_id: message.user, slack_user_name: await nameOf(message), message_ts: message.ts,
           excerpt: (message.text || "").replace(/<(https?:\/\/[^|>]+)\|[^>]*>/g, "$1").replace(/<(https?:\/\/[^>]+)>/g, "$1").slice(0, 600),
